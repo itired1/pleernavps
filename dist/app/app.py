@@ -32,6 +32,22 @@ cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
 track_cache = {}
 
+def calculate_taste_match(profile1, profile2):
+    if not profile1 or not profile2:
+        return 0
+    try:
+        p1 = json.loads(profile1) if isinstance(profile1, str) else profile1
+        p2 = json.loads(profile2) if isinstance(profile2, str) else profile2
+        genres1 = set(p1.get('genres', []))
+        genres2 = set(p2.get('genres', []))
+        if not genres1 or not genres2:
+            return 0
+        intersection = len(genres1 & genres2)
+        union = len(genres1 | genres2)
+        return int((intersection / union) * 100) if union > 0 else 0
+    except:
+        return 0
+
 def get_cached_track(track_id, token, max_retries=3):
     cache_key = f"track:{track_id}"
     
@@ -1350,13 +1366,32 @@ def get_user_profile(user_id):
             else:
                 friend_status = 'pending_received'
     
+    friends_count = db.session.query(Friend).filter(
+        ((Friend.user_id == user_id) & (Friend.friend_id == current_user_id) & (Friend.status == 'accepted')) |
+        ((Friend.user_id == current_user_id) & (Friend.friend_id == user_id) & (Friend.status == 'accepted'))
+    ).count()
+    
+    from models import Playlist, LikedTrack
+    playlists_count = db.session.query(Playlist).filter(Playlist.user_id == user_id).count()
+    tracks_count = db.session.query(LikedTrack).filter(LikedTrack.user_id == user_id).count()
+    
+    taste_match = 0
+    if user.taste_profile and current_user_id != user_id:
+        current_user = db.session.get(User, current_user_id)
+        if current_user and current_user.taste_profile:
+            taste_match = calculate_taste_match(current_user.taste_profile, user.taste_profile)
+    
     return jsonify({
         'id': user.id,
         'username': user.username,
         'display_name': user.display_name,
         'bio': user.bio,
         'avatar_url': user.avatar_url,
-        'friend_status': friend_status
+        'friend_status': friend_status,
+        'friends_count': friends_count,
+        'tracks_count': tracks_count,
+        'playlists_count': playlists_count,
+        'taste_match': taste_match
     })
 
 BANNERS = {

@@ -77,11 +77,22 @@ window.viewFriendProfile = async function(userId) {
         const bioEl = document.getElementById('modalBio');
         const avatarEl = document.getElementById('modalAvatar');
         const addFriendBtn = document.getElementById('modalAddFriendBtn');
+        const friendsCountEl = document.getElementById('modalFriendsCount');
+        const tracksCountEl = document.getElementById('modalTracksCount');
+        const playlistsCountEl = document.getElementById('modalPlaylistsCount');
+        const tasteMatchEl = document.getElementById('modalTasteMatch');
+        const tasteFillEl = document.getElementById('modalTasteFill');
         
         if (displayNameEl) displayNameEl.textContent = data.display_name || data.username;
         if (usernameEl) usernameEl.textContent = '@' + data.username;
         if (bioEl) bioEl.textContent = data.bio || 'Пользователь пока ничего не рассказал о себе';
         if (avatarEl) avatarEl.src = data.avatar_url || '';
+        
+        if (friendsCountEl) friendsCountEl.textContent = data.friends_count || 0;
+        if (tracksCountEl) tracksCountEl.textContent = data.tracks_count || 0;
+        if (playlistsCountEl) playlistsCountEl.textContent = data.playlists_count || 0;
+        if (tasteMatchEl) tasteMatchEl.textContent = data.taste_match || 0;
+        if (tasteFillEl) tasteFillEl.style.width = (data.taste_match || 0) + '%';
         
         const friendStatus = data.friend_status || 'none';
         
@@ -92,6 +103,7 @@ window.viewFriendProfile = async function(userId) {
                 addFriendBtn.innerHTML = '<i class="fas fa-check"></i> Друг';
                 addFriendBtn.disabled = true;
                 addFriendBtn.className = 'glass-btn';
+                addFriendBtn.style.display = 'none';
             } else if (friendStatus === 'pending_sent') {
                 addFriendBtn.innerHTML = '<i class="fas fa-clock"></i> Запрос отправлен';
                 addFriendBtn.disabled = true;

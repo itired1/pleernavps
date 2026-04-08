@@ -1350,13 +1350,26 @@ def get_user_profile(user_id):
             else:
                 friend_status = 'pending_received'
     
+    friends_count = db.session.query(Friend).filter(
+        ((Friend.user_id == user_id) & (Friend.friend_id == current_user_id) & (Friend.status == 'accepted')) |
+        ((Friend.user_id == current_user_id) & (Friend.friend_id == user_id) & (Friend.status == 'accepted'))
+    ).count()
+    
+    from models import Playlist, LikedTrack
+    playlists_count = db.session.query(Playlist).filter(Playlist.user_id == user_id).count()
+    tracks_count = db.session.query(LikedTrack).filter(LikedTrack.user_id == user_id).count()
+    
     return jsonify({
         'id': user.id,
         'username': user.username,
         'display_name': user.display_name,
         'bio': user.bio,
         'avatar_url': user.avatar_url,
-        'friend_status': friend_status
+        'friend_status': friend_status,
+        'friends_count': friends_count,
+        'tracks_count': tracks_count,
+        'playlists_count': playlists_count,
+        'taste_match': taste_match
     })
 
 BANNERS = {
@@ -1934,6 +1947,8 @@ def add_playlist_by_link():
     vk_match = re.search(r'vk\.com/(?:audios|wall-?\d+.*?album=(\d+))', url)
     
     print(f"DEBUG: URL={url}")
+    print(f"DEBUG: yandex_match={yandex_match}")
+    print(f"DEBUG: vk_match={vk_match}")
     print(f"DEBUG: user={user}, user.yandex_token={getattr(user, 'yandex_token', None)[:20] + '...' if user and user.yandex_token else None}")
     
     if yandex_match:
