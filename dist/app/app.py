@@ -262,35 +262,11 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        telegram_code = request.form.get('telegram_code')
         
         user = db.session.query(User).filter((User.username == username) | (User.email == username)).first()
         
         if not user or not user.check_password(password):
             return render_template('auth.html', mode='login', error='Неверные данные')
-        
-        if user.telegram_2fa_enabled and user.telegram_chat_id:
-            if not telegram_code:
-                return render_template('auth.html', mode='login', 
-                    error='Введите код из Telegram', 
-                    telegram_required=True,
-                    username=username)
-            
-            if user.verification_code != telegram_code:
-                return render_template('auth.html', mode='login', 
-                    error='Неверный код', 
-                    telegram_required=True,
-                    username=username)
-            
-            if datetime.utcnow() > user.verification_code_expires:
-                return render_template('auth.html', mode='login', 
-                    error='Код истёк', 
-                    telegram_required=True,
-                    username=username)
-            
-            user.verification_code = None
-            user.verification_code_expires = None
-            db.session.commit()
         
         session.permanent = True
         session['user_id'] = user.id
@@ -585,61 +561,6 @@ def stats():
 def logout():
     session.clear()
     return redirect(url_for('login'))
-
-@app.route('/api/change_password/request', methods=['POST'])
-def change_password_request():
-    data = request.get_json()
-    username = data.get('username')
-    
-    user = db.session.query(User).filter((User.username == username) | (User.email == username)).first()
-    if not user:
-        return jsonify({'error': 'Пользователь не найден'}), 404
-    
-    if not user.telegram_chat_id:
-        return jsonify({'error': 'Telegram не привязан'}), 400
-    
-    code = ''.join(random.choices(string.digits, k=6))
-    user.verification_code = code
-    user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
-    db.session.commit()
-    
-    try:
-        requests.post(f'https://api.telegram.org/bot{os.environ.get("TELEGRAM_BOT_TOKEN")}/sendMessage', json={
-            'chat_id': user.telegram_chat_id,
-            'text': f'🔑 <b>Смена пароля iTired</b>\n\nКод для смены пароля:\n\n<code>{code}</code>\n\n⏰ Действует 10 минут\n\nЕсли это были не вы - проигнорируйте это сообщение.',
-            'parse_mode': 'HTML'
-        }, timeout=10)
-    except:
-        pass
-    
-    return jsonify({'success': True, 'expires': 10})
-
-@app.route('/api/change_password/verify', methods=['POST'])
-def change_password_verify():
-    data = request.get_json()
-    username = data.get('username')
-    code = data.get('code')
-    new_password = data.get('new_password')
-    
-    if not new_password or len(new_password) < 6:
-        return jsonify({'error': 'Пароль минимум 6 символов'}), 400
-    
-    user = db.session.query(User).filter((User.username == username) | (User.email == username)).first()
-    if not user:
-        return jsonify({'error': 'Пользователь не найден'}), 404
-    
-    if not user.verification_code or user.verification_code != code:
-        return jsonify({'error': 'Неверный код'}), 400
-    
-    if datetime.utcnow() > user.verification_code_expires:
-        return jsonify({'error': 'Код истёк'}), 400
-    
-    user.set_password(new_password)
-    user.verification_code = None
-    user.verification_code_expires = None
-    db.session.commit()
-    
-    return jsonify({'success': True})
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
