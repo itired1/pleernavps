@@ -213,8 +213,14 @@ function initAudioPlayer() {
     }
     audioPlayer.addEventListener('timeupdate', updateProgress);
     audioPlayer.addEventListener('ended', handleTrackEnd);
-    audioPlayer.addEventListener('pause', updatePlayButton);
-    audioPlayer.addEventListener('play', updatePlayButton);
+    audioPlayer.addEventListener('pause', function() {
+        updatePlayButton();
+        document.dispatchEvent(new CustomEvent('player-pause'));
+    });
+    audioPlayer.addEventListener('play', function() {
+        updatePlayButton();
+        document.dispatchEvent(new CustomEvent('player-play'));
+    });
     audioPlayer.addEventListener('loadedmetadata', function() {
         const totalEl = document.getElementById('totalTime');
         if (totalEl) totalEl.textContent = formatDuration(audioPlayer.duration * 1000);
@@ -649,6 +655,15 @@ function updatePlayerUI(track) {
             coverEl.innerHTML = '<i class="fas fa-music"></i>';
         }
     }
+    
+    document.dispatchEvent(new CustomEvent('player-track-changed', {
+        detail: {
+            title: track.title,
+            artist: artistText,
+            cover_uri: track.cover_uri,
+            playing: !audioPlayer.paused
+        }
+    }));
 }
 
 function showMiniNotification(track) {
