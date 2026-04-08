@@ -25,9 +25,21 @@ def get_vk_api(token):
         return None
     try:
         vk_session = vk_api.VkApi(token=token)
-        return vk_session.get_api()
+        vk = vk_session.get_api()
+        return vk
     except Exception as e:
         print(f"VK API error: {e}")
+        return None
+
+def get_vk_audio(token):
+    if not token:
+        return None
+    try:
+        vk_session = vk_api.VkApi(token=token)
+        from vk_api.audio import VkAudio
+        return VkAudio(vk_session)
+    except Exception as e:
+        print(f"VK Audio error: {e}")
         return None
 
 def send_verification_email(email, username, token):
@@ -134,11 +146,13 @@ class Recommender:
                                     audio = vk.audio.getById(audios=f"-{track_id}")
                                     if audio:
                                         t = audio[0]
+                                        vk_artist = t.get('artist', '') or ''
                                         recommendations.append({
                                             'id': f"vk_{t['id']}",
                                             'title': t['title'],
                                             'type': 'track',
-                                            'artists': [t['artist']],
+                                            'artists': [vk_artist] if vk_artist else [],
+                                            'artist': vk_artist,
                                             'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
                                             'duration': t['duration'] * 1000,
                                             'service': 'vk'
@@ -148,11 +162,13 @@ class Recommender:
                         recs = vk.audio.getRecommendations(count=10)
                         if 'items' in recs:
                             for track in recs['items']:
+                                vk_artist = track.get('artist', '') or ''
                                 recommendations.append({
                                     'id': f"vk_{track['id']}",
                                     'title': track['title'],
                                     'type': 'track',
-                                    'artists': [track['artist']],
+                                    'artists': [vk_artist] if vk_artist else [],
+                                    'artist': vk_artist,
                                     'cover_uri': track.get('album', {}).get('thumb', {}).get('photo_300'),
                                     'duration': track['duration'] * 1000,
                                     'service': 'vk'

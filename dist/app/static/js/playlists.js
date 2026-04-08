@@ -5,14 +5,23 @@ async function loadPlaylists() {
     const container = document.getElementById('playlistsGrid');
     if (!container) return;
     
-    container.innerHTML = '<div class="glass-card" style="padding: 40px; text-align: center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p style="margin-top: 12px;">Загрузка...</p></div>';
+    container.innerHTML = '<div class="glass-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; cursor: pointer; border: 2px dashed var(--border); background: transparent;" onclick="showAddPlaylistModal()">' +
+        '<i class="fas fa-plus" style="font-size: 2rem; color: var(--accent); margin-bottom: 12px;"></i>' +
+        '<p style="color: var(--text-muted); font-size: 14px;">Добавить по ссылке</p>' +
+        '<div style="margin-top: 16px;"><i class="fas fa-spinner fa-spin" style="font-size: 1.5rem;"></i></div>' +
+        '</div>';
     
     try {
-        currentPlaylists = await apiCall('playlists') || [];
+        const response = await apiCall('playlists');
+        currentPlaylists = Array.isArray(response) ? response : (response && response.playlists ? response.playlists : []);
         displayPlaylists();
     } catch (error) {
         console.error('Load playlists error:', error);
-        container.innerHTML = '<div class="glass-card" style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff6b6b;"></i><p style="margin-top: 12px;">Ошибка загрузки плейлистов</p></div>';
+        container.innerHTML = '<div class="glass-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; cursor: pointer; border: 2px dashed var(--border); background: transparent;" onclick="showAddPlaylistModal()">' +
+        '<i class="fas fa-plus" style="font-size: 2rem; color: var(--accent); margin-bottom: 12px;"></i>' +
+        '<p style="color: var(--text-muted); font-size: 14px;">Добавить по ссылке</p>' +
+        '<p style="color: #ff6b6b; font-size: 12px; margin-top: 8px;">Ошибка загрузки</p>' +
+        '</div>';
     }
 }
 
@@ -20,12 +29,17 @@ function displayPlaylists() {
     const container = document.getElementById('playlistsGrid');
     if (!container) return;
     
+    let addButton = '<div class="glass-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; cursor: pointer; border: 2px dashed var(--border); background: transparent;" onclick="showAddPlaylistModal()">' +
+        '<i class="fas fa-plus" style="font-size: 2rem; color: var(--accent); margin-bottom: 12px;"></i>' +
+        '<p style="color: var(--text-muted); font-size: 14px;">Добавить по ссылке</p>' +
+        '</div>';
+    
     if (!currentPlaylists.length) {
-        container.innerHTML = '<div class="glass-card" style="text-align: center; padding: 40px; grid-column: 1/-1;"><i class="fas fa-list-music" style="font-size: 3rem; color: var(--accent);"></i><p>У вас пока нет плейлистов</p><p style="color: var(--text-muted); margin-top: 8px;">Настройте токены в профиле</p></div>';
+        container.innerHTML = addButton;
         return;
     }
     
-    let html = '';
+    let html = addButton;
     currentPlaylists.forEach(playlist => {
         const coverHtml = playlist.cover_uri 
             ? '<img src="' + playlist.cover_uri + '" alt="">'
@@ -47,6 +61,65 @@ function displayPlaylists() {
     container.innerHTML = html;
 }
 
+window.showAddPlaylistModal = function() {
+    const modal = document.createElement('div');
+    modal.id = 'addPlaylistModal';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+    modal.innerHTML = '<div style="background: var(--bg-card); border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">' +
+        '<h3 style="margin-bottom: 20px;"><i class="fas fa-link" style="color: var(--accent); margin-right: 10px;"></i>Добавить плейлист по ссылке</h3>' +
+        '<div style="margin-bottom: 20px;">' +
+        '<p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Поддерживаются ссылки:</p>' +
+        '<ul style="color: var(--text-muted); font-size: 12px; margin-left: 20px;">' +
+        '<li>music.yandex.ru/playlist/...</li>' +
+        '<li>vk.com/audios... или vk.com/wall...album=...</li>' +
+        '</ul></div>' +
+        '<div class="form-group">' +
+        '<label>Ссылка на плейлист</label>' +
+        '<input type="text" id="playlistUrlInput" placeholder="https://music.yandex.ru/playlist/..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text);">' +
+        '</div>' +
+        '<div style="display: flex; gap: 12px;">' +
+        '<button onclick="addPlaylistByLink()" class="btn-primary" style="flex: 1;"><i class="fas fa-plus"></i> Добавить</button>' +
+        '<button onclick="closeAddPlaylistModal()" class="glass-btn" style="flex: 1;">Отмена</button>' +
+        '</div></div>';
+    document.body.appendChild(modal);
+    document.getElementById('playlistUrlInput').focus();
+};
+
+window.closeAddPlaylistModal = function() {
+    const modal = document.getElementById('addPlaylistModal');
+    if (modal) modal.remove();
+};
+
+window.addPlaylistByLink = async function() {
+    const url = document.getElementById('playlistUrlInput').value.trim();
+    if (!url) {
+        showNotification('Введите ссылку', 'warning');
+        return;
+    }
+    
+    console.log('Adding playlist from URL:', url);
+    
+    try {
+        const result = await apiCall('playlist/add', {
+            method: 'POST',
+            body: JSON.stringify({ url: url })
+        });
+        
+        console.log('API result:', result);
+        
+        if (result && result.success) {
+            showNotification('Плейлист добавлен!', 'success');
+            closeAddPlaylistModal();
+            loadPlaylists();
+        } else {
+            showNotification(result?.error || 'Ошибка добавления', 'error');
+        }
+    } catch (error) {
+        console.error('Add playlist error:', error);
+        showNotification('Ошибка добавления плейлиста', 'error');
+    }
+};
+
 window.openPlaylist = function(playlistId) {
     selectedPlaylist = currentPlaylists.find(function(p) { return p.id === playlistId; });
     if (selectedPlaylist) {
@@ -64,7 +137,8 @@ async function loadPlaylistTracks(playlistId) {
     container.innerHTML = '<div class="queue-placeholder"><i class="fas fa-spinner fa-spin"></i><p>Загрузка...</p></div>';
     
     try {
-        const tracks = await apiCall('playlists/' + playlistId + '/tracks') || [];
+        const response = await apiCall('playlists/' + playlistId + '/tracks');
+        const tracks = Array.isArray(response) ? response : (response && Array.isArray(response.tracks) ? response.tracks : []);
         displayPlaylistTracks(tracks, selectedPlaylist);
     } catch (error) {
         container.innerHTML = '<div class="queue-placeholder"><i class="fas fa-exclamation-triangle" style="color: #ff6b6b;"></i><p>Ошибка загрузки</p></div>';
@@ -74,6 +148,9 @@ async function loadPlaylistTracks(playlistId) {
 function displayPlaylistTracks(tracks, playlist) {
     const container = document.getElementById('playlistTracks');
     if (!container) return;
+    
+    window.currentSource = 'playlist_' + (playlist ? playlist.id : 'unknown');
+    window.currentSourceTracks = tracks;
     
     const coverHtml = playlist && playlist.cover_uri 
         ? '<img src="' + playlist.cover_uri + '" alt="" style="width: 120px; height: 120px; border-radius: 12px; object-fit: cover;">'
@@ -99,7 +176,7 @@ function displayPlaylistTracks(tracks, playlist) {
     } else {
         html += '<div style="display: flex; flex-direction: column; gap: 4px;">';
         tracks.forEach(function(track, index) {
-            const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+            const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
             const cover = track.cover_uri ? '<img src="' + track.cover_uri + '" alt="">' : '<i class="fas fa-music"></i>';
             const duration = track.duration ? formatDuration(track.duration) : (track.duration_ms ? formatDuration(track.duration_ms) : '');
             
@@ -108,7 +185,7 @@ function displayPlaylistTracks(tracks, playlist) {
                 '<div class="track-item-cover">' + cover + '</div>' +
                 '<div class="track-item-info">' +
                 '<div class="track-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
-                '<div class="track-item-artist">' + escapeHtml(artists) + '</div>' +
+                '<div class="track-item-artist">' + escapeHtml(artistsText) + '</div>' +
                 '</div>' +
                 '<button class="like-btn" onclick="event.stopPropagation(); toggleFavorite(\'' + track.id + '\', ' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--accent); font-size: 16px; cursor: pointer; padding: 8px; opacity: 0; transition: opacity 0.2s;">' +
                 '<i class="far fa-heart"></i>' +
@@ -139,8 +216,11 @@ function displayPlaylistTracks(tracks, playlist) {
 window.playPlaylist = function(playlistId) {
     if (!playlistId) return;
     
-    apiCall('playlists/' + playlistId + '/tracks').then(function(tracks) {
+    apiCall('playlists/' + playlistId + '/tracks').then(function(response) {
+        const tracks = Array.isArray(response) ? response : (response && Array.isArray(response.tracks) ? response.tracks : []);
         if (tracks && tracks.length) {
+            window.currentSource = 'playlist_' + playlistId;
+            window.currentSourceTracks = [].concat(tracks);
             window.queue = [].concat(tracks);
             window.currentPlaylist = [].concat(tracks);
             window.currentTrackIndex = 0;

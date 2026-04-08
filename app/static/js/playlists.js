@@ -137,7 +137,8 @@ async function loadPlaylistTracks(playlistId) {
     container.innerHTML = '<div class="queue-placeholder"><i class="fas fa-spinner fa-spin"></i><p>Загрузка...</p></div>';
     
     try {
-        const tracks = await apiCall('playlists/' + playlistId + '/tracks') || [];
+        const response = await apiCall('playlists/' + playlistId + '/tracks');
+        const tracks = Array.isArray(response) ? response : (response && Array.isArray(response.tracks) ? response.tracks : []);
         displayPlaylistTracks(tracks, selectedPlaylist);
     } catch (error) {
         container.innerHTML = '<div class="queue-placeholder"><i class="fas fa-exclamation-triangle" style="color: #ff6b6b;"></i><p>Ошибка загрузки</p></div>';
@@ -147,6 +148,9 @@ async function loadPlaylistTracks(playlistId) {
 function displayPlaylistTracks(tracks, playlist) {
     const container = document.getElementById('playlistTracks');
     if (!container) return;
+    
+    window.currentSource = 'playlist_' + (playlist ? playlist.id : 'unknown');
+    window.currentSourceTracks = tracks;
     
     const coverHtml = playlist && playlist.cover_uri 
         ? '<img src="' + playlist.cover_uri + '" alt="" style="width: 120px; height: 120px; border-radius: 12px; object-fit: cover;">'
@@ -172,7 +176,7 @@ function displayPlaylistTracks(tracks, playlist) {
     } else {
         html += '<div style="display: flex; flex-direction: column; gap: 4px;">';
         tracks.forEach(function(track, index) {
-            const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+            const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
             const cover = track.cover_uri ? '<img src="' + track.cover_uri + '" alt="">' : '<i class="fas fa-music"></i>';
             const duration = track.duration ? formatDuration(track.duration) : (track.duration_ms ? formatDuration(track.duration_ms) : '');
             
@@ -181,7 +185,7 @@ function displayPlaylistTracks(tracks, playlist) {
                 '<div class="track-item-cover">' + cover + '</div>' +
                 '<div class="track-item-info">' +
                 '<div class="track-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
-                '<div class="track-item-artist">' + escapeHtml(artists) + '</div>' +
+                '<div class="track-item-artist">' + escapeHtml(artistsText) + '</div>' +
                 '</div>' +
                 '<button class="like-btn" onclick="event.stopPropagation(); toggleFavorite(\'' + track.id + '\', ' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--accent); font-size: 16px; cursor: pointer; padding: 8px; opacity: 0; transition: opacity 0.2s;">' +
                 '<i class="far fa-heart"></i>' +
@@ -212,8 +216,11 @@ function displayPlaylistTracks(tracks, playlist) {
 window.playPlaylist = function(playlistId) {
     if (!playlistId) return;
     
-    apiCall('playlists/' + playlistId + '/tracks').then(function(tracks) {
+    apiCall('playlists/' + playlistId + '/tracks').then(function(response) {
+        const tracks = Array.isArray(response) ? response : (response && Array.isArray(response.tracks) ? response.tracks : []);
         if (tracks && tracks.length) {
+            window.currentSource = 'playlist_' + playlistId;
+            window.currentSourceTracks = [].concat(tracks);
             window.queue = [].concat(tracks);
             window.currentPlaylist = [].concat(tracks);
             window.currentTrackIndex = 0;

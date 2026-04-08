@@ -46,6 +46,10 @@ async function loadMyWave() {
     await loadLikedTracks('yandex');
 }
 
+window.refreshLikedTracks = function() {
+    loadLikedTracks('yandex');
+};
+
 window.loadLikedTracks = async function(source) {
     document.querySelectorAll('#likedSourceSelector .source-btn').forEach(function(btn) {
         btn.classList.toggle('active', btn.dataset.source === source);
@@ -57,7 +61,7 @@ window.loadLikedTracks = async function(source) {
     container.innerHTML = '<div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p style="margin-top: 12px;">Загрузка...</p></div>';
     
     try {
-        const data = await apiCall('liked-tracks?source=' + source);
+        const data = await apiCall('liked-tracks?source=' + source + '&t=' + Date.now());
         displayLikedTracks(data.tracks || []);
     } catch (error) {
         console.error('Load liked tracks error:', error);
@@ -69,26 +73,44 @@ function displayLikedTracks(tracks) {
     const container = document.getElementById('likedTracksContainer');
     if (!container) return;
     
+    window.currentSource = 'liked';
+    window.currentSourceTracks = tracks;
+    
     if (!tracks.length) {
         container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-heart" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Треки не найдены. Настройте токен в профиле.</p></div>';
         return;
     }
     
     let html = '';
-    tracks.slice(0, 20).forEach(function(track) {
-        const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+    tracks.slice(0, 10).forEach(function(track) {
+        let artistsText = '';
+        if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
+            artistsText = track.artists.join(', ');
+        } else if (track.artists && typeof track.artists === 'string' && track.artists) {
+            artistsText = track.artists;
+        } else if (track.artist) {
+            artistsText = track.artist;
+        }
         let coverUrl = track.cover_uri || '';
         if (coverUrl && coverUrl.includes('%%')) {
             coverUrl = coverUrl.replace('%%', '200x200');
         }
+        
+        const serviceIcon = track.service === 'yandex' 
+            ? '<i class="fab fa-yandex" style="color: #ff3333;"></i>' 
+            : track.service === 'vk' 
+            ? '<i class="fab fa-vk" style="color: #4a76a8;"></i>' 
+            : '<i class="fas fa-music"></i>';
+        
         const cover = coverUrl ? '<div style="width: 180px; height: 180px; overflow: hidden; border-radius: 12px;"><img src="' + coverUrl + '" alt="" style="width: 180px; height: 180px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<div style=width:180px;height:180px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));border-radius:12px;display:flex;align-items:center;justify-content:center;><i class=fas fa-music fa-2x style=color:#fff;></i></div>\'"></div>' : '<div style="width: 180px; height: 180px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music fa-2x" style="color: #fff;"></i></div>';
         
         html += '<div class="wave-track-card" onclick="playTrack(\'' + track.id + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
             '<div style="position: relative;">' + cover +
+            '<div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">' + serviceIcon + '</div>' +
             '<div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: #fff;"></i></div>' +
             '</div>' +
             '<h4 style="margin: 8px 0 4px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(track.title || 'Неизвестно') + '</h4>' +
-            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artists) + '</p>' +
+            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</p>' +
             '</div>';
     });
     container.innerHTML = html;
@@ -98,6 +120,9 @@ function displayWaveTracks(tracks) {
     const container = document.getElementById('waveTracksContainer');
     if (!container) return;
     
+    window.currentSource = 'wave';
+    window.currentSourceTracks = tracks;
+    
     if (!tracks.length) {
         container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Настройте токены для воспроизведения</p></div>';
         return;
@@ -105,15 +130,21 @@ function displayWaveTracks(tracks) {
     
     let html = '';
     tracks.slice(0, 10).forEach(function(track) {
-        const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+        const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
+        const serviceIcon = track.service === 'yandex' 
+            ? '<i class="fab fa-yandex" style="color: #ff3333;"></i>' 
+            : track.service === 'vk' 
+            ? '<i class="fab fa-vk" style="color: #4a76a8;"></i>' 
+            : '';
         const cover = track.cover_uri ? '<img src="' + track.cover_uri + '" alt="" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px;">' : '<div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music fa-2x" style="color: #fff;"></i></div>';
         
         html += '<div class="wave-track-card" onclick="playTrack(\'' + track.id + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
             '<div style="position: relative;">' + cover +
+            '<div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">' + serviceIcon + '</div>' +
             '<div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: #fff;"></i></div>' +
             '</div>' +
             '<h4 style="margin: 8px 0 4px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(track.title || 'Неизвестно') + '</h4>' +
-            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artists) + '</p>' +
+            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</p>' +
             '</div>';
     });
     container.innerHTML = html;
@@ -267,7 +298,7 @@ function displayRecommendations(items) {
     
     var html = '';
     items.forEach(function(item) {
-        var artists = item.artists ? item.artists.join(', ') : '';
+        var artistsText = item.artists ? (Array.isArray(item.artists) ? item.artists.join(', ') : item.artists) : (item.artist || '');
         var coverHtml = item.cover_uri 
             ? '<img src="' + item.cover_uri + '" alt="" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px;">'
             : '<div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music fa-2x" style="color: #fff;"></i></div>';
@@ -275,7 +306,7 @@ function displayRecommendations(items) {
         html += '<div class="glass-card playlist-card" onclick="playAndSetQueue(\'' + item.id + '\', JSON.parse(\'' + JSON.stringify(items).replace(/'/g, "\\'") + '\'))">' +
             '<div class="playlist-cover">' + coverHtml + '</div>' +
             '<h4 style="margin-bottom: 4px;">' + escapeHtml(item.title) + '</h4>' +
-            '<p style="font-size: 0.85rem; color: var(--text-secondary);">' + escapeHtml(artists) + '</p>' +
+            '<p style="font-size: 0.85rem; color: var(--text-secondary);">' + escapeHtml(artistsText) + '</p>' +
             '</div>';
     });
     grid.innerHTML = html;
@@ -356,7 +387,7 @@ function displaySearchDropdown(results) {
     html += '<div class="search-section">Результаты</div>';
     
     tracks.slice(0, 8).forEach(function(t) {
-        var artists = t.artists ? t.artists.join(', ') : '';
+        var artistsText = t.artists ? (Array.isArray(t.artists) ? t.artists.join(', ') : t.artists) : (t.artist || '');
         var cover = t.cover_uri 
             ? '<img src="' + t.cover_uri + '" alt="" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">'
             : '<div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-music" style="color: #fff; font-size: 12px;"></i></div>';
@@ -365,7 +396,7 @@ function displaySearchDropdown(results) {
             cover +
             '<div class="search-item-info">' +
             '<div class="search-item-title">' + escapeHtml(t.title) + '</div>' +
-            '<div class="search-item-artist">' + escapeHtml(artists) + '</div>' +
+            '<div class="search-item-artist">' + escapeHtml(artistsText) + '</div>' +
             '</div>' +
             '<div class="search-item-actions">' +
             '<button onclick="event.stopPropagation(); addToQueue(\'' + t.id + '\')" title="В очередь"><i class="fas fa-list"></i></button>' +
@@ -401,19 +432,38 @@ function displaySearchResults(results) {
     var container = document.getElementById('recommendationsGrid');
     if (!container) return;
     
+    window.currentSource = 'search';
+    window.currentSourceTracks = results.tracks || [];
+    
     var html = '<div class="glass-card"><h3 style="margin-bottom: 16px;"><i class="fas fa-search" style="color: var(--accent);"></i> Результаты поиска</h3>';
     
     if (results.tracks && results.tracks.length) {
         html += '<div style="display: flex; flex-direction: column; gap: 4px;">';
         results.tracks.forEach(function(t) {
-            var artists = t.artists ? t.artists.join(', ') : '';
+            var artistsText = '';
+            if (t.artists && Array.isArray(t.artists) && t.artists.length > 0) {
+                artistsText = t.artists.join(', ');
+            } else if (t.artists && typeof t.artists === 'string' && t.artists) {
+                artistsText = t.artists;
+            } else if (t.artist) {
+                artistsText = t.artist;
+            }
             var coverUrl = t.cover_uri || '';
-            if (coverUrl && coverUrl.includes('%%')) {
+            if (coverUrl) {
                 coverUrl = coverUrl.replace('%%', '40x40');
+                if (!coverUrl.includes('https://')) {
+                    coverUrl = 'https://' + coverUrl;
+                }
             }
             var coverHtml = coverUrl 
-                ? '<div style="width: 40px; height: 40px; flex-shrink: 0; overflow: hidden; border-radius: 6px;"><img src="' + coverUrl + '" alt="" style="max-width: 40px; max-height: 40px; width: auto; height: auto; object-fit: cover;" onerror="this.style.display=\'none\'"></div>'
+                ? '<div style="width: 40px; height: 40px; flex-shrink: 0; overflow: hidden; border-radius: 6px; background: var(--bg-tertiary);"><img src="' + coverUrl + '" alt="" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<i class=&quot;fas fa-music&quot; style=&quot;color: var(--text-muted);&quot;></i>\'"></div>'
                 : '<div style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-music" style="color: #fff; font-size: 14px;"></i></div>';
+            
+            var serviceIcon = t.service === 'yandex' 
+                ? '<i class="fab fa-yandex" style="color: #ff3333; font-size: 10px;"></i>' 
+                : t.service === 'vk' 
+                ? '<i class="fab fa-vk" style="color: #4a76a8; font-size: 10px;"></i>' 
+                : '';
             
             var duration = '';
             if (t.duration) {
@@ -425,8 +475,8 @@ function displaySearchResults(results) {
             html += '<div onclick="playTrack(\'' + t.id + '\')" style="display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\'transparent\'">' +
                 coverHtml +
                 '<div style="flex: 1; min-width: 0;">' +
-                '<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">' + escapeHtml(t.title) + '</div>' +
-                '<div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artists) + '</div>' +
+                '<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">' + escapeHtml(t.title) + ' ' + serviceIcon + '</div>' +
+                '<div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</div>' +
                 '</div>' +
                 '<div style="color: var(--text-secondary); font-size: 12px; flex-shrink: 0;">' + duration + '</div>' +
                 '</div>';

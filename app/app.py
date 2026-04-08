@@ -80,7 +80,7 @@ def get_cached_track(track_id, token, max_retries=3):
                     vk = get_vk_api(user.vk_token)
                     if vk:
                         try:
-                            audio_list = vk.call('audio.getById', {'audios': f"-136022133_{vk_id}"})
+                            audio_list = vk.audio.getById(audios=f"-136022133_{vk_id}")
                             if audio_list:
                                 audio = audio_list[0]
                                 result = {
@@ -245,9 +245,16 @@ def add_currency(user_id, amount, reason):
 
 @app.route('/')
 def index():
+    saved_url = request.args.get('server_url') or request.headers.get('X-Server-Url')
+    if saved_url and saved_url != 'http://localhost:5001':
+        return render_template('setup_redirect.html', server_url=saved_url)
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('index.html')
+
+@app.route('/setup')
+def setup_page():
+    return render_template('setup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -503,7 +510,7 @@ def home():
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
-                plists = vk.call('audio.getPlaylists', {'count': 50})
+                plists = vk.audio.getPlaylists(count=50)
                 if 'items' in plists:
                     total_playlists += len(plists['items'])
                     for p in plists['items'][:5]:
@@ -711,7 +718,7 @@ def search():
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
-                search_res = vk.call('audio.search', {'q': q, 'count': 15})
+                search_res = vk.audio.search(q=q, count=15)
                 if 'items' in search_res:
                     for t in search_res['items']:
                         result['tracks'].append({
@@ -759,7 +766,7 @@ def playlists():
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
-                plists = vk.call('audio.getPlaylists', {'count': 50})
+                plists = vk.audio.getPlaylists(count=50)
                 if 'items' in plists:
                     for p in plists['items']:
                         result.append({
@@ -830,65 +837,68 @@ def liked_tracks():
             
             liked = client.users_likes_tracks()
             if liked and liked.tracks:
+                import random
+                track_ids = []
                 for item in liked.tracks:
+                    track = item.track if hasattr(item, 'track') and item.track else item
+                    if track and hasattr(track, 'id') and track.id:
+                        track_ids.append(str(track.id))
+                
+                random.shuffle(track_ids)
+                track_ids = track_ids[:11]
+                
+                batch_size = 50
+                for i in range(0, len(track_ids), batch_size):
+                    batch = track_ids[i:i+batch_size]
                     try:
-                        track = item.track if hasattr(item, 'track') and item.track else item
-                        if not track or not hasattr(track, 'id') or not track.id:
-                            continue
-                        
-                        cover = None
-                        if hasattr(track, 'cover_uri') and track.cover_uri:
-                            cover = f"https://{track.cover_uri.replace('%%', '300x300')}"
-                        elif hasattr(track, 'albums') and track.albums:
-                            for album in track.albums:
-                                if album and hasattr(album, 'cover_uri') and album.cover_uri:
-                                    cover = f"https://{album.cover_uri.replace('%%', '300x300')}"
-                                    break
-                                if album and hasattr(album, 'get_cover_url'):
-                                    cover = album.get_cover_url('300x300')
-                                    break
-                        
-                        artists = []
-                        if hasattr(track, 'artists') and track.artists:
-                            for a in track.artists:
-                                if not a:
-                                    continue
-                                if hasattr(a, 'name'):
-                                    artists.append(a.name)
-                                elif isinstance(a, dict):
-                                    artists.append(a.get('name', 'Unknown'))
-                                else:
-                                    artists.append(str(a))
-                        
-                        duration = 0
-                        if hasattr(track, 'duration_ms') and track.duration_ms:
-                            duration = track.duration_ms
-                        elif hasattr(track, 'albums') and track.albums:
-                            for album in track.albums:
-                                if album and hasattr(album, 'duration_ms') and album.duration_ms:
-                                    duration = album.duration_ms
-                                    break
-                        
-                        title = 'Неизвестно'
-                        if hasattr(track, 'title') and track.title:
-                            title = track.title
-                        
-                        tracks.append({
-                            'id': f"yandex_{track.id}",
-                            'title': title,
-                            'artists': artists if artists else ['Unknown'],
-                            'duration': duration,
-                            'cover_uri': cover,
-                            'service': 'yandex'
-                        })
+                        full_tracks = client.tracks(batch)
+                        for t in full_tracks:
+                            if not t:
+                                continue
+                            
+                            artists = []
+                            if hasattr(t, 'artists') and t.artists:
+                                for a in t.artists:
+                                    if hasattr(a, 'name'):
+                                        artists.append(a.name)
+                                    else:
+                                        artists.append(str(a))
+                            
+                            cover = None
+                            if hasattr(t, 'cover_uri') and t.cover_uri:
+                                cover = f"https://{t.cover_uri.replace('%%', '300x300')}"
+                            
+                            tracks.append({
+                                'id': f"yandex_{t.id}",
+                                'title': t.title if hasattr(t, 'title') else 'Unknown',
+                                'artists': artists,
+                                'artist': ', '.join(artists) if artists else '',
+                                'duration': t.duration_ms if hasattr(t, 'duration_ms') else 0,
+                                'cover_uri': cover,
+                                'service': 'yandex'
+                            })
                     except Exception as te:
-                        print(f"Track parse error: {te}")
+                        print(f"Batch error: {te}")
                         continue
             else:
                 return jsonify({'tracks': [], 'message': 'Лайкнутые треки пусты'})
         except Exception as e:
             print(f"Liked tracks error: {e}")
             return jsonify({'error': str(e), 'tracks': []})
+    
+    elif source == 'vk' and user and user.vk_token:
+        favorites = db.session.query(LikedTrack).filter_by(user_id=user.id).filter(
+            LikedTrack.track_id.like('vk_%')
+        ).order_by(LikedTrack.liked_at.desc()).all()
+        
+        import random
+        random.shuffle(favorites)
+        for f in favorites[:11]:
+            if f.track_data:
+                data = json.loads(f.track_data)
+                data['id'] = f.track_id
+                if data.get('url'):
+                    tracks.append(data)
     
     return jsonify({'tracks': tracks})
 
@@ -967,95 +977,83 @@ def playlist_tracks(playlist_id):
         if user and user.yandex_token:
             try:
                 kind = int(playlist_id.replace('yandex_', ''))
-                headers = {'Authorization': f'OAuth {user.yandex_token}'}
+                client = get_yandex_client(user.yandex_token)
                 
-                yandex_uid = user.yandex_uid
-                if not yandex_uid:
-                    account_resp = requests.get('https://api.music.yandex.net/account/status', headers=headers, timeout=10)
-                    if account_resp.status_code == 200:
-                        yandex_uid = account_resp.json().get('account', {}).get('uid')
-                    elif client and hasattr(client, 'account_status'):
-                        try:
-                            acc = client.account_status()
-                            if hasattr(acc, 'account') and acc.account:
-                                yandex_uid = getattr(acc.account, 'uid', None)
-                        except: pass
+                if not client:
+                    return jsonify([])
                 
-                if not yandex_uid:
-                    print("Cannot find Yandex UID")
-                    return jsonify({'tracks': []})
-                
-                all_tracks = []
-                page = 0
-                per_page = 100
-                
-                while True:
-                    api_url = f'https://api.music.yandex.net/users/{yandex_uid}/playlists/{kind}/tracks'
-                    params = {'page': page, 'pageSize': per_page}
-                    resp = requests.get(api_url, headers=headers, params=params, timeout=15)
+                try:
+                    headers = {'Authorization': f'OAuth {user.yandex_token}'}
+                    uid = user.yandex_uid
+                    
+                    if not uid:
+                        resp = requests.get('https://api.music.yandex.net/account/status', headers=headers, timeout=10)
+                        if resp.status_code == 200:
+                            uid = resp.json().get('result', {}).get('account', {}).get('uid')
+                    
+                    if not uid:
+                        return jsonify([])
+                    
+                    api_url = f'https://api.music.yandex.net/users/{uid}/playlists/{kind}'
+                    resp = requests.get(api_url, headers=headers, timeout=15)
                     
                     if resp.status_code != 200:
-                        print(f"Yandex API error: {resp.status_code}")
-                        break
+                        return jsonify([])
                     
-                    data = resp.json()
-                    result = data.get('result', {})
-                    playlist_tracks_data = result.get('tracks', [])
+                    playlist_data = resp.json().get('result', {})
+                    playlist_tracks = playlist_data.get('tracks', [])
                     
-                    if not playlist_tracks_data:
-                        break
+                    if not playlist_tracks:
+                        return jsonify([])
                     
-                    all_tracks.extend(playlist_tracks_data)
+                    track_ids = [str(t.get('id', '')) for t in playlist_tracks if t.get('id')]
+                    track_ids = [tid for tid in track_ids if tid]
                     
-                    if len(playlist_tracks_data) < per_page:
-                        break
+                    batch_size = 50
+                    for i in range(0, len(track_ids), batch_size):
+                        batch = track_ids[i:i+batch_size]
+                        try:
+                            full_tracks = client.tracks(batch)
+                            
+                            for t in full_tracks:
+                                if not t:
+                                    continue
+                                artists = []
+                                if hasattr(t, 'artists') and t.artists:
+                                    for a in t.artists:
+                                        if hasattr(a, 'name'):
+                                            artists.append(a.name)
+                                        else:
+                                            artists.append(str(a))
+                                
+                                cover = None
+                                if hasattr(t, 'cover_uri') and t.cover_uri:
+                                    cover = f"https://{t.cover_uri.replace('%%', '300x300')}"
+                                
+                                tracks.append({
+                                    'id': f"yandex_{t.id}",
+                                    'title': t.title if hasattr(t, 'title') else 'Unknown',
+                                    'artists': artists,
+                                    'artist': ', '.join(artists) if artists else '',
+                                    'duration': t.duration_ms if hasattr(t, 'duration_ms') else 0,
+                                    'cover_uri': cover,
+                                    'service': 'yandex'
+                                })
+                        except Exception as te:
+                            print(f"Batch error: {te}")
+                            continue
                     
-                    page += 1
-                    if page > 50:
-                        break
+                    return jsonify(tracks)
+                    
+                except Exception as e:
+                    print(f"Error getting playlist tracks: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return jsonify([])
                 
-                for item in all_tracks:
-                    try:
-                        track_data = item.get('track') or item
-                        if not track_data:
-                            continue
-                        
-                        track_id = track_data.get('id')
-                        if not track_id:
-                            continue
-                        
-                        cover = None
-                        cover_uri = track_data.get('coverUri') or track_data.get('album', {}).get('coverUri')
-                        if cover_uri:
-                            cover = f"https://{cover_uri.replace('%%', '300x300')}"
-                        
-                        artists = []
-                        for a in track_data.get('artists', []):
-                            if isinstance(a, dict):
-                                artists.append(a.get('name', 'Unknown'))
-                            elif hasattr(a, 'name'):
-                                artists.append(a.name)
-                            else:
-                                artists.append(str(a))
-                        
-                        duration = track_data.get('durationMs', 0) or track_data.get('album', {}).get('durationMs', 0)
-                        
-                        tracks.append({
-                            'id': f"yandex_{track_id}",
-                            'title': track_data.get('title', 'Неизвестно'),
-                            'artists': artists if artists else ['Unknown'],
-                            'duration': duration,
-                            'cover_uri': cover,
-                            'service': 'yandex'
-                        })
-                    except Exception as te:
-                        print(f"Track parse error: {te}")
-                        continue
-                        
             except Exception as e:
-                print(f"Playlist tracks error: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"Playlist error: {e}")
+                return jsonify([])
     
     elif playlist_id.startswith('vk_'):
         if user and user.vk_token:
@@ -1065,17 +1063,19 @@ def playlist_tracks(playlist_id):
                     parts = playlist_id.replace('vk_', '').split('_')
                     if len(parts) == 2:
                         owner_id, playlist_id_vk = parts
-                        audio_list = vk.call('audio.get', {'owner_id': owner_id, 'album_id': playlist_id_vk})
+                        audio_list = vk.audio.get(owner_id=owner_id, album_id=playlist_id_vk)
                     else:
                         owner_id = parts[0]
-                        audio_list = vk.call('audio.get', {'owner_id': owner_id})
+                        audio_list = vk.audio.get(owner_id=owner_id)
                     
                     if 'items' in audio_list:
                         for t in audio_list['items']:
+                            vk_artist = t.get('artist', '') or ''
                             tracks.append({
                                 'id': f"vk_{t['id']}",
                                 'title': t['title'],
-                                'artists': [t['artist']],
+                                'artists': [vk_artist] if vk_artist else [],
+                                'artist': vk_artist,
                                 'duration': t['duration'] * 1000,
                                 'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
                                 'service': 'vk'
@@ -1085,16 +1085,12 @@ def playlist_tracks(playlist_id):
     
     elif playlist_id.startswith('local_'):
         local_id = int(playlist_id.replace('local_', ''))
-        print(f"DEBUG: Loading local playlist tracks for local_{local_id}")
         pts = db.session.query(PlaylistTrack).filter_by(playlist_id=local_id).all()
-        print(f"DEBUG: Found {len(pts)} tracks for playlist {local_id}")
         for pt in pts:
             if pt.track_data:
                 data = json.loads(pt.track_data)
                 data['id'] = pt.track_id
                 tracks.append(data)
-            else:
-                print(f"DEBUG: Track {pt.track_id} has no track_data")
     
     return jsonify(tracks)
 
@@ -1543,9 +1539,20 @@ def handle_create_room(data):
     room_codes[user_id] = room_code
     join_room(room_code)
     
+    users_list = [{
+        'id': user_id,
+        'socket_id': request.sid,
+        'username': user.display_name or user.username,
+        'avatar': user.avatar_url or ''
+    }]
+    
+    print(f"[ROOM] Creating room {room_code}, host_sid={request.sid}, users_list={users_list}")
+    
     emit('room_created', {
         'room_code': room_code,
-        'room': rooms[room_code]
+        'room': rooms[room_code],
+        'host_id': request.sid,
+        'users_list': users_list
     })
 
 @socketio.on('join_room')
@@ -1574,14 +1581,31 @@ def handle_join_room(data):
     room_codes[user_id] = room_code
     join_room(room_code)
     
+    host_user_id = rooms[room_code]['host']
+    host_sid = rooms[room_code]['users'].get(host_user_id, {}).get('sid', '')
+    
+    users_list = []
+    for uid, u in rooms[room_code]['users'].items():
+        users_list.append({
+            'id': uid,
+            'socket_id': u.get('sid', ''),
+            'username': u.get('username', ''),
+            'avatar': u.get('avatar', '')
+        })
+    
     emit('room_joined', {
         'room_code': room_code,
         'room': rooms[room_code],
-        'users_list': [{'id': uid, **u} for uid, u in rooms[room_code]['users'].items()]
+        'host_id': host_sid,
+        'users_list': users_list,
+        'current_track': rooms[room_code].get('current_track'),
+        'is_playing': rooms[room_code].get('is_playing', False),
+        'current_time': rooms[room_code].get('current_time', 0)
     })
     
     emit('user_joined', {
         'user_id': user_id,
+        'socket_id': request.sid,
         'username': user.display_name or user.username,
         'avatar': user.avatar_url
     }, room=room_code, include_self=False)
@@ -1594,17 +1618,19 @@ def handle_leave_room(data):
     
     room_code = room_codes[user_id]
     if room_code in rooms:
+        user_sid = request.sid
         if user_id in rooms[room_code]['users']:
             del rooms[room_code]['users'][user_id]
         
-        emit('user_left', {'user_id': user_id}, room=room_code)
+        emit('user_left', {'user_id': user_id, 'socket_id': user_sid}, room=room_code)
         
         if len(rooms[room_code]['users']) == 0:
             del rooms[room_code]
         elif rooms[room_code]['host'] == user_id:
             new_host = list(rooms[room_code]['users'].keys())[0]
             rooms[room_code]['host'] = new_host
-            emit('host_changed', {'new_host': new_host}, room=room_code)
+            new_host_sid = rooms[room_code]['users'].get(new_host, {}).get('sid', '')
+            emit('host_changed', {'new_host': new_host_sid, 'new_host_id': new_host}, room=room_code)
     
     leave_room(room_code)
     del room_codes[user_id]
@@ -1622,14 +1648,17 @@ def handle_play_track(data):
     
     track = data.get('track')
     current_time = data.get('current_time', 0)
+    track_index = data.get('track_index', 0)
     
     rooms[room_code]['current_track'] = track
     rooms[room_code]['is_playing'] = True
     rooms[room_code]['current_time'] = current_time
+    rooms[room_code]['current_track_index'] = track_index
     
     emit('track_played', {
         'track': track,
         'current_time': current_time,
+        'track_index': track_index,
         'user_id': user_id
     }, room=room_code, include_self=False)
 
@@ -1647,10 +1676,12 @@ def handle_pause_track(data):
     rooms[room_code]['is_playing'] = False
     rooms[room_code]['current_time'] = current_time
     
+    print(f"[ROOM] Pause: user={user_id}, room={room_code}, time={current_time}")
     emit('track_paused', {
         'current_time': current_time,
         'user_id': user_id
-    }, room=room_code, include_self=False)
+    }, room=room_code)
+    print(f"[ROOM] Pause event sent to room {room_code}")
 
 @socketio.on('sync_time')
 def handle_sync_time(data):
@@ -1976,9 +2007,9 @@ def add_playlist_by_link():
                 vk = get_vk_api(user.vk_token)
                 if vk:
                     if album_id:
-                        audios = vk.call('audio.get', {'owner_id': owner_id, 'album_id': album_id})
+                        audios = vk.audio.get(owner_id=owner_id, album_id=album_id)
                     else:
-                        audios = vk.call('audio.get', {'owner_id': owner_id})
+                        audios = vk.audio.get(owner_id=owner_id)
                     
                     if 'items' in audios:
                         new_playlist = Playlist(
@@ -2021,10 +2052,6 @@ def add_playlist_by_link():
         return jsonify({'error': 'Токен VK не настроен'}), 400
     
     return jsonify({'error': 'Неподдерживаемый формат ссылки. Используйте ссылку на плейлист Яндекс.Музыки или VK'}), 400
-
-@app.route('/setup.html')
-def setup_page():
-    return send_file('dist/setup.html')
 
 if __name__ == '__main__':
     print("🚀 Starting iTired server...")

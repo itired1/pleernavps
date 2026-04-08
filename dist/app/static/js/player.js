@@ -1,3 +1,4 @@
+console.log('=== player.js loading ===');
 let audioPlayer = null;
 let currentTrack = null;
 let currentPlaylist = [];
@@ -8,6 +9,8 @@ let isRepeat = false;
 let repeatMode = 'off';
 let bypassCensorship = true;
 let listenHistory = [];
+window.currentSource = null;
+window.currentSourceTracks = [];
 
 function saveQueueState() {
     const state = {
@@ -90,10 +93,11 @@ function updateQueueDisplay() {
         var cover = currentTrack.cover_uri 
             ? '<img src="' + currentTrack.cover_uri + '" alt="" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover;">'
             : '<div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: #fff;"></i></div>';
+        var currentArtists = currentTrack.artists ? (Array.isArray(currentTrack.artists) ? currentTrack.artists.join(', ') : currentTrack.artists) : (currentTrack.artist || '');
         html += cover +
             '<div class="search-item-info">' +
             '<div class="search-item-title" style="color: var(--accent);">' + escapeHtml(currentTrack.title) + '</div>' +
-            '<div class="search-item-artist">' + escapeHtml(currentTrack.artists ? currentTrack.artists.join(', ') : '') + '</div>' +
+            '<div class="search-item-artist">' + escapeHtml(currentArtists) + '</div>' +
             '</div></div>';
     }
     
@@ -104,12 +108,13 @@ function updateQueueDisplay() {
             var cover = item.cover_uri 
                 ? '<img src="' + item.cover_uri + '" alt="" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover;">'
                 : '<div style="width: 44px; height: 44px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music" style="color: var(--text-secondary);"></i></div>';
+            var itemArtists = item.artists ? (Array.isArray(item.artists) ? item.artists.join(', ') : item.artists) : (item.artist || '');
             
             html += '<div class="search-item" onclick="playFromQueue(' + index + ')">' +
                 cover +
                 '<div class="search-item-info">' +
                 '<div class="search-item-title">' + escapeHtml(item.title) + '</div>' +
-                '<div class="search-item-artist">' + escapeHtml(item.artists ? item.artists.join(', ') : '') + '</div>' +
+                '<div class="search-item-artist">' + escapeHtml(itemArtists) + '</div>' +
                 '</div>' +
                 '<button onclick="event.stopPropagation(); removeFromQueue(' + index + ')" style="padding: 6px; background: none; border: none; color: var(--text-secondary); cursor: pointer;"><i class="fas fa-times"></i></button>' +
                 '</div>';
@@ -182,12 +187,13 @@ function showHistory() {
         var cover = item.cover_uri 
             ? '<img src="' + item.cover_uri + '" alt="" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover;">'
             : '<div style="width: 44px; height: 44px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music" style="color: var(--text-secondary);"></i></div>';
+        var histArtists = item.artists ? (Array.isArray(item.artists) ? item.artists.join(', ') : item.artists) : (item.artist || '');
         
         html += '<div class="search-item" onclick="playTrack(\'' + item.id + '\')">' +
             cover +
             '<div class="search-item-info">' +
             '<div class="search-item-title">' + escapeHtml(item.title) + '</div>' +
-            '<div class="search-item-artist">' + escapeHtml(item.artists ? item.artists.join(', ') : '') + '</div>' +
+            '<div class="search-item-artist">' + escapeHtml(histArtists) + '</div>' +
             '</div></div>';
     });
     
@@ -250,6 +256,8 @@ function handleTrackEnd() {
 }
 
 window.togglePlay = function() {
+    console.log('=== togglePlay ===');
+    console.log('socket:', !!window.socket, 'currentRoom:', window.currentRoom, 'isHost:', window.isHost);
     if (!audioPlayer.src || audioPlayer.src === window.location.href) {
         if (queue.length > 0) {
             playQueueItem(0);
@@ -263,14 +271,40 @@ window.togglePlay = function() {
             console.error('Play error:', err);
             showNotification('Не удалось воспроизвести', 'error');
         });
+        if (window.socket && window.currentRoom && window.isHost) {
+            console.log('Emitting play_track');
+            window.socket.emit('play_track', {
+                track: currentTrack,
+                track_index: window.currentRoomTrackIndex,
+                current_time: 0
+            });
+        }
     } else {
         audioPlayer.pause();
+        if (window.socket && window.currentRoom && window.isHost) {
+            console.log('Emitting pause_track, time:', audioPlayer.currentTime);
+            window.socket.emit('pause_track', { current_time: audioPlayer.currentTime });
+        }
     }
 };
 
 window.pauseTrack = function() {
     if (audioPlayer) {
         audioPlayer.pause();
+    }
+};
+
+window.testPause = function() {
+    console.log('=== testPause called ===');
+    console.log('socket:', window.socket ? window.socket.id : 'null');
+    console.log('currentRoom:', window.currentRoom);
+    console.log('isHost:', window.isHost);
+    console.log('roomHost:', window.roomHost);
+    if (window.socket && window.currentRoom && window.isHost) {
+        console.log('Sending pause_track...');
+        window.socket.emit('pause_track', { current_time: audioPlayer ? audioPlayer.currentTime : 0 });
+    } else {
+        console.log('Skipping - missing conditions');
     }
 };
 
@@ -290,19 +324,17 @@ window.changeVolume = function(value) {
 };
 
 window.nextTrack = function() {
-    if (queue.length === 0) return;
+    if (queue.length === 0 || queue.length === 1) return;
     
     if (isShuffle) {
         currentTrackIndex = Math.floor(Math.random() * queue.length);
     } else {
         if (currentTrackIndex < queue.length - 1) {
             currentTrackIndex++;
+        } else if (repeatMode === 'all') {
+            currentTrackIndex = 0;
         } else {
-            if (repeatMode === 'all') {
-                currentTrackIndex = 0;
-            } else {
-                return;
-            }
+            return;
         }
     }
     playQueueItem(currentTrackIndex);
@@ -428,7 +460,7 @@ function updateQueueUI() {
     
     let html = '';
     queue.forEach(function(track, index) {
-        const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+        const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
         const cover = track.cover_uri || track.coverUrl || '';
         const isActive = index === currentTrackIndex && audioPlayer.src;
         
@@ -439,7 +471,7 @@ function updateQueueUI() {
             '</div>' +
             '<div class="queue-item-info" onclick="playQueueItem(' + index + ')">' +
             '<div class="queue-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
-            '<div class="queue-item-artist">' + escapeHtml(artists) + '</div>' +
+            '<div class="queue-item-artist">' + escapeHtml(artistsText) + '</div>' +
             '</div>' +
             '<button class="queue-item-remove" onclick="event.stopPropagation(); removeFromQueue(' + index + ')" style="padding: 6px; background: none; border: none; color: var(--text-secondary); cursor: pointer;">' +
             '<i class="fas fa-times"></i>' +
@@ -507,6 +539,14 @@ window.playQueueItem = async function(index) {
             saveQueueState();
             
             checkAndUpdateLikeButton(track.id);
+            
+            if (window.socket && window.currentRoom && window.isHost) {
+                window.socket.emit('play_track', {
+                    track: currentTrack,
+                    track_index: index,
+                    current_time: 0
+                });
+            }
         } else if (trackData && trackData.error) {
             showNotification(trackData.error, 'error');
         } else if (trackData && trackData.bypassed) {
@@ -520,6 +560,14 @@ window.playQueueItem = async function(index) {
             showMiniNotification(currentTrack);
             saveQueueState();
             showNotification('Воспроизводится через SoundCloud (обход блокировки)', 'info');
+            
+            if (window.socket && window.currentRoom && window.isHost) {
+                window.socket.emit('play_track', {
+                    track: currentTrack,
+                    track_index: index,
+                    current_time: 0
+                });
+            }
         }
     } catch (error) {
         console.error('Play queue item error:', error);
@@ -537,30 +585,26 @@ async function playTrackById(trackId, trackData) {
             await audioPlayer.play();
             
             currentTrack = trackInfo;
-            currentPlaylist = [{ id: trackId, ...trackInfo }];
-            currentTrackIndex = 0;
-            queue = [{ id: trackId, ...trackInfo }];
+            
+            if (window.currentSourceTracks && window.currentSourceTracks.length > 1) {
+                queue = [...window.currentSourceTracks];
+                currentPlaylist = [...window.currentSourceTracks];
+                currentTrackIndex = queue.findIndex(t => t.id === trackId);
+                if (currentTrackIndex === -1) currentTrackIndex = 0;
+            } else {
+                currentPlaylist = [{ id: trackId, ...trackInfo }];
+                currentTrackIndex = 0;
+                queue = [{ id: trackId, ...trackInfo }];
+            }
             
             addToHistory(currentTrack);
             updatePlayerUI(currentTrack);
             updatePlayButton();
             updateQueueUI();
             showMiniNotification(currentTrack);
-            
             checkAndUpdateLikeButton(trackId);
         } else if (trackInfo && trackInfo.error) {
             showNotification(trackInfo.error, 'error');
-        } else if (trackInfo && trackInfo.bypassed) {
-            audioPlayer.pause();
-            audioPlayer.src = trackInfo.url;
-            await audioPlayer.play();
-            
-            currentTrack = { ...trackInfo };
-            addToHistory(currentTrack);
-            updatePlayerUI(currentTrack);
-            updatePlayButton();
-            showMiniNotification(currentTrack);
-            showNotification('Воспроизводится через SoundCloud (обход блокировки)', 'info');
         }
     } catch (error) {
         console.error('Play track error:', error);
@@ -587,7 +631,16 @@ function updatePlayerUI(track) {
     const coverEl = document.getElementById('playerCover');
     
     if (titleEl) titleEl.textContent = track.title || 'Неизвестно';
-    if (artistEl) artistEl.textContent = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '-';
+    
+    let artistText = '-';
+    if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
+        artistText = track.artists.join(', ');
+    } else if (track.artists && typeof track.artists === 'string' && track.artists) {
+        artistText = track.artists;
+    } else if (track.artist) {
+        artistText = track.artist;
+    }
+    if (artistEl) artistEl.textContent = artistText;
     
     if (coverEl) {
         if (track.cover_uri) {
@@ -602,12 +655,21 @@ function showMiniNotification(track) {
     const existing = document.querySelector('.mini-notification');
     if (existing) existing.remove();
     
+    let artistText = '-';
+    if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
+        artistText = track.artists.join(', ');
+    } else if (track.artists && typeof track.artists === 'string' && track.artists) {
+        artistText = track.artists;
+    } else if (track.artist) {
+        artistText = track.artist;
+    }
+    
     const notification = document.createElement('div');
     notification.className = 'mini-notification';
     notification.innerHTML = '<i class="fas fa-music"></i>' +
         '<div class="mini-notification-text">' +
         '<strong>Сейчас играет</strong>' +
-        '<span>' + escapeHtml(track.title || 'Неизвестно') + ' - ' + escapeHtml(Array.isArray(track.artists) ? track.artists.join(', ') : (track.artists || '-')) + '</span>' +
+        '<span>' + escapeHtml(track.title || 'Неизвестно') + ' - ' + escapeHtml(artistText) + '</span>' +
         '</div>';
     document.body.appendChild(notification);
     
@@ -627,12 +689,17 @@ window.togglePlayerLike = function() {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== player.js DOMContentLoaded ===');
     initAudioPlayer();
     
     loadQueueState();
     
     const playBtn = document.getElementById('playPauseBtn');
-    if (playBtn) playBtn.addEventListener('click', togglePlay);
+    console.log('playBtn found:', !!playBtn);
+    if (playBtn) {
+        playBtn.addEventListener('click', togglePlay);
+        console.log('togglePlay listener attached');
+    }
     
     const prevBtn = document.getElementById('prevBtn');
     if (prevBtn) prevBtn.addEventListener('click', previousTrack);

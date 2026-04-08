@@ -1,140 +1,198 @@
-let socket = null;
-let currentRoom = null;
-let roomUsers = [];
-let isHost = false;
-let roomHost = null;
-let roomPlaylist = [];
-let currentRoomTrackIndex = -1;
-let isRoomInitialized = false;
+window.socket = null;
+window.currentRoom = null;
+window.roomUsers = [];
+window.isHost = false;
+window.roomHost = null;
+window.roomPlaylist = [];
+window.currentRoomTrackIndex = -1;
+
+let socketInitialized = false;
+let socketInitPromise = null;
 
 function initSocket() {
-    if (socket) return socket;
+    console.log('initSocket called, socket exists:', !!socket, 'connected:', socket?.connected);
+    if (socket && socket.connected) {
+        console.log('Returning existing socket:', socket.id);
+        return Promise.resolve(socket);
+    }
     
-    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const wsUrl = protocol + window.location.host;
+    if (socketInitPromise) {
+        console.log('Returning existing promise');
+        return socketInitPromise;
+    }
     
-    socket = io(wsUrl, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 10
-    });
-    
-    socket.on('connect', function() {
-        console.log('Socket connected');
-        if (currentRoom) {
-            socket.emit('join_room', { room_code: currentRoom });
-        }
-    });
-    
-    socket.on('disconnect', function() {
-        console.log('Socket disconnected');
-    });
-    
-    socket.on('room_created', function(data) {
-        currentRoom = data.room_code;
-        roomHost = data.host_id;
-        isHost = socket.id === roomHost;
-        currentRoomTrackIndex = -1;
-        roomPlaylist = [];
-        isRoomInitialized = true;
-        updateRoomUI();
-        showNotification('Комната создана: ' + data.room_code, 'success');
+    socketInitPromise = new Promise((resolve) => {
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = protocol + window.location.host;
         
-        document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
-        loadRoomPlaylist();
-    });
-    
-    socket.on('room_joined', function(data) {
-        currentRoom = data.room_code;
-        roomHost = data.host_id;
-        isHost = socket.id === roomHost;
-        roomUsers = data.users || [];
-        currentRoomTrackIndex = data.current_track_index || -1;
-        roomPlaylist = data.playlist || [];
-        isRoomInitialized = true;
-        updateRoomUI();
-        showNotification('Вы присоединились к комнате', 'success');
+        socket = io(wsUrl, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 10
+        });
         
-        document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
-        loadRoomPlaylist();
-        
-        if (data.current_track && !isHost) {
-            setTimeout(() => {
-                playRoomTrack(data.current_track, data.current_time || 0);
-            }, 500);
-        }
-    });
-    
-    socket.on('room_error', function(data) {
-        showNotification(data.message || 'Ошибка комнаты', 'error');
-        currentRoom = null;
-        isHost = false;
-        updateRoomUI();
-    });
-    
-    socket.on('user_joined', function(data) {
-        roomUsers.push(data);
-        updateRoomUI();
-        showNotification(data.username + ' присоединился', 'info');
-    });
-    
-    socket.on('user_left', function(data) {
-        roomUsers = roomUsers.filter(u => u.id !== data.user_id && u.socket_id !== data.user_id);
-        updateRoomUI();
-    });
-    
-    socket.on('host_changed', function(data) {
-        roomHost = data.new_host;
-        isHost = socket.id === roomHost;
-        updateRoomUI();
-        showNotification('Ведущий сменился', 'info');
-    });
-    
-    socket.on('track_played', function(data) {
-        if (!isHost) {
-            playRoomTrack(data.track, data.current_time || 0);
-        }
-        currentRoomTrackIndex = data.track_index || 0;
-        updateRoomPlaylistUI();
-    });
-    
-    socket.on('track_paused', function(data) {
-        if (!isHost && audioPlayer) {
-            audioPlayer.pause();
-            audioPlayer.currentTime = data.current_time || 0;
-        }
-    });
-    
-    socket.on('time_synced', function(data) {
-        if (!isHost && audioPlayer && audioPlayer.src) {
-            const diff = Math.abs(audioPlayer.currentTime - (data.current_time || 0));
-            if (diff > 1) {
-                audioPlayer.currentTime = data.current_time || 0;
+        socket.on('connect', function() {
+            console.log('Socket connected:', socket.id);
+            socketInitialized = true;
+            if (window.currentRoom) {
+                socket.emit('join_room', { room_code: window.currentRoom });
             }
-        }
+            resolve(socket);
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Socket disconnected');
+            socketInitialized = false;
+        });
+        
+        socket.on('room_created', function(data) {
+            console.log('=== ROOM_CREATED EVENT ===');
+            console.log('Full data:', JSON.stringify(data, null, 2));
+            console.log('host_id from server:', data.host_id);
+            console.log('users_list from server:', data.users_list);
+            console.log('socket.id:', socket.id);
+            window.currentRoom = data.room_code;
+            window.roomHost = data.host_id;
+            window.roomUsers = data.users_list || [];
+            console.log('SET roomUsers =', window.roomUsers);
+            window.isHost = (String(socket.id) === String(window.roomHost));
+            window.currentRoomTrackIndex = -1;
+            window.roomPlaylist = data.room ? data.room.playlist || [] : [];
+            updateRoomUI();
+            showNotification('Комната: ' + data.room_code, 'success');
+            openModal('roomModal');
+            console.log('After openModal, roomUsers =', window.roomUsers);
+            document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
+        });
+        
+        socket.on('room_joined', function(data) {
+            console.log('Room joined:', data);
+            console.log('host_id from server:', data.host_id);
+            console.log('users_list from server:', data.users_list);
+            window.currentRoom = data.room_code;
+            window.roomHost = data.host_id;
+            window.roomUsers = data.users_list || [];
+            window.isHost = (String(socket.id) === String(window.roomHost));
+            window.currentRoomTrackIndex = data.current_track_index || 0;
+            window.roomPlaylist = data.room ? data.room.playlist || [] : [];
+            updateRoomUI();
+            showNotification('Вы присоединились к комнате!', 'success');
+            openModal('roomModal');
+            console.log('roomUsers after set:', window.roomUsers);
+            console.log('roomHost:', window.roomHost, 'socket.id:', socket.id, 'isHost:', window.isHost);
+            document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
+            
+            if (data.current_track && !window.isHost) {
+                setTimeout(() => {
+                    playRoomTrack(data.current_track, data.current_time || 0);
+                }, 500);
+            }
+        });
+        
+        socket.on('room_error', function(data) {
+            showNotification(data.message || 'Ошибка комнаты', 'error');
+            window.currentRoom = null;
+            window.isHost = false;
+            updateRoomUI();
+        });
+        
+        socket.on('user_joined', function(data) {
+            console.log('User joined:', data);
+            window.roomUsers.push({
+                id: data.user_id,
+                socket_id: data.socket_id || data.user_id,
+                username: data.username || 'Пользователь',
+                avatar: data.avatar || ''
+            });
+            updateRoomUI();
+            if (document.getElementById('roomModalContent')) {
+                document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
+            }
+            showNotification((data.username || 'Пользователь') + ' присоединился', 'info');
+        });
+        
+        socket.on('user_left', function(data) {
+            console.log('User left:', data);
+            window.roomUsers = window.roomUsers.filter(u => 
+                u.id !== data.user_id && 
+                u.socket_id !== data.user_id && 
+                u.socket_id !== data.socket_id
+            );
+            updateRoomUI();
+            if (document.getElementById('roomModalContent')) {
+                document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
+            }
+        });
+        
+        socket.on('host_changed', function(data) {
+            window.roomHost = data.new_host;
+            window.isHost = (String(socket.id) === String(window.roomHost));
+            if (data.new_host_id) {
+                const hostUser = window.roomUsers.find(u => u.id === data.new_host_id);
+                if (hostUser) {
+                    hostUser.socket_id = data.new_host;
+                }
+            }
+            updateRoomUI();
+            if (document.getElementById('roomModalContent')) {
+                document.getElementById('roomModalContent').innerHTML = getRoomJoinedHTML();
+            }
+            showNotification('Ведущий сменился', 'info');
+        });
+        
+        socket.on('track_played', function(data) {
+            console.log('Track played event received:', data);
+            if (!window.isHost) {
+                playRoomTrack(data.track, data.current_time || 0);
+            }
+            window.currentRoomTrackIndex = data.track_index || 0;
+            if (document.getElementById('roomPlaylistContainer')) {
+                updateRoomPlaylistUI();
+            }
+        });
+        
+        socket.on('track_paused', function(data) {
+            console.log('=== TRACK PAUSED EVENT ===');
+            console.log('isHost:', window.isHost, 'socket.id:', socket.id, 'roomHost:', window.roomHost);
+            console.log('data:', data);
+            if (!window.isHost && audioPlayer) {
+                console.log('Pausing audio for listener');
+                audioPlayer.pause();
+                audioPlayer.currentTime = data.current_time || 0;
+            } else {
+                console.log('Skipping pause - this is host or no audioPlayer');
+            }
+        });
+        
+        socket.on('time_synced', function(data) {
+            if (!isHost && audioPlayer && audioPlayer.src) {
+                const diff = Math.abs(audioPlayer.currentTime - (data.current_time || 0));
+                if (diff > 2) {
+                    audioPlayer.currentTime = data.current_time || 0;
+                }
+            }
+        });
+        
+        socket.on('playlist_updated', function(data) {
+            roomPlaylist = data.playlist || [];
+            currentRoomTrackIndex = data.current_index || 0;
+            if (document.getElementById('roomPlaylistContainer')) {
+                updateRoomPlaylistUI();
+            }
+        });
+        
+        socket.on('queue_added', function(data) {
+            if (data.track) {
+                roomPlaylist.push(data.track);
+                if (document.getElementById('roomPlaylistContainer')) {
+                    updateRoomPlaylistUI();
+                }
+            }
+        });
     });
     
-    socket.on('seek_synced', function(data) {
-        if (!isHost && audioPlayer) {
-            audioPlayer.currentTime = data.current_time || 0;
-        }
-    });
-    
-    socket.on('playlist_updated', function(data) {
-        roomPlaylist = data.playlist || [];
-        currentRoomTrackIndex = data.current_index || 0;
-        updateRoomPlaylistUI();
-    });
-    
-    socket.on('queue_added', function(data) {
-        if (data.track) {
-            roomPlaylist.push(data.track);
-            updateRoomPlaylistUI();
-        }
-    });
-    
-    return socket;
+    return socketInitPromise;
 }
 
 async function playRoomTrack(track, startTime = 0) {
@@ -144,8 +202,7 @@ async function playRoomTrack(track, startTime = 0) {
         let trackUrl = track.url;
         
         if (!trackUrl && track.id) {
-            const baseUrl = localStorage.getItem('server_url') || '';
-            const response = await fetch(baseUrl + '/api/play_track/' + track.id);
+            const response = await fetch('/api/play_track/' + track.id);
             const trackData = await response.json();
             
             if (trackData && trackData.url) {
@@ -187,8 +244,7 @@ function syncPlay() {
     const track = currentTrack;
     
     if (!track.url && track.id) {
-        const baseUrl = localStorage.getItem('server_url') || '';
-        fetch(baseUrl + '/api/play_track/' + track.id)
+        fetch('/api/play_track/' + track.id)
             .then(r => r.json())
             .then(trackData => {
                 if (trackData && trackData.url) {
@@ -217,24 +273,23 @@ function syncPlay() {
 }
 
 function syncPause() {
-    if (!socket || !currentRoom || !isHost || !audioPlayer) return;
+    if (!socket || !window.currentRoom || !window.isHost || !audioPlayer) return;
     socket.emit('pause_track', { current_time: audioPlayer.currentTime });
 }
 
 function syncSeek() {
-    if (!socket || !currentRoom || !isHost || !audioPlayer) return;
+    if (!socket || !window.currentRoom || !window.isHost || !audioPlayer) return;
     socket.emit('seek_sync', { current_time: audioPlayer.currentTime });
 }
 
 function updateRoomUI() {
     const roomBtn = document.getElementById('roomBtn');
-    const roomModal = document.getElementById('roomModal');
     const roomContent = document.getElementById('roomModalContent');
     
     if (!roomBtn) return;
     
-    if (currentRoom) {
-        roomBtn.innerHTML = '<i class="fas fa-users"></i> ' + currentRoom;
+    if (window.currentRoom) {
+        roomBtn.innerHTML = '<i class="fas fa-users"></i> ' + window.currentRoom;
         roomBtn.style.background = 'var(--accent)';
         roomBtn.style.color = 'white';
     } else {
@@ -243,125 +298,95 @@ function updateRoomUI() {
         roomBtn.style.color = '';
     }
     
-    if (roomContent && !currentRoom) {
+    if (roomContent && !window.currentRoom) {
         roomContent.innerHTML = getRoomDefaultHTML();
     }
 }
 
 function getRoomDefaultHTML() {
-    return `
-        <div style="text-align: center; padding: 20px;">
-            <p style="color: var(--text-secondary); margin-bottom: 24px;">Создайте комнату или присоединитесь к существующей</p>
-            
-            <button onclick="createRoom()" class="btn-primary" style="width: 100%; margin-bottom: 12px; padding: 14px;">
-                <i class="fas fa-plus"></i> Создать комнату
-            </button>
-            
-            <div style="display: flex; align-items: center; margin: 20px 0;">
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
-                <span style="padding: 0 12px; color: var(--text-muted); font-size: 12px;">ИЛИ</span>
-                <div style="flex: 1; height: 1px; background: var(--border);"></div>
-            </div>
-            
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="joinRoomCode" placeholder="Код комнаты" style="flex: 1; padding: 12px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                <button onclick="joinRoomByCode()" class="glass-btn" style="padding: 12px 16px;">
-                    <i class="fas fa-sign-in-alt"></i>
-                </button>
-            </div>
-        </div>
-    `;
+    return '<div style="text-align:center;padding:20px;"><p style="color:var(--text-secondary);margin-bottom:24px;">Создайте комнату или присоединитесь</p><button onclick="initSocket();createRoom()" class="btn-primary" style="width:100%;margin-bottom:12px;padding:14px;"><i class="fas fa-plus"></i> Создать комнату</button><div style="display:flex;gap:8px;margin-top:20px;"><input type="text" id="joinRoomCode" placeholder="Код комнаты" style="flex:1;padding:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:#fff;"><button onclick="initSocket();joinRoomByCode()" class="glass-btn" style="padding:12px 16px;"><i class="fas fa-sign-in-alt"></i></button></div></div>';
 }
 
-window.joinRoomByCode = function() {
-    const code = document.getElementById('joinRoomCode').value.trim();
-    if (code) {
-        joinRoom(code);
-    }
-};
-
 function getRoomJoinedHTML() {
-    return `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Код комнаты</div>
-            <div style="font-size: 2rem; font-weight: bold; letter-spacing: 0.2em; color: var(--accent);">${currentRoom}</div>
-            <button onclick="shareRoom()" class="btn-primary" style="margin-top: 12px; padding: 8px 16px;">
-                <i class="fas fa-share"></i> Поделиться
-            </button>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-                Участники (${roomUsers.length})
-                ${isHost ? '<span style="color: var(--accent);">(Вы ведущий)</span>' : '<span style="color: var(--text-muted);">(Слушатель)</span>'}
-            </div>
-            <div style="max-height: 150px; overflow-y: auto;">
-                ${roomUsers.map(u => `
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 6px;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user" style="color: white; font-size: 12px;"></i>
-                        </div>
-                        <div style="flex: 1; font-size: 13px;">
-                            ${escapeHtml(u.username || u.display_name || 'Пользователь')}
-                        </div>
-                        ${u.id === roomHost || u.socket_id === roomHost ? '<i class="fas fa-crown" style="color: gold; font-size: 12px;"></i>' : ''}
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 13px; color: var(--text-secondary);">Плейлист комнаты</span>
-                ${isHost ? '<button onclick="addToRoomPlaylist()" class="glass-btn" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-plus"></i> Добавить</button>' : ''}
-            </div>
-            <div id="roomPlaylistContainer" style="max-height: 200px; overflow-y: auto;">
-                <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-            </div>
-        </div>
-        
-        <button onclick="leaveRoom()" class="glass-btn" style="width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3);">
-            <i class="fas fa-sign-out-alt"></i> Покинуть комнату
-        </button>
-    `;
+    console.log('getRoomJoinedHTML called - roomUsers:', window.roomUsers, 'roomHost:', window.roomHost, 'currentRoom:', window.currentRoom);
+    const usersList = window.roomUsers.map(u => {
+        const name = escapeHtml(u.username || u.display_name || 'Пользователь');
+        const isRoomHost = (String(u.socket_id || u.id) === String(window.roomHost));
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:white;font-size:12px;"></i></div><div style="flex:1;font-size:13px;">' + name + '</div>' + (isRoomHost ? '<i class="fas fa-crown" style="color:gold;font-size:12px;"></i>' : '') + '</div>';
+    }).join('');
+    
+    return '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Код комнаты</div><div style="font-size:2rem;font-weight:bold;letter-spacing:0.2em;color:var(--accent);">' + window.currentRoom + '</div><button onclick="shareRoom()" class="btn-primary" style="margin-top:12px;padding:8px 16px;"><i class="fas fa-share"></i> Поделиться</button></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Участники (' + window.roomUsers.length + ')' + (window.isHost ? '<span style="color:var(--accent);">(Вы ведущий)</span>' : '<span style="color:var(--text-muted);">(Слушатель)</span>') + '</div><div style="max-height:150px;overflow-y:auto;">' + (usersList || '<p style="color:var(--text-muted);padding:10px;">Загрузка...</p>') + '</div></div><button onclick="leaveRoom()" class="glass-btn" style="width:100%;padding:12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-sign-out-alt"></i> Покинуть комнату</button>';
 }
 
 function updateRoomPlaylistUI() {
     const container = document.getElementById('roomPlaylistContainer');
     if (!container) return;
     
-    if (!roomPlaylist || roomPlaylist.length === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Плейлист пуст</div>';
+    if (!window.roomPlaylist || window.roomPlaylist.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Плейлист пуст</div>';
         return;
     }
     
     let html = '';
-    roomPlaylist.forEach((track, index) => {
-        const isActive = index === currentRoomTrackIndex;
-        const artists = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : '';
+    window.roomPlaylist.forEach((track, index) => {
+        const isActive = index === window.currentRoomTrackIndex;
+        const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
+        const cover = track.cover_uri || track.cover || '';
         
-        html += `
-            <div class="search-item ${isActive ? 'active' : ''}" onclick="playRoomPlaylistItem(${index})" style="${isActive ? 'background: var(--bg-tertiary); border-left: 3px solid var(--accent);' : ''}">
-                <div style="width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    ${track.cover_uri ? `<img src="${track.cover_uri}" alt="" style="width: 100%; height: 100%; object-fit: cover;">` : '<i class="fas fa-music" style="color: var(--text-muted);"></i>'}
-                </div>
-                <div class="search-item-info">
-                    <div class="search-item-title" style="${isActive ? 'color: var(--accent);' : ''}">${escapeHtml(track.title || 'Неизвестно')}</div>
-                    <div class="search-item-artist">${escapeHtml(artists)}</div>
-                </div>
-                ${isHost ? `<button onclick="event.stopPropagation(); removeFromRoomPlaylist(${index})" style="padding: 6px; background: none; border: none; color: var(--text-secondary); cursor: pointer;"><i class="fas fa-times"></i></button>` : ''}
-            </div>
-        `;
+        html += '<div onclick="playRoomPlaylistItem(' + index + ')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:8px;' + (isActive ? 'background:var(--bg-tertiary);border-left:3px solid var(--accent);' : '') + '"><div style="width:40px;height:40px;border-radius:6px;overflow:hidden;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (cover ? '<img src="' + cover + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fas fa-music" style="color:var(--text-muted);"></i>') + '</div><div style="flex:1;min-width:0;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;' + (isActive ? 'color:var(--accent);' : '') + '">' + escapeHtml(track.title || 'Неизвестно') + '</div><div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(artistsText) + '</div></div></div>';
     });
     
     container.innerHTML = html;
 }
 
-function loadRoomPlaylist() {
-    updateRoomPlaylistUI();
-}
+window.joinRoomByCode = function() {
+    const code = document.getElementById('joinRoomCode') ? document.getElementById('joinRoomCode').value.trim() : '';
+    if (code) {
+        joinRoom(code);
+    }
+};
+
+window.createRoom = async function() {
+    console.log('=== createRoom START ===');
+    console.log('Before initSocket - socket:', socket?.id, 'roomUsers:', roomUsers);
+    await initSocket();
+    console.log('After initSocket - socket:', socket?.id, 'roomUsers:', roomUsers);
+    console.log('Emitting create_room...');
+    socket.emit('create_room', {});
+};
+
+window.joinRoom = async function(roomCode) {
+    console.log('joinRoom called with code:', roomCode);
+    await initSocket();
+    console.log('Socket ready, emitting join_room');
+    socket.emit('join_room', { room_code: roomCode });
+};
+
+window.leaveRoom = function() {
+    if (socket && window.currentRoom) {
+        socket.emit('leave_room', {});
+        window.currentRoom = null;
+        window.roomUsers = [];
+        window.isHost = false;
+        window.roomHost = null;
+        window.roomPlaylist = [];
+        window.currentRoomTrackIndex = -1;
+        updateRoomUI();
+        const modal = document.getElementById('roomModal');
+        if (modal) modal.style.display = 'none';
+        showNotification('Вы покинули комнату', 'info');
+    }
+};
+
+window.shareRoom = function() {
+    if (!window.currentRoom) return;
+    const url = window.location.origin + '?room=' + window.currentRoom;
+    navigator.clipboard.writeText(url).then(() => {
+        showNotification('Ссылка скопирована!', 'success');
+    }).catch(() => {
+        prompt('Скопируйте код комнаты:', window.currentRoom);
+    });
+};
 
 window.playRoomPlaylistItem = function(index) {
     if (index < 0 || index >= roomPlaylist.length) return;
@@ -371,8 +396,7 @@ window.playRoomPlaylistItem = function(index) {
     
     if (isHost) {
         if (!track.url && track.id) {
-            const baseUrl = localStorage.getItem('server_url') || '';
-            fetch(baseUrl + '/api/play_track/' + track.id)
+            fetch('/api/play_track/' + track.id)
                 .then(r => r.json())
                 .then(trackData => {
                     if (trackData && trackData.url) {
@@ -384,10 +408,12 @@ window.playRoomPlaylistItem = function(index) {
                             cover_uri: trackData.cover || track.cover_uri
                         };
                         
-                        audioPlayer.pause();
-                        audioPlayer.src = fullTrack.url;
-                        audioPlayer.currentTime = 0;
-                        audioPlayer.play().catch(console.error);
+                        if (audioPlayer) {
+                            audioPlayer.pause();
+                            audioPlayer.src = fullTrack.url;
+                            audioPlayer.currentTime = 0;
+                            audioPlayer.play().catch(console.error);
+                        }
                         
                         currentTrack = fullTrack;
                         updatePlayerUI(fullTrack);
@@ -403,10 +429,12 @@ window.playRoomPlaylistItem = function(index) {
                 })
                 .catch(console.error);
         } else if (track.url) {
-            audioPlayer.pause();
-            audioPlayer.src = track.url;
-            audioPlayer.currentTime = 0;
-            audioPlayer.play().catch(console.error);
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer.src = track.url;
+                audioPlayer.currentTime = 0;
+                audioPlayer.play().catch(console.error);
+            }
             
             currentTrack = track;
             updatePlayerUI(track);
@@ -423,56 +451,9 @@ window.playRoomPlaylistItem = function(index) {
         socket.emit('request_track', { track_index: index });
     }
     
-    updateRoomPlaylistUI();
-};
-
-window.removeFromRoomPlaylist = function(index) {
-    if (!isHost || index < 0 || index >= roomPlaylist.length) return;
-    roomPlaylist.splice(index, 1);
-    socket.emit('playlist_update', { playlist: roomPlaylist, current_index: currentRoomTrackIndex });
-    updateRoomPlaylistUI();
-};
-
-window.addToRoomPlaylist = function() {
-    showNotification('Добавьте трек в очередь - он появится в комнате', 'info');
-};
-
-window.createRoom = function() {
-    if (!socket) initSocket();
-    socket.emit('create_room', {});
-};
-
-window.joinRoom = function(roomCode) {
-    if (!socket) initSocket();
-    socket.emit('join_room', { room_code: roomCode });
-};
-
-window.leaveRoom = function() {
-    if (socket && currentRoom) {
-        socket.emit('leave_room', {});
-        currentRoom = null;
-        roomUsers = [];
-        isHost = false;
-        roomHost = null;
-        roomPlaylist = [];
-        currentRoomTrackIndex = -1;
-        updateRoomUI();
-        
-        const modal = document.getElementById('roomModal');
-        if (modal) modal.style.display = 'none';
-        
-        showNotification('Вы покинули комнату', 'info');
+    if (document.getElementById('roomPlaylistContainer')) {
+        updateRoomPlaylistUI();
     }
-};
-
-window.shareRoom = function() {
-    if (!currentRoom) return;
-    const url = window.location.origin + '?room=' + currentRoom;
-    navigator.clipboard.writeText(url).then(() => {
-        showNotification('Ссылка скопирована!', 'success');
-    }).catch(() => {
-        prompt('Скопируйте код комнаты:', currentRoom);
-    });
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -488,9 +469,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 const originalPlayTrack = window.playTrack;
 window.playTrack = function(trackId) {
-    if (socket && currentRoom && isHost) {
-        const baseUrl = localStorage.getItem('server_url') || '';
-        fetch(baseUrl + '/api/play_track/' + trackId)
+    if (socket && window.currentRoom && window.isHost) {
+        fetch('/api/play_track/' + trackId)
             .then(r => r.json())
             .then(trackData => {
                 if (trackData && trackData.url) {
@@ -503,7 +483,7 @@ window.playTrack = function(trackId) {
                     };
                     socket.emit('play_track', {
                         track: fullTrack,
-                        track_index: currentRoomTrackIndex,
+                        track_index: window.currentRoomTrackIndex,
                         current_time: 0
                     });
                 }
@@ -516,16 +496,16 @@ window.playTrack = function(trackId) {
     }
 };
 
-const originalPause = window.pauseTrack;
+const originalPauseTrack = window.pauseTrack;
 window.pauseTrack = function() {
-    if (originalPause) originalPause();
-    if (socket && currentRoom && isHost && audioPlayer) {
+    if (originalPauseTrack) originalPauseTrack();
+    if (socket && window.currentRoom && window.isHost && audioPlayer) {
         socket.emit('pause_track', { current_time: audioPlayer.currentTime });
     }
 };
 
 setInterval(() => {
-    if (socket && currentRoom && isHost && audioPlayer && !audioPlayer.paused && audioPlayer.src) {
+    if (socket && window.currentRoom && window.isHost && audioPlayer && !audioPlayer.paused && audioPlayer.src) {
         socket.emit('sync_time', { current_time: audioPlayer.currentTime });
     }
 }, 2000);

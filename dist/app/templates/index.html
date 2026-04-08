@@ -42,14 +42,21 @@
 
     <!-- МОЯ ВОЛНА -->
     <div class="glass-card" style="margin-bottom: 16px;">
-        <h3 style="margin-bottom: 16px;"><i class="fas fa-heart" style="color: var(--accent); margin-right: 8px;"></i>Лайкнутые</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0;"><i class="fas fa-heart" style="color: var(--accent); margin-right: 8px;"></i>Лайкнутые</h3>
+            <button onclick="refreshLikedTracks()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Обновить">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
         <div class="source-selector" id="likedSourceSelector" style="margin-bottom: 16px;">
             <button type="button" class="source-btn active" data-source="yandex" onclick="loadLikedTracks('yandex')">
                 <i class="fab fa-yandex"></i> Яндекс
             </button>
+            <!-- VK temporarily disabled
             <button type="button" class="source-btn" data-source="vk" onclick="loadLikedTracks('vk')">
                 <i class="fab fa-vk"></i> VK
             </button>
+            -->
         </div>
         <div class="wave-tracks" id="likedTracksContainer" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
             <div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;">
@@ -108,15 +115,16 @@
     <div class="glass-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3>Мои плейлисты</h3>
-            <button class="btn-primary" onclick="openModal('createPlaylistModal')">
-                <i class="fas fa-plus"></i> Создать
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button class="glass-btn" onclick="showAddPlaylistModal()" style="background: var(--bg-elevated);">
+                    <i class="fas fa-link"></i> По ссылке
+                </button>
+                <button class="btn-primary" onclick="openModal('createPlaylistModal')">
+                    <i class="fas fa-plus"></i> Создать
+                </button>
+            </div>
         </div>
-        <div class="services-grid" id="playlistsGrid">
-            <div class="glass-card skeleton skeleton-card"></div>
-            <div class="glass-card skeleton skeleton-card"></div>
-            <div class="glass-card skeleton skeleton-card"></div>
-        </div>
+        <div class="services-grid" id="playlistsGrid"></div>
     </div>
 </div>
 
@@ -182,6 +190,7 @@
                     </label>
                     <input type="password" id="yandex_token" placeholder="Вставьте токен">
                 </div>
+                <!-- VK temporarily disabled
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
                         <span style="display: flex; align-items: center; gap: 8px;">
@@ -193,18 +202,35 @@
                         </button>
                     </label>
                     <input type="password" id="vk_token" placeholder="Вставьте токен">
-                </div>
-                <div class="form-group">
-                    <label>Моя волна</label>
-                    <div class="source-selector">
-                        <button type="button" class="source-btn active" data-source="yandex">
-                            <i class="fab fa-yandex"></i> Яндекс
-                        </button>
-                        <button type="button" class="source-btn" data-source="vk">
-                            <i class="fab fa-vk"></i> VK
-                        </button>
-                        <button type="button" class="source-btn" data-source="all">
-                            <i class="fas fa-globe"></i> Все
+                </div>-->
+                    <div class="form-group">
+                        <label>Моя волна</label>
+                        <div class="source-selector">
+                            <button type="button" class="source-btn active" data-source="yandex">
+                                <i class="fab fa-yandex"></i> Яндекс
+                            </button>
+                            <!-- VK temporarily disabled
+                            <button type="button" class="source-btn" data-source="vk">
+                                <i class="fab fa-vk"></i> VK
+                            </button>
+                            <button type="button" class="source-btn" data-source="all">
+                                <i class="fas fa-globe"></i> Все
+                            </button>
+                            -->
+                        </div>
+                    </div>
+                <div class="form-group" style="background: var(--bg-elevated); padding: 16px; border-radius: var(--radius); margin-top: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fab fa-telegram" style="color: #0088cc;"></i> Telegram 2FA
+                            <i id="telegramLinked" class="fas fa-link" style="color: #2ed573; display: none;"></i>
+                            <i id="telegram2FAEnabled" class="fas fa-shield-alt" style="color: #2ed573; display: none;" title="2FA включен"></i>
+                        </span>
+                    </label>
+                    <p id="telegramStatus" style="font-size: 12px; color: var(--text-muted); margin: 8px 0;">Загрузка...</p>
+                    <div id="telegramActions">
+                        <button type="button" class="source-btn" id="generateCodeBtn" onclick="generateTelegramCode()" style="margin-top: 8px;">
+                            <i class="fas fa-key"></i> Привязать Telegram
                         </button>
                     </div>
                 </div>
@@ -425,6 +451,31 @@
             </div>
         </div>
         <button class="glass-btn" style="width: 100%;" onclick="closeModal('bannerSelectorModal')">Закрыть</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА СОЗДАНИЯ ПЛЕЙЛИСТА -->
+<div id="createPlaylistModal" class="modal">
+    <div class="glass-card modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-list"></i> Создать плейлист</h3>
+            <div class="modal-close" onclick="closeModal('createPlaylistModal')">
+                <i class="fas fa-xmark"></i>
+            </div>
+        </div>
+        <form id="createPlaylistForm" style="padding: 16px 0;">
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" id="playlistName" placeholder="Мой плейлист" required>
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="playlistDescription" placeholder="Описание (необязательно)" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text); resize: vertical;"></textarea>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">
+                <i class="fas fa-plus"></i> Создать
+            </button>
+        </form>
     </div>
 </div>
 
