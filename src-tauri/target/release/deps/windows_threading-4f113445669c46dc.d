@@ -1,0 +1,10 @@
+C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\src-tauri\target\release\deps\windows_threading-4f113445669c46dc.d: C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\src-tauri\target\release\deps\libwindows_threading-4f113445669c46dc.rlib: C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\src-tauri\target\release\deps\libwindows_threading-4f113445669c46dc.rmeta: C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs:
+C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs:
+C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs:
+C:\Users\itired\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md:

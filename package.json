@@ -1,0 +1,23 @@
+{
+  "name": "itired",
+  "version": "1.0.2",
+  "description": "iTired - Music streaming platform with Yandex Music and VK integration",
+  "main": "index.js",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "keywords": [
+    "music",
+    "streaming",
+    "yandex",
+    "vk"
+  ],
+  "author": "iTired",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1"
+  }
+}

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iTired Music</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #050505; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+        .container { 
+            background: rgba(255,255,255,0.03); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 24px; 
+            padding: 48px; 
+            width: 100%; 
+            max-width: 440px; 
+            text-align: center; 
+        }
+        h1 { 
+            font-size: 28px; 
+            font-weight: 700; 
+            background: linear-gradient(135deg, #6366f1, #a855f7); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            margin: 16px 0 8px; 
+        }
+        .logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+        p { color: rgba(255,255,255,0.5); margin-bottom: 24px; }
+        input { 
+            width: 100%; 
+            padding: 14px 18px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 12px; 
+            color: #fff; 
+            font-size: 16px; 
+            margin-bottom: 16px; 
+        }
+        input:focus { outline: none; border-color: #6366f1; }
+        input::placeholder { color: rgba(255,255,255,0.3); }
+        .btn { 
+            width: 100%; 
+            padding: 16px; 
+            background: linear-gradient(135deg, #6366f1, #a855f7); 
+            border: none; 
+            border-radius: 12px; 
+            color: #fff; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-bottom: 12px; 
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 24px rgba(99,102,241,0.4); 
+        }
+        .btn:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            transform: none;
+        }
+        .error-box { 
+            background: rgba(239,68,68,0.1); 
+            border: 1px solid rgba(239,68,68,0.3); 
+            border-radius: 12px; 
+            padding: 16px; 
+            margin-bottom: 24px; 
+            text-align: left; 
+        }
+        .error-box h3 { color: #ef4444; font-size: 14px; margin-bottom: 8px; }
+        .error-box p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
+        .success-box { 
+            background: rgba(34,197,94,0.1); 
+            border: 1px solid rgba(34,197,94,0.3); 
+            border-radius: 12px; 
+            padding: 16px; 
+            margin-bottom: 24px; 
+        }
+        .success-box h3 { color: #22c55e; font-size: 14px; margin-bottom: 8px; }
+        .success-box p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
+        .hidden { display: none; }
+        .info { 
+            text-align: left; 
+            margin-top: 24px; 
+            padding: 16px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+        }
+        .info p { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+        .info p:last-child { margin-bottom: 0; }
+        .info strong { color: rgba(255,255,255,0.6); }
+        .info small { font-size: 11px; color: rgba(255,255,255,0.3); }
+        .version { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 24px; }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎵</div>
+        <h1>iTired Music</h1>
+        
+        <div id="errorBox" class="error-box hidden">
+            <h3>⚠️ Не удалось подключиться</h3>
+            <p id="errorMsg">Проверьте адрес сервера</p>
+        </div>
+
+        <div id="successBox" class="success-box hidden">
+            <h3>✓ Подключение установлено!</h3>
+            <p>Перенаправление на сервер...</p>
+        </div>
+
+        <form id="form">
+            <p>Введите адрес сервера друга</p>
+            <input type="url" id="url" placeholder="https://xxx.ngrok-free.app" required>
+            <button type="submit" class="btn" id="connectBtn">
+                Подключиться
+            </button>
+        </form>
+        
+        <div class="info">
+            <p><strong>Как это работает:</strong></p>
+            <p>1. Друг запускает сервер + ngrok</p>
+            <p>2. Копирует ngrok URL сюда</p>
+            <p>3. Подключаетесь и слушаете вместе!</p>
+            <br>
+            <p><strong>Важно для ngrok free:</strong></p>
+            <small>Сначала откройте ссылку в браузере и нажмите "Visit Site"</small>
+        </div>
+        
+        <p class="version">Версия: 1.0.2</p>
+    </div>
+
+    <script>
+        const DEFAULT_SERVER = 'http://localhost:5001';
+        
+        async function checkServer(url) {
+            try {
+                await fetch(url + '/api/health', {
+                    method: 'GET',
+                    mode: 'no-cors',
+                    cache: 'no-cache'
+                });
+                return true;
+            } catch (e) {
+                console.log('Check failed:', e);
+                return false;
+            }
+        }
+        
+        async function connect(e) {
+            e.preventDefault();
+            const url = document.getElementById('url').value.trim();
+            if (!url) return;
+            
+            document.getElementById('errorBox').classList.add('hidden');
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Проверка...';
+            
+            console.log('Checking server:', url);
+            const available = await checkServer(url);
+            
+            if (available) {
+                console.log('Server available, saving and redirecting...');
+                localStorage.setItem('server_url', url);
+                document.getElementById('successBox').classList.remove('hidden');
+                document.getElementById('form').classList.add('hidden');
+                
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 1000);
+            } else {
+                console.log('Server not available');
+                const isNgrok = url.includes('ngrok');
+                document.getElementById('errorMsg').innerHTML = isNgrok 
+                    ? 'Откройте <strong>эту же ссылку</strong> в браузере и нажмите "Visit Site", затем попробуйте снова'
+                    : 'Сервер недоступен. Проверьте адрес и убедитесь что сервер запущен.';
+                document.getElementById('errorBox').classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Подключиться';
+            }
+        }
+        
+        document.getElementById('form').addEventListener('submit', connect);
+        
+        // Check saved URL on load
+        const saved = localStorage.getItem('server_url');
+        console.log('Saved URL:', saved);
+        
+        if (saved && !saved.includes('localhost') && !saved.includes('127.0.0.1')) {
+            document.getElementById('url').value = saved;
+            document.getElementById('url').focus();
+            // Don't auto-redirect, let user click
+        }
+        
+        // Debug info
+        console.log('Setup page loaded');
+    </script>
+</body>
+</html>

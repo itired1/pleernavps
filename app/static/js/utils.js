@@ -1,0 +1,239 @@
+const apiCall = async function(endpoint, options = {}) {
+    const cacheTime = 5 * 60 * 1000;
+    const cacheKey = 'api_cache_' + endpoint;
+    
+    if (!options.method && !options.body) {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < cacheTime) {
+                    return data;
+                }
+            } catch (e) {}
+        }
+    }
+    
+    try {
+        const response = await fetch('/api/' + endpoint, {
+            headers: { 'Content-Type': 'application/json', ...options.headers },
+            credentials: 'include',
+            ...options
+        });
+        
+        if (response.status === 401 && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.error || data.message || `HTTP ${response.status}`);
+        
+        if (!options.method && !options.body && !data.error) {
+            localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+        }
+        
+        return data;
+    } catch (error) {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const { data } = JSON.parse(cached);
+                return data;
+            } catch (e) {}
+        }
+        console.error('API Error:', error);
+        throw error;
+    }
+};
+
+window.clearApiCache = function() {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('api_cache_'));
+    keys.forEach(k => localStorage.removeItem(k));
+    showNotification('Кэш очищен', 'info');
+};
+
+const showNotification = function(message, type = 'info', icon = null) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    const iconClass = icon || icons[type] || icons.info;
+    notification.innerHTML = `<i class="fas ${iconClass}"></i><span>${escapeHtml(String(message))}</span>`;
+    
+    container.appendChild(notification);
+    
+    setTimeout(() => notification.remove(), 4000);
+};
+
+const formatDuration = function(ms) {
+    if (!ms) return '0:00';
+    const totalSec = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSec / 60);
+    const seconds = totalSec % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+};
+
+const formatDate = function(dateString) {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('ru-RU');
+};
+
+const formatTimeAgo = function(timestamp) {
+    if (!timestamp) return '';
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (minutes < 1) return 'только что';
+    if (minutes < 60) return `${minutes} мин`;
+    if (hours < 24) return `${hours} ч`;
+    if (days < 7) return `${days} д`;
+    return date.toLocaleDateString('ru-RU');
+};
+
+const openModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+};
+
+const closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+};
+
+const logout = function() {
+    fetch('/logout').then(() => window.location.href = '/login');
+};
+
+const escapeHtml = function(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+};
+
+const toggleTheme = function() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    showNotification(newTheme === 'dark' ? 'Тёмная тема' : 'Светлая тема', 'info');
+};
+
+const applySavedTheme = function() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+};
+
+window.apiCall = apiCall;
+window.showNotification = showNotification;
+window.formatDuration = formatDuration;
+window.formatDate = formatDate;
+window.formatTimeAgo = formatTimeAgo;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.logout = logout;
+window.escapeHtml = escapeHtml;
+window.toggleTheme = toggleTheme;
+window.applySavedTheme = applySavedTheme;
+
+window.openBannerSelector = async function() {
+    openModal('bannerSelectorModal');
+    
+    const container = document.getElementById('bannerSelectorList');
+    if (!container) return;
+    
+    try {
+        const inventory = await apiCall('shop/inventory');
+        const banners = (inventory || []).filter(item => item.data && item.data.type === 'banner');
+        
+        if (!banners.length) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); grid-column: span 2; padding: 20px;">У вас нет баннеров. Купите их в магазине!</p>';
+            return;
+        }
+        
+        let html = '';
+        banners.forEach(function(item) {
+            const data = item.data || {};
+            const rarityColors = {
+                common: '#9ca3af',
+                rare: '#3b82f6',
+                epic: '#a855f7',
+                legendary: '#f59e0b'
+            };
+            const rarityColor = rarityColors[data.rarity] || '#9ca3af';
+            
+            html += '<div style="background: var(--bg-elevated); border: 2px solid ' + (item.equipped ? '#2ed573' : rarityColor) + '; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s;" ' +
+                'onclick="selectBanner(' + item.id + ', ' + item.equipped + ')" ' +
+                'onmouseover="this.style.transform=\'scale(1.02)\'" ' +
+                'onmouseout="this.style.transform=\'scale(1)\'">' +
+                '<img src="' + (data.image || '/static/shop/banners/xz.jpg') + '" style="width: 100%; height: 80px; object-fit: cover;" onerror="this.style.display=\'none\'">' +
+                '<div style="padding: 10px; text-align: center;">' +
+                '<h4 style="margin: 0 0 4px; font-size: 13px;">' + escapeHtml(data.name || 'Баннер') + '</h4>';
+            
+            if (item.equipped) {
+                html += '<span style="color: #2ed573; font-size: 11px;"><i class="fas fa-check-circle"></i> Установлен</span>';
+            } else {
+                html += '<span style="color: ' + rarityColor + '; font-size: 11px; text-transform: uppercase;">' + (data.rarity || '') + '</span>';
+            }
+            
+            html += '</div></div>';
+        });
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Load banners error:', error);
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); grid-column: span 2; padding: 20px;">Ошибка загрузки</p>';
+    }
+};
+
+window.selectBanner = async function(inventoryId, alreadyEquipped) {
+    if (alreadyEquipped) {
+        closeModal('bannerSelectorModal');
+        return;
+    }
+    
+    try {
+        const result = await apiCall('shop/equip/' + inventoryId, {
+            method: 'POST'
+        });
+        
+        if (result && result.success) {
+            showNotification('Баннер установлен!', 'success');
+            closeModal('bannerSelectorModal');
+            
+            const bannerImg = document.querySelector('.profile-banner');
+            if (bannerImg) {
+                const invItem = (await apiCall('shop/inventory') || []).find(i => i.id === inventoryId);
+                if (invItem && invItem.data && invItem.data.image) {
+                    bannerImg.style.backgroundImage = 'url(' + invItem.data.image + ')';
+                    bannerImg.style.backgroundSize = 'cover';
+                    bannerImg.style.backgroundPosition = 'center';
+                }
+            }
+        } else {
+            showNotification(result?.message || 'Ошибка установки', 'error');
+        }
+    } catch (error) {
+        showNotification('Ошибка установки баннера', 'error');
+    }
+};

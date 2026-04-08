@@ -1,0 +1,12 @@
+{
+  "version": "1.0.1",
+  "notes": "Bug fixes and improvements",
+  "pub_date": "2026-04-07T00:00:00Z",
+  "platforms": {
+    "windows": {
+      "signature": "",
+      "url": "https://your-server.com/updates/iTired_1.0.1_x64-setup.exe",
+      "installer_url": "https://your-server.com/updates/iTired_1.0.1_x64-setup.exe"
+    }
+  }
+}

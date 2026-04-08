@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iTired | Музыка без лишнего шума</title>
+    <meta name="description" content="iTired — веб-платформа для музыки. Яндекс.Музыка и VK в одном месте.">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%236366f1' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white'>🎧</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+    <canvas id="particle-field" aria-hidden="true"></canvas>
+    <div class="noise" aria-hidden="true"></div>
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-ring" aria-hidden="true"></div>
+
+    <header class="site-nav" id="top">
+        <a class="brand" href="#top">
+            <span class="brand-mark">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+                </svg>
+            </span>
+            <span>iTired</span>
+        </a>
+
+        <nav aria-label="Основная навигация">
+            <ul class="nav-links">
+                <li><a href="#platform">Платформа</a></li>
+                <li><a href="#features">Возможности</a></li>
+                <li><a href="#sources">Источники</a></li>
+                <li><a href="#download">Скачать</a></li>
+            </ul>
+        </nav>
+
+        <div class="nav-actions">
+            <a class="nav-ghost" href="https://t.me/iTired" target="_blank" rel="noreferrer">Telegram</a>
+            <a class="nav-solid" href="/login">Начать</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-badge" data-reveal>
+                <span class="hero-badge-dot"></span>
+                <span>Веб-платформа</span>
+            </div>
+
+            <h1 class="hero-title" data-reveal>
+                <span>Музыка</span>
+                <span class="hero-title-muted">без лишнего</span>
+                <span>шума.</span>
+            </h1>
+
+            <div class="hero-slogan" data-reveal>
+                <span></span>
+                <strong>From community, for community</strong>
+                <span></span>
+            </div>
+
+            <p class="hero-text" data-reveal>
+                iTired — веб-платформа, которая собирает Яндекс.Музыку и VK в одном месте.
+                Без лишних подписок, без фейкового размаха, с понятным интерфейсом и умными рекомендациями.
+            </p>
+
+            <div class="hero-actions" data-reveal>
+                <a class="button-solid" href="/login">Начать слушать</a>
+                <a class="button-ghost" href="https://t.me/iTired" target="_blank" rel="noreferrer">Telegram</a>
+            </div>
+
+            <div class="hero-panel-shell" data-reveal>
+                <div class="hero-panel-top">
+                    <div class="window-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <div class="window-path">itired.app/dashboard</div>
+                </div>
+
+                <div class="hero-panel-body">
+                    <div class="hero-panel-preview">
+                        <img class="preview-image is-active" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Crect fill='%230a0a0a' width='800' height='500'/%3E%3Crect x='40' y='40' width='720' height='420' rx='16' fill='none' stroke='%236366f1' stroke-width='2'/%3E%3Ccircle cx='400' cy='220' r='80' fill='%236366f1'/%3E%3Ctext x='400' y='235' text-anchor='middle' fill='white' font-size='48'%3E🎧%3C/text%3E%3Crect x='300' y='340' width='200' height='8' rx='4' fill='%23333'/%3E%3Crect x='300' y='340' width='120' height='8' rx='4' fill='%236366f1'/%3E%3C/svg%3E" alt="Интерфейс iTired">
+                    </div>
+
+                    <div class="hero-panel-copy">
+                        <div class="eyebrow eyebrow-soft">Web</div>
+                        <h2 data-preview-title>Интерфейс без лишней обвязки</h2>
+                        <p data-preview-text>
+                            Главный экран остаётся собранным и не спорит с музыкой за внимание.
+                        </p>
+                        <ul data-preview-points>
+                            <li>Быстрый старт и понятная навигация.</li>
+                            <li>Фокус на контенте, а не на шуме.</li>
+                            <li>Весь опыт в одном браузере.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="marquee">
+            <div class="marquee-fade left"></div>
+            <div class="marquee-fade right"></div>
+            <div class="marquee-track">
+                <div class="marquee-item">Яндекс.Музыка</div>
+                <div class="marquee-item">VK Music</div>
+                <div class="marquee-item">Плейлисты</div>
+                <div class="marquee-item">Избранное</div>
+                <div class="marquee-item">История</div>
+                <div class="marquee-item">Друзья</div>
+                <div class="marquee-item">Магазин</div>
+                <div class="marquee-item">Веб</div>
+                <div class="marquee-item">Яндекс.Музыка</div>
+                <div class="marquee-item">VK Music</div>
+                <div class="marquee-item">Плейлисты</div>
+                <div class="marquee-item">Избранное</div>
+                <div class="marquee-item">История</div>
+                <div class="marquee-item">Друзья</div>
+                <div class="marquee-item">Магазин</div>
+                <div class="marquee-item">Веб</div>
+            </div>
+        </section>
+
+        <section class="section shell" id="platform">
+            <div class="section-head split" data-reveal>
+                <div>
+                    <div class="eyebrow">Platform</div>
+                    <h2>Сделано иначе,<br><span>по делу.</span></h2>
+                </div>
+                <p>
+                    Веб-платформа для тех, кто хочет слушать музыку из разных источников без переключения между приложениями.
+                </p>
+            </div>
+
+            <div class="bento-grid">
+                <article class="bento-card wide" data-reveal>
+                    <div class="card-inner">
+                        <div class="card-icon">♫</div>
+                        <h3>Веб-first</h3>
+                        <p>
+                            Главный фокус — веб-опыт, который работает в любом браузере на любом устройстве. Никаких установок и обновлений.
+                        </p>
+                        <div class="mini-bars">
+                            <span style="height:22px"></span>
+                            <span style="height:38px"></span>
+                            <span style="height:28px"></span>
+                            <span style="height:50px"></span>
+                            <span style="height:34px"></span>
+                            <span style="height:44px"></span>
+                            <span style="height:20px"></span>
+                            <span style="height:56px"></span>
+                            <span style="height:32px"></span>
+                            <span style="height:46px"></span>
+                            <span style="height:24px"></span>
+                        </div>
+                        <div class="card-num">01</div>
+                    </div>
+                </article>
+
+                <article class="bento-card" data-reveal>
+                    <div class="card-inner">
+                        <div class="card-icon">✉</div>
+                        <h3>Telegram</h3>
+                        <p>
+                            Внешняя коммуникация сведена к одной живой точке контакта. Без лишних площадок.
+                        </p>
+                        <div class="card-num">02</div>
+                    </div>
+                </article>
+
+                <article class="bento-card small" data-reveal>
+                    <div class="card-inner">
+                        <div class="card-icon">🎵</div>
+                        <h3>Яндекс.Музыка</h3>
+                        <p>Плейлисты, лайкнутые треки, рекомендации и чарты.</p>
+                        <div class="card-num">03</div>
+                    </div>
+                </article>
+
+                <article class="bento-card small" data-reveal>
+                    <div class="card-inner">
+                        <div class="card-icon">💬</div>
+                        <h3>VK Music</h3>
+                        <p>Аудиозаписи и плейлисты ВКонтакте.</p>
+                        <div class="card-num">04</div>
+                    </div>
+                </article>
+
+                <article class="bento-card small" data-reveal>
+                    <div class="card-inner">
+                        <div class="card-icon">✦</div>
+                        <h3>Без подписок</h3>
+                        <p>Используй свои существующие подписки. Никаких новых платежей.</p>
+                        <div class="card-num">05</div>
+                    </div>
+                </article>
+
+                <div class="bento-banner" data-reveal>
+                    <div>
+                        <h3>Только то, что реально работает</h3>
+                        <p>Яндекс.Музыка, VK, плейлисты, избранное и умные рекомендации.</p>
+                    </div>
+                    <div class="banner-actions">
+                        <a class="button-solid" href="/login">Начать</a>
+                        <a class="button-ghost" href="https://t.me/iTired" target="_blank" rel="noreferrer">Telegram</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section shell" id="features">
+            <div class="section-head" data-reveal>
+                <div>
+                    <div class="eyebrow">Features</div>
+                    <h2>Возможности</h2>
+                </div>
+            </div>
+
+            <div class="philosophy-grid">
+                <article class="philosophy-card" data-reveal>
+                    <div class="philosophy-tag">Search</div>
+                    <h3>Умный<br>поиск.</h3>
+                    <p>Ищи музыку по всем источникам одновременно. Результаты из Яндекса и VK в одном списке.</p>
+                    <div class="philosophy-deco">◌</div>
+                </article>
+
+                <article class="philosophy-card" data-reveal>
+                    <div class="philosophy-tag">Playlists</div>
+                    <h3>Плейлисты<br>без границ.</h3>
+                    <p>Создавай плейлисты с треками из любых источников. Управляй одним интерфейсом.</p>
+                    <div class="philosophy-deco">▣</div>
+                </article>
+
+                <article class="philosophy-card" data-reveal>
+                    <div class="philosophy-tag">Social</div>
+                    <h3>Друзья и<br>сообщество.</h3>
+                    <p>Делись музыкой с друзьями. Следи за их музыкальными вкусами и получать уведомления.</p>
+                    <div class="philosophy-deco">∞</div>
+                </article>
+
+                <article class="philosophy-card" data-reveal>
+                    <div class="philosophy-tag">Shop</div>
+                    <h3>Магазин и<br>подарки.</h3>
+                    <p>Покупай баннеры, темы и подарки для друзей. Система монет за активность.</p>
+                    <div class="philosophy-deco">⬡</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section shell" id="sources">
+            <div class="community-head" data-reveal>
+                <div class="community-pill">
+                    <span>♥</span>
+                    <strong>Sources</strong>
+                </div>
+                <h2>Источники<br><span>музыки.</span></h2>
+                <p>
+                    Подключай свои аккаунты Яндекс.Музыки и VK. Используй существующие подписки без дополнительных платежей.
+                </p>
+            </div>
+
+            <div class="quote-grid">
+                <article class="quote-card" data-reveal>
+                    <div class="quote-head">
+                        <div class="quote-avatar">🎧</div>
+                        <div><div class="quote-name">Яндекс.Музыка</div><div class="quote-role">Основной источник</div></div>
+                    </div>
+                    <p>Плейлисты, лайкнутые треки, рекомендации, чарты, умная волна. Всё из твоего аккаунта.</p>
+                </article>
+
+                <article class="quote-card" data-reveal>
+                    <div class="quote-head">
+                        <div class="quote-avatar">💬</div>
+                        <div><div class="quote-name">VK Music</div><div class="quote-role">Дополнительный источник</div></div>
+                    </div>
+                    <p>Аудиозаписи, плейлисты и подборки ВКонтакте. Ещё больше музыки в одном месте.</p>
+                </article>
+
+                <article class="quote-card" data-reveal>
+                    <div class="quote-head">
+                        <div class="quote-avatar">📁</div>
+                        <div><div class="quote-name">Локальные файлы</div><div class="quote-role">Хранилище</div></div>
+                    </div>
+                    <p>Загружай свою коллекцию и создавай плейлисты из файлов. Музыка всегда с тобой.</p>
+                </article>
+            </div>
+
+            <div class="pledge-banner" data-reveal>
+                <div>
+                    <div class="eyebrow">Token-based</div>
+                    <h3>Безопасность твоих данных</h3>
+                    <p>
+                        Мы используем токены доступа, не логины и пароли. Твои данные принадлежат только тебе.
+                    </p>
+                </div>
+                <div class="pledge-actions">
+                    <a class="button-solid" href="/login">Попробовать</a>
+                    <a class="button-ghost" href="/register">Регистрация</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section shell" id="download">
+            <div class="download-block" data-reveal>
+                <div class="download-copy">
+                    <div class="eyebrow">Get iTired</div>
+                    <h2>Начни слушать<br><span>без лишнего.</span></h2>
+                    <p>
+                        Регистрация занимает минуту. Подключи Яндекс.Музыку и VK и слушай музыку из обоих источников.
+                    </p>
+                </div>
+
+                <div class="platform-list">
+                    <a class="platform-card is-solid" href="ВАШ_АДРЕС_СЕРВЕРА/login" id="openBtn">
+                        <div class="platform-icon">🌐</div>
+                        <div><div class="platform-label">Открыть в браузере</div><div class="platform-sub" id="serverLabel">Введите адрес ниже</div></div>
+                    </a>
+
+                    <a class="platform-card" href="https://github.com/ТВОЙ_ЮЗЕРНЕЙМ/iTired/releases/latest/download/iTired_1.0.2_x64-setup.exe" target="_blank" rel="noreferrer">
+                        <div class="platform-icon">⬇</div>
+                        <div><div class="platform-label">Скачать приложение</div><div class="platform-sub">Windows v1.0.2</div></div>
+                    </a>
+
+                    <a class="platform-card" href="https://t.me/iTired" target="_blank" rel="noreferrer">
+                        <div class="platform-icon">✈</div>
+                        <div><div class="platform-label">Telegram</div><div class="platform-sub">основной канал связи</div></div>
+                    </a>
+                </div>
+                
+                <div style="margin-top: 24px; padding: 20px; background: rgba(99,102,241,0.1); border-radius: 12px;">
+                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 12px;">
+                        💡 <strong>Как подключиться:</strong>
+                    </p>
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="serverInput" placeholder="https://ваш-сервер.ngrok.io" 
+                               style="flex: 1; min-width: 200px; padding: 12px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; font-size: 14px;" 
+                               onkeypress="if(event.key==='Enter')updateLink()">
+                        <button onclick="updateLink()" style="padding: 12px 24px; background: linear-gradient(135deg, #6366f1, #a855f7); border: none; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer;">
+                            Открыть
+                        </button>
+                    </div>
+                    <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 12px;">
+                        Введите адрес сервера (ваш друг должен был его прислать)
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer shell">
+        <div class="footer-brandline">
+            <a class="brand" href="#top">
+                <span class="brand-mark">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+                    </svg>
+                </span>
+                <span>iTired</span>
+            </a>
+            <p>From community, for community. Музыка без лишнего шума.</p>
+        </div>
+
+        <div class="footer-links">
+            <a href="https://t.me/iTired" target="_blank" rel="noreferrer">Telegram</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+        </div>
+    </footer>
+
+    <script src="landing.js"></script>
+    
+    <script>
+        function updateLink() {
+            var url = document.getElementById('serverInput').value.trim();
+            if (url) {
+                url = url.replace(/\/$/, '');
+                document.getElementById('openBtn').href = url + '/login';
+                document.getElementById('serverLabel').textContent = url;
+                document.getElementById('serverLabel').style.color = '#6366f1';
+            }
+        }
+    </script>
+</body>
+</html>

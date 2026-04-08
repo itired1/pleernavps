@@ -1,0 +1,543 @@
+2026-04-07 13:26:26,287 INFO: Admin user created: admin / admin123 [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:49]
+2026-04-07 13:28:12,442 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:28:12,759 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:29:14,861 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:29:15,060 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:31:09,554 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:31:09,875 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:31:25,371 INFO: Admin user created: admin / admin123 [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:49]
+2026-04-07 13:32:38,780 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:32:50,423 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:33:22,041 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:33:39,399 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:33:39,625 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:34:24,625 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:34:24,816 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:37:01,656 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:37:01,971 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:40:55,695 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:40:56,021 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:44:14,607 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:45:00,772 INFO: Admin user created: admin / admin123 [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:49]
+2026-04-07 13:45:12,325 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:45:12,680 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:45:30,048 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [c:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:47:53,465 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:47:53,782 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:51:25,244 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 13:51:25,561 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:27:15,212 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:27:15,662 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:33:16,678 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:33:36,711 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:35:09,026 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 15:35:09,290 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:55:07,419 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:56:47,937 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:57:06,064 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:58:10,692 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:02,863 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:20,577 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:23,983 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:28,775 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:45,646 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:50,161 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 19:59:57,179 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:01:20,687 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:01:20,921 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:05:46,221 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:05:46,586 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:11:47,092 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:11:47,426 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:13:44,537 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:17:15,269 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:17:15,634 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:52]
+2026-04-07 20:19:44,854 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:20:33,114 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:20:33,441 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:21:45,154 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:21:55,270 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:22:03,991 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:22:04,303 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:23:11,279 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:24:26,519 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:24:26,878 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:25:52,198 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:25:52,539 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:27:34,417 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 20:27:34,729 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:29:36,092 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:29:36,513 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:37:18,454 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:37:18,855 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:39:56,850 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:39:57,273 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:42:11,917 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:42:12,683 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:45:57,297 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:45:57,737 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:55:06,228 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:55:06,644 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:58:49,350 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 21:58:49,771 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:00:46,910 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:00:47,408 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:02:55,683 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:02:56,102 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:07:48,792 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:08:02,121 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:08:45,228 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:08:51,291 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:09:14,151 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:09:14,367 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:55:17,759 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 22:55:18,103 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 23:28:58,527 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 23:28:58,873 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 23:48:04,635 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-07 23:52:47,271 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-07 23:52:47,641 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:53]
+2026-04-08 11:21:48,560 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 11:26:26,372 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 11:26:26,662 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 11:26:43,822 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:01:20,226 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:01:20,540 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:09:08,770 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:09:12,385 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:29:42,997 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:30:47,770 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:31:56,455 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
+2026-04-08 12:31:58,645 ERROR: History cleanup error: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information. [C:\Users\itired\Downloads\itiredmp3-main (4)\itiredmp3-main\app.py:144]
