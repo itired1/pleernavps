@@ -1,6 +1,6 @@
 console.log('=== player.js loading ===');
 let audioPlayer = null;
-let currentTrack = null;
+window.currentTrack = null;
 let currentPlaylist = [];
 let queue = [];
 let currentTrackIndex = 0;
@@ -35,7 +35,7 @@ function loadQueueState() {
                 repeatMode = state.repeatMode || 'off';
                 
                 if (state.currentTrack) {
-                    currentTrack = state.currentTrack;
+                    currentTrack = window.currentTrack = state.currentTrack;
                     if (state.currentTrack.url && audioPlayer) {
                         audioPlayer.src = state.currentTrack.url;
                     }
@@ -537,7 +537,7 @@ window.playQueueItem = async function(index) {
             audioPlayer.src = trackData.url;
             await audioPlayer.play();
             
-            currentTrack = { ...track, ...trackData };
+            currentTrack = window.currentTrack = { ...track, ...trackData };
             updatePlayerUI(currentTrack);
             updatePlayButton();
             updateQueueUI();
@@ -560,7 +560,7 @@ window.playQueueItem = async function(index) {
             audioPlayer.src = trackData.url;
             await audioPlayer.play();
             
-            currentTrack = { ...track, ...trackData };
+            currentTrack = window.currentTrack = { ...track, ...trackData };
             updatePlayerUI(currentTrack);
             updatePlayButton();
             showMiniNotification(currentTrack);
@@ -590,7 +590,7 @@ async function playTrackById(trackId, trackData) {
             audioPlayer.src = trackInfo.url;
             await audioPlayer.play();
             
-            currentTrack = trackInfo;
+            currentTrack = window.currentTrack = trackInfo;
             
             if (window.currentSourceTracks && window.currentSourceTracks.length > 1) {
                 queue = [...window.currentSourceTracks];

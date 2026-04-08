@@ -604,6 +604,85 @@ def currency_balance():
     user = db.session.get(User, session['user_id'])
     return jsonify({'balance': user.get_balance() if user else 0})
 
+@app.route('/api/lyrics')
+def get_lyrics():
+    artist = request.args.get('artist', '')
+    title = request.args.get('title', '')
+    
+    if not artist or not title:
+        return jsonify({'lyrics': None, 'synced': False})
+    
+    # Пробуем LRCLIB (английские + популярные)
+    try:
+        response = requests.get(
+            'https://lrclib.net/api/get',
+            params={'artist_name': artist, 'track_name': title},
+            timeout=10
+        )
+        
+        if response.ok:
+            data = response.json()
+            synced = data.get('syncedLyrics') or ''
+            plain = data.get('plainLyrics') or ''
+            
+            if synced or plain:
+                return jsonify({
+                    'lyrics': synced or plain,
+                    'synced': bool(synced),
+                    'plain': plain
+                })
+    except Exception as e:
+        print(f"LRCLIB error: {e}")
+    
+    # Пробуем Genius (русские треки)
+    try:
+        search_response = requests.get(
+            'https://api.genius.com/search',
+            params={'q': f'{artist} {title}'},
+            headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
+            timeout=10
+        )
+        
+        if search_response.ok:
+            hits = search_response.json().get('response', {}).get('hits', [])
+            if hits:
+                song_id = hits[0].get('result', {}).get('id')
+                
+                if song_id:
+                    song_response = requests.get(
+                        f'https://api.genius.com/songs/{song_id}',
+                        headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
+                        timeout=10
+                    )
+                    
+                    if song_response.ok:
+                        path = song_response.json().get('response', {}).get('song', {}).get('path')
+                        if path:
+                            lyrics_response = requests.get(
+                                'https://genius.com' + path,
+                                headers={'User-Agent': 'Mozilla/5.0'},
+                                timeout=10
+                            )
+                            
+                            if lyrics_response.ok:
+                                import re
+                                lyrics_text = lyrics_response.text
+                                lyrics_match = re.search(r'<div[^>]*data-lyrics-container[^>]*>(.*?)</div>', lyrics_text, re.DOTALL)
+                                if lyrics_match:
+                                    lyrics_html = lyrics_match.group(1)
+                                    lyrics_clean = re.sub(r'<[^>]+>', '\n', lyrics_html)
+                                    lyrics_clean = re.sub(r'\n+', '\n', lyrics_clean).strip()
+                                    
+                                    return jsonify({
+                                        'lyrics': lyrics_clean,
+                                        'synced': False,
+                                        'plain': lyrics_clean
+                                    })
+    except Exception as e:
+        print(f"Genius error: {e}")
+    
+    return jsonify({'lyrics': None, 'synced': False})
+
 @app.route('/api/search')
 @login_required
 def search():
@@ -1126,11 +1205,22 @@ def add_friend(friend_id):
                     return jsonify({'success': True, 'message': 'Запрос принят'})
                 return jsonify({'success': False, 'message': 'Запрос уже существует'}), 400
         
-        friend = Friend(user_id=user.id, friend_id=friend_id, status='accepted', taste_match=random.randint(40, 95))
+        friend = Friend(user_id=user.id, friend_id=friend_id, status='pending', taste_match=random.randint(40, 95))
         db.session.add(friend)
+        
+        activity = UserActivity(
+            user_id=friend_id,
+            activity_type='friend_request',
+            activity_data=json.dumps({
+                'from_user_id': user.id,
+                'from_username': user.username,
+                'from_display_name': user.display_name
+            })
+        )
+        db.session.add(activity)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Друг добавлен'})
+        return jsonify({'success': True, 'message': 'Запрос отправлен'})
     except Exception as e:
         db.session.rollback()
         print(f"Add friend error: {e}")
@@ -1147,6 +1237,16 @@ def accept_friend(friend_id):
     db.session.commit()
     return jsonify({'success': True, 'message': 'Друг добавлен'})
 
+@app.route('/api/friends/clear', methods=['POST'])
+@login_required
+def clear_all_friends():
+    user_id = session['user_id']
+    db.session.query(Friend).filter(
+        (Friend.user_id == user_id) | (Friend.friend_id == user_id)
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Все друзья удалены'})
+
 @app.route('/api/friends/search')
 @login_required
 def search_friends():
@@ -1161,17 +1261,28 @@ def search_friends():
         User.username.ilike(f'%{query}%') | User.display_name.ilike(f'%{query}%')
     ).limit(10).all()
     
-    existing_friend_ids = [f.friend_id for f in db.session.query(Friend).filter_by(user_id=user.id).all()]
-    existing_friend_ids.extend([f.user_id for f in db.session.query(Friend).filter_by(friend_id=user.id).all()])
+    existing_friend_ids = [f.friend_id for f in db.session.query(Friend).filter_by(user_id=user.id, status='accepted').all()]
+    existing_friend_ids.extend([f.user_id for f in db.session.query(Friend).filter_by(friend_id=user.id, status='accepted').all()])
+    
+    pending_sent = [f.friend_id for f in db.session.query(Friend).filter_by(user_id=user.id, status='pending').all()]
+    pending_received = [f.user_id for f in db.session.query(Friend).filter_by(friend_id=user.id, status='pending').all()]
     
     result = []
     for u in users:
+        status = 'none'
+        if u.id in existing_friend_ids:
+            status = 'friends'
+        elif u.id in pending_sent:
+            status = 'pending_sent'
+        elif u.id in pending_received:
+            status = 'pending_received'
+        
         result.append({
             'id': u.id,
             'username': u.username,
             'display_name': u.display_name,
             'avatar_url': u.avatar_url,
-            'is_friend': u.id in existing_friend_ids
+            'friend_status': status
         })
     
     return jsonify(result)
@@ -1219,15 +1330,33 @@ def mark_notification_read(notif_id):
 @app.route('/api/user/<int:user_id>')
 @login_required
 def get_user_profile(user_id):
+    current_user_id = session['user_id']
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
+    
+    existing_friend = db.session.query(Friend).filter(
+        ((Friend.user_id == current_user_id) & (Friend.friend_id == user_id)) |
+        ((Friend.user_id == user_id) & (Friend.friend_id == current_user_id))
+    ).first()
+    
+    friend_status = 'none'
+    if existing_friend:
+        if existing_friend.status == 'accepted':
+            friend_status = 'friends'
+        elif existing_friend.status == 'pending':
+            if existing_friend.user_id == current_user_id:
+                friend_status = 'pending_sent'
+            else:
+                friend_status = 'pending_received'
+    
     return jsonify({
         'id': user.id,
         'username': user.username,
         'display_name': user.display_name,
         'bio': user.bio,
-        'avatar_url': user.avatar_url
+        'avatar_url': user.avatar_url,
+        'friend_status': friend_status
     })
 
 BANNERS = {

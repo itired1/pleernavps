@@ -227,7 +227,7 @@ async function playRoomTrack(track, startTime = 0) {
                 console.error('Play error:', e);
             });
             
-            currentTrack = track;
+            currentTrack = window.currentTrack = track;
             updatePlayerUI(track);
             updatePlayButton();
             showMiniNotification(track);
@@ -415,7 +415,7 @@ window.playRoomPlaylistItem = function(index) {
                             audioPlayer.play().catch(console.error);
                         }
                         
-                        currentTrack = fullTrack;
+                        currentTrack = window.currentTrack = fullTrack;
                         updatePlayerUI(fullTrack);
                         updatePlayButton();
                         showMiniNotification(fullTrack);
@@ -436,7 +436,7 @@ window.playRoomPlaylistItem = function(index) {
                 audioPlayer.play().catch(console.error);
             }
             
-            currentTrack = track;
+            currentTrack = window.currentTrack = track;
             updatePlayerUI(track);
             updatePlayButton();
             showMiniNotification(track);

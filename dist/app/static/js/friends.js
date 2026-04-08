@@ -83,13 +83,28 @@ window.viewFriendProfile = async function(userId) {
         if (bioEl) bioEl.textContent = data.bio || 'Пользователь пока ничего не рассказал о себе';
         if (avatarEl) avatarEl.src = data.avatar_url || '';
         
+        const friendStatus = data.friend_status || 'none';
+        
         if (addFriendBtn) {
-            if (data.is_friend) {
-                addFriendBtn.innerHTML = '<i class="fas fa-check"></i> Уже в друзьях';
+            addFriendBtn.style.display = 'inline-block';
+            
+            if (friendStatus === 'friends') {
+                addFriendBtn.innerHTML = '<i class="fas fa-check"></i> Друг';
                 addFriendBtn.disabled = true;
+                addFriendBtn.className = 'glass-btn';
+            } else if (friendStatus === 'pending_sent') {
+                addFriendBtn.innerHTML = '<i class="fas fa-clock"></i> Запрос отправлен';
+                addFriendBtn.disabled = true;
+                addFriendBtn.className = 'glass-btn';
+            } else if (friendStatus === 'pending_received') {
+                addFriendBtn.innerHTML = '<i class="fas fa-user-check"></i> Принять';
+                addFriendBtn.disabled = false;
+                addFriendBtn.className = 'btn-primary';
+                addFriendBtn.onclick = function() { acceptFriend(userId); };
             } else {
                 addFriendBtn.innerHTML = '<i class="fas fa-user-plus"></i> Добавить в друзья';
                 addFriendBtn.disabled = false;
+                addFriendBtn.className = 'btn-primary';
                 addFriendBtn.onclick = function() { addFriend(userId); };
             }
         }
@@ -106,8 +121,7 @@ window.addFriend = async function(userId) {
         const result = await apiCall('friends/add/' + userId, { method: 'POST' });
         if (result && result.success) {
             showNotification('Запрос отправлен', 'success');
-            closeModal('userProfileModal');
-            loadFriends();
+            viewFriendProfile(userId);
         } else {
             showNotification(result?.message || 'Ошибка', 'error');
         }
@@ -117,18 +131,32 @@ window.addFriend = async function(userId) {
     }
 };
 
-window.acceptFriend = async function(friendId) {
+window.acceptFriend = async function(userId) {
     try {
-        const result = await apiCall('friends/accept/' + friendId, { method: 'POST' });
+        const result = await apiCall('friends/accept/' + userId, { method: 'POST' });
         if (result && result.success) {
-            showNotification('Друг добавлен', 'success');
+            showNotification('Запрос принят', 'success');
             loadFriends();
+            closeModal('userProfileModal');
         } else {
             showNotification(result?.message || 'Ошибка', 'error');
         }
     } catch (error) {
         console.error('Accept friend error:', error);
         showNotification('Ошибка', 'error');
+    }
+};
+
+window.clearAllFriends = async function() {
+    if (!confirm('Удалить всех друзей?')) return;
+    try {
+        const result = await apiCall('friends/clear', { method: 'POST' });
+        if (result && result.success) {
+            showNotification('Все друзья удалены', 'success');
+            loadFriends();
+        }
+    } catch (error) {
+        console.error('Clear friends error:', error);
     }
 };
 
@@ -180,17 +208,23 @@ window.searchFriends = async function() {
                     ? '<img src="' + user.avatar_url + '" alt="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
                     : '<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="color: var(--bg);"></i></div>';
                 
+                let actionBtn = '';
+                if (user.friend_status === 'friends') {
+                    actionBtn = '<span style="color: #2ed573; font-size: 12px;"><i class="fas fa-check"></i> Друг</span>';
+                } else if (user.friend_status === 'pending_sent') {
+                    actionBtn = '<span style="color: var(--text-muted); font-size: 12px;"><i class="fas fa-clock"></i> Отправлен</span>';
+                } else if (user.friend_status === 'pending_received') {
+                    actionBtn = '<button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="acceptFriend(' + user.id + ')"><i class="fas fa-user-check"></i> Принять</button>';
+                } else {
+                    actionBtn = '<button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="addFriend(' + user.id + ')"><i class="fas fa-user-plus"></i> Добавить</button>';
+                }
+                
                 html += '<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 8px;">' +
                     avatar +
                     '<div style="flex: 1;">' +
                     '<div style="font-weight: 500;">' + escapeHtml(user.display_name || user.username) + '</div>' +
                     '<div style="font-size: 12px; color: var(--text-muted);">@' + escapeHtml(user.username) + '</div>' +
-                    '<div style="font-size: 11px; color: var(--text-muted);">ID: ' + user.id + '</div>' +
-                    '</div>' +
-                    (user.is_friend 
-                        ? '<span style="color: #2ed573; font-size: 12px;"><i class="fas fa-check"></i> Друг</span>'
-                        : '<button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="addFriend(' + user.id + ')"><i class="fas fa-user-plus"></i> Добавить</button>'
-                    ) +
+                    '</div>' + actionBtn +
                     '</div>';
             });
             
