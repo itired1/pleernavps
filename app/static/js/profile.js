@@ -100,8 +100,11 @@ function updateProfileBadge(badgeId) {
     };
     
     let badgeHtml = '';
-    if (badgeId && badgeId.startsWith('badge_')) {
-        if (badgeId.startsWith('badge_anime')) {
+    if (badgeId) {
+        const data = BADGES_DATA[badgeId];
+        if (data) {
+            badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
+        } else if (badgeId.startsWith('badge_anime')) {
             const imageMap = {
                 'badge_animemix1': '/static/shop/banners/banner_8585.gif',
                 'badge_animemix2': '/static/shop/banners/banner_3106.gif',
@@ -115,11 +118,6 @@ function updateProfileBadge(badgeId) {
                 'badge_animelegend': '/static/shop/banners/banner_9518.gif',
             };
             badgeHtml = '<img src="' + (imageMap[badgeId] || '') + '" style="width: 20px; height: 20px; object-fit: cover;">';
-        } else {
-            const data = BADGES_DATA[badgeId];
-            if (data) {
-                badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
-            }
         }
     }
     
@@ -252,9 +250,13 @@ function renderCustomizeItems(items, type, equippedId) {
         let preview = '';
         
         if (type === 'badge') {
-            const icon = item.data.icon || 'fa-star';
-            const color = item.data.color || '#ffd700';
-            preview = '<i class="fas ' + icon + '" style="font-size: 24px; color: ' + color + ';"></i>';
+            if (item.data.image) {
+                preview = '<img src="' + item.data.image + '" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">';
+            } else {
+                const icon = item.data.icon || 'fa-star';
+                const color = item.data.color || '#ffd700';
+                preview = '<i class="fas ' + icon + '" style="font-size: 24px; color: ' + color + ';"></i>';
+            }
         } else if (type === 'frame') {
             const color = item.data.color || '#ffd700';
             preview = '<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid ' + color + '; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="font-size: 16px;"></i></div>';
