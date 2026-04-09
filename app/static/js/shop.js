@@ -3,10 +3,6 @@ let userBalance = 0;
 let userInventory = [];
 
 const DEFAULT_BANNERS = [
-    { id: 'banner_zero_kiryu', name: 'Zero Kiryu', type: 'banner', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/zero-kiryu.gif' } },
-    { id: 'banner_samurai_jin', name: 'Jin (Samurai Champloo)', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/samurai-jin.gif' } },
-    { id: 'banner_undertaker', name: 'Undertaker', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/undertaker.gif' } },
-    { id: 'banner_anime_vibe', name: 'Anime Vibe', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/anime-vibe.gif' } },
     { id: 'banner_1', name: 'Anime Mix #1', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_8585.gif' } },
     { id: 'banner_2', name: 'Anime Mix #2', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_3106.gif' } },
     { id: 'banner_3', name: 'One Piece', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9454.gif' } },

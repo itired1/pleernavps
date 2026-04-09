@@ -1467,10 +1467,6 @@ def get_user_profile(user_id):
     })
 
 BANNERS = {
-    'banner_zero_kiryu': {'name': 'Zero Kiryu', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/zero-kiryu.gif'},
-    'banner_samurai_jin': {'name': 'Jin (Samurai Champloo)', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/samurai-jin.gif'},
-    'banner_undertaker': {'name': 'Undertaker', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/undertaker.gif'},
-    'banner_anime_vibe': {'name': 'Anime Vibe', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/anime-vibe.gif'},
     'banner_1': {'name': 'Anime Mix #1', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_8585.gif'},
     'banner_2': {'name': 'Anime Mix #2', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_3106.gif'},
     'banner_3': {'name': 'One Piece', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9454.gif'},
