@@ -288,6 +288,42 @@
     </div>
 </div>
 
+<!-- СТАТИСТИКА -->
+<div id="stats" class="tab-content">
+    <div class="glass-card">
+        <h3><i class="fas fa-chart-bar"></i> Статистика</h3>
+        <div id="statsLoading" style="text-align: center; padding: 40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+        </div>
+        <div id="statsContent" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div class="glass-card" style="padding: 20px; text-align: center; background: var(--bg-elevated);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--accent);" id="statHours">0</div>
+                    <div style="color: var(--text-muted); font-size: 13px;">Часов музыки</div>
+                </div>
+                <div class="glass-card" style="padding: 20px; text-align: center; background: var(--bg-elevated);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #2ed573;" id="statTracks">0</div>
+                    <div style="color: var(--text-muted); font-size: 13px;">Треков прослушано</div>
+                </div>
+                <div class="glass-card" style="padding: 20px; text-align: center; background: var(--bg-elevated);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #ffd700;" id="statLiked">0</div>
+                    <div style="color: var(--text-muted); font-size: 13px;">Лайкнуто</div>
+                </div>
+                <div class="glass-card" style="padding: 20px; text-align: center; background: var(--bg-elevated);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #a855f7;" id="statPlaylists">0</div>
+                    <div style="color: var(--text-muted); font-size: 13px;">Плейлистов</div>
+                </div>
+            </div>
+            
+            <h4 style="margin-bottom: 12px;"><i class="fas fa-microphone"></i> Топ артистов</h4>
+            <div id="topArtists" class="services-grid" style="gap: 8px;"></div>
+            
+            <h4 style="margin: 24px 0 12px;"><i class="fas fa-history"></i> Недавние треки</h4>
+            <div id="recentTracks" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+    </div>
+</div>
+
 <!-- МАГАЗИН -->
 <div id="shop" class="tab-content">
     <div class="glass-card">

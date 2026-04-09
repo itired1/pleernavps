@@ -326,9 +326,8 @@ window.switchTab = function(tabName) {
     if (tabName === 'notifications' && typeof loadNotifications === 'function') loadNotifications();
     if (tabName === 'favorites' && typeof loadFavorites === 'function') loadFavorites();
     if (tabName === 'history' && typeof loadHistory === 'function') loadHistory();
-    if (tabName === 'shop' && typeof loadShopItems === 'function') {
-        loadShopItems();
-    }
+    if (tabName === 'shop' && typeof loadShopItems === 'function') loadShopItems();
+    if (tabName === 'stats' && typeof loadStats === 'function') loadStats();
 };
 
 let searchTimeout = null;

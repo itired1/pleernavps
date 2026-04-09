@@ -306,3 +306,65 @@ window.equipCustomizeItem = async function(itemId, type) {
         showNotification('Ошибка', 'error');
     }
 };
+
+window.loadStats = async function() {
+    document.getElementById('statsLoading').style.display = 'block';
+    document.getElementById('statsContent').style.display = 'none';
+    
+    try {
+        const stats = await apiCall('stats');
+        
+        document.getElementById('statHours').textContent = stats.total_hours || 0;
+        document.getElementById('statTracks').textContent = stats.total_tracks || 0;
+        document.getElementById('statLiked').textContent = stats.liked_count || 0;
+        document.getElementById('statPlaylists').textContent = stats.playlist_count || 0;
+        
+        const topArtistsEl = document.getElementById('topArtists');
+        if (stats.top_artists && stats.top_artists.length > 0) {
+            let artistsHtml = '';
+            stats.top_artists.forEach(function(artist, i) {
+                const colors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+                const medal = i < 3 ? '<span style="color: ' + colors[i] + '; margin-right: 8px;">' + (i + 1) + '.</span>' : '<span style="margin-right: 8px; color: var(--text-muted);">' + (i + 1) + '.</span>';
+                artistsHtml += '<div class="glass-card" style="padding: 12px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-elevated);">' +
+                    '<div style="display: flex; align-items: center; gap: 12px;">' + medal +
+                    '<i class="fas fa-user" style="color: var(--accent);"></i> ' + escapeHtml(artist.name || 'Неизвестный') + '</div>' +
+                    '<span style="color: var(--text-muted); font-size: 13px;">' + artist.count + ' треков</span></div>';
+            });
+            topArtistsEl.innerHTML = artistsHtml;
+        } else {
+            topArtistsEl.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Слушайте музыку, чтобы увидеть статистику</p>';
+        }
+        
+        const recentEl = document.getElementById('recentTracks');
+        if (stats.recent_tracks && stats.recent_tracks.length > 0) {
+            let recentHtml = '';
+            stats.recent_tracks.slice(0, 10).forEach(function(track) {
+                recentHtml += '<div class="glass-card" style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-elevated);">' +
+                    '<div><i class="fas fa-music" style="color: var(--accent); margin-right: 8px;"></i> ' + escapeHtml(track.artist || 'Неизвестный') + '</div>' +
+                    '<span style="color: var(--text-muted); font-size: 12px;">' + formatTimeAgo(track.played_at) + '</span></div>';
+            });
+            recentEl.innerHTML = recentHtml;
+        } else {
+            recentEl.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Недавних треков нет</p>';
+        }
+        
+        document.getElementById('statsLoading').style.display = 'none';
+        document.getElementById('statsContent').style.display = 'block';
+    } catch (error) {
+        console.error('Load stats error:', error);
+        document.getElementById('statsLoading').innerHTML = '<p style="color: var(--text-muted);">Ошибка загрузки статистики</p>';
+    }
+};
+
+function formatTimeAgo(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    
+    if (diff < 60) return 'только что';
+    if (diff < 3600) return Math.floor(diff / 60) + ' мин назад';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' ч назад';
+    if (diff < 604800) return Math.floor(diff / 86400) + ' дн назад';
+    return date.toLocaleDateString('ru');
+}

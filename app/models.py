@@ -144,7 +144,9 @@ class ListeningHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     track_id = db.Column(db.String(100))
-    track_data = db.Column(db.Text)  # JSON
+    track_data = db.Column(db.Text)
+    artist_name = db.Column(db.String(200))
+    duration_seconds = db.Column(db.Integer, default=0)
     played_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Playlist(db.Model):

@@ -702,6 +702,16 @@ async function playTrackById(trackId, trackData) {
             }
             
             addToHistory(currentTrack);
+            
+            apiCall('listen', {
+                method: 'POST',
+                body: JSON.stringify({
+                    track_id: trackId,
+                    artist: currentTrack.artist || '',
+                    duration: currentTrack.duration || 180
+                })
+            }).catch(function(e) { console.error('Listen tracking error:', e); });
+            
             updatePlayerUI(currentTrack);
             updatePlayButton();
             updateQueueUI();

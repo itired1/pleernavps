@@ -416,6 +416,92 @@ def api_profile():
         })
     return jsonify({'error': 'User not found'}), 404
 
+@app.route('/api/stats')
+@login_required
+def get_user_stats():
+    user_id = session['user_id']
+    from models import ListeningHistory, LikedTrack, Playlist
+    
+    total_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).count()
+    
+    total_seconds = db.session.query(db.func.sum(ListeningHistory.duration_seconds)).filter_by(user_id=user_id).filter(ListeningHistory.duration_seconds > 0).scalar() or 0
+    total_hours = round(total_seconds / 3600, 1)
+    
+    top_artists = db.session.query(
+        ListeningHistory.artist_name,
+        db.func.count(ListeningHistory.id).label('count')
+    ).filter(
+        ListeningHistory.user_id == user_id,
+        ListeningHistory.artist_name.isnot(None)
+    ).group_by(ListeningHistory.artist_name).order_by(db.desc('count')).limit(10).all()
+    
+    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
+    playlist_count = db.session.query(Playlist).filter_by(user_id=user_id).count()
+    
+    recent_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).order_by(ListeningHistory.played_at.desc()).limit(20).all()
+    recent = []
+    for t in recent_tracks:
+        recent.append({
+            'track_id': t.track_id,
+            'artist': t.artist_name,
+            'played_at': t.played_at.isoformat() if t.played_at else None
+        })
+    
+    return jsonify({
+        'total_tracks': total_tracks,
+        'total_hours': total_hours,
+        'liked_count': liked_count,
+        'playlist_count': playlist_count,
+        'top_artists': [{'name': a[0], 'count': a[1]} for a in top_artists],
+        'recent_tracks': recent
+    })
+
+@app.route('/api/listen', methods=['POST'])
+@login_required
+def record_listen():
+    data = request.get_json()
+    user_id = session['user_id']
+    from models import ListeningHistory
+    
+    track_id = data.get('track_id')
+    artist = data.get('artist', '')
+    duration = data.get('duration', 0)
+    
+    entry = ListeningHistory(
+        user_id=user_id,
+        track_id=track_id,
+        artist_name=artist,
+        duration_seconds=duration
+    )
+    db.session.add(entry)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/user/<int:user_id>')
+@login_required
+def public_profile(user_id):
+    from models import Playlist, LikedTrack
+    
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    playlists = db.session.query(Playlist).filter_by(user_id=user_id, is_public=True).all()
+    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
+    
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'display_name': user.display_name,
+        'bio': user.bio,
+        'avatar_url': user.avatar_url,
+        'created_at': user.created_at.isoformat(),
+        'equipped_badge': user.equipped_badge,
+        'playlists': [{'id': p.id, 'title': p.title, 'track_count': p.tracks.count()} for p in playlists],
+        'liked_count': liked_count
+    })
+
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile_page():
