@@ -1488,16 +1488,9 @@ def get_user_profile(user_id):
     })
 
 BANNERS = {
-    'banner_1': {'name': 'Anime Mix #1', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_8585.gif'},
-    'banner_2': {'name': 'Anime Mix #2', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_3106.gif'},
-    'banner_3': {'name': 'One Piece', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9454.gif'},
-    'banner_4': {'name': 'Demon Slayer', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5912.gif'},
-    'banner_5': {'name': 'Attack on Titan', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_4868.gif'},
-    'banner_6': {'name': 'Bleach', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9862.gif'},
-    'banner_7': {'name': 'Tokyo Ghoul', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5584.gif'},
-    'banner_8': {'name': 'Anime Vibes', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/banner_4277.gif'},
-    'banner_9': {'name': 'Dark Anime', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/banner_5545.gif'},
-    'banner_10': {'name': 'Anime Legend', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_9518.gif'},
+    'banner_1': {'name': 'Неоновый закат', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz.jpg'},
+    'banner_2': {'name': 'Космос', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/xz1.jpg'},
+    'banner_3': {'name': 'Лесной туман', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz2.jpg'},
 }
 
 BADGES = {

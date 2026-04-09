@@ -3,16 +3,9 @@ let userBalance = 0;
 let userInventory = [];
 
 const DEFAULT_BANNERS = [
-    { id: 'banner_1', name: 'Anime Mix #1', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_8585.gif' } },
-    { id: 'banner_2', name: 'Anime Mix #2', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_3106.gif' } },
-    { id: 'banner_3', name: 'One Piece', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9454.gif' } },
-    { id: 'banner_4', name: 'Demon Slayer', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_5912.gif' } },
-    { id: 'banner_5', name: 'Attack on Titan', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_4868.gif' } },
-    { id: 'banner_6', name: 'Bleach', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9862.gif' } },
-    { id: 'banner_7', name: 'Tokyo Ghoul', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/banner_5584.gif' } },
-    { id: 'banner_8', name: 'Anime Vibes', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/banner_4277.gif' } },
-    { id: 'banner_9', name: 'Dark Anime', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/banner_5545.gif' } },
-    { id: 'banner_10', name: 'Anime Legend', type: 'banner', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/banner_9518.gif' } },
+    { id: 'banner_1', name: 'Неоновый закат', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz.jpg' } },
+    { id: 'banner_2', name: 'Космос', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/xz1.jpg' } },
+    { id: 'banner_3', name: 'Лесной туман', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz2.jpg' } },
 ];
 
 const DEFAULT_BADGES = [
