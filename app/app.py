@@ -641,6 +641,114 @@ def recommendations():
     recs = Recommender.get_recommendations(user.id if user else None, services)
     return jsonify(recs)
 
+@app.route('/api/radio/stations')
+@login_required
+def radio_stations():
+    user = db.session.get(User, session['user_id'])
+    service = request.args.get('service', 'yandex')
+    
+    if service == 'yandex':
+        if not user or not user.yandex_token:
+            return jsonify({'error': 'Токен Яндекса не настроен'}), 400
+        
+        client = get_yandex_client(user.yandex_token)
+        if not client:
+            return jsonify({'error': 'Ошибка подключения к Яндексу'}), 500
+        
+        try:
+            stations = client.rotor_stations_list()
+            result = []
+            
+            categories = {}
+            for station in stations:
+                if hasattr(station, 'station') and station.station:
+                    s = station.station
+                    cat = s.category or 'Другие'
+                    
+                    if cat not in categories:
+                        categories[cat] = {
+                            'name': cat,
+                            'icon': 'fa-radio',
+                            'stations': []
+                        }
+                    
+                    station_id = f"yandex:{s.id}" if isinstance(s.id, str) else s.id
+                    
+                    categories[cat]['stations'].append({
+                        'id': str(station_id),
+                        'station_id': str(station_id),
+                        'name': s.name or cat,
+                        'description': s.description or '',
+                        'cover_uri': f"https://{s.cover_uri.replace('%%', '300x300')}" if s.cover_uri else None,
+                        'service': 'yandex'
+                    })
+            
+            for cat in categories:
+                result.append(categories[cat])
+            
+            return jsonify({
+                'service': 'yandex',
+                'categories': result
+            })
+        except Exception as e:
+            print(f"Radio stations error: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Сервис не поддерживается'}), 400
+
+@app.route('/api/radio/tracks')
+@login_required
+def radio_tracks():
+    user = db.session.get(User, session['user_id'])
+    service = request.args.get('service', 'yandex')
+    station_id = request.args.get('station_id', '')
+    
+    if service == 'yandex':
+        if not user or not user.yandex_token:
+            return jsonify({'error': 'Токен Яндекса не настроен'}), 400
+        
+        client = get_yandex_client(user.yandex_token)
+        if not client:
+            return jsonify({'error': 'Ошибка подключения к Яндексу'}), 500
+        
+        try:
+            if station_id.startswith('yandex:'):
+                station_id = station_id.replace('yandex:', '')
+            
+            tracks_data = client.rotor_station_track_list(station_id, queue=[])
+            
+            tracks = []
+            if tracks_data and hasattr(tracks_data, 'tracks'):
+                for item in tracks_data.tracks:
+                    track = item.track if hasattr(item, 'track') else item
+                    if track:
+                        artists = []
+                        if hasattr(track, 'artists') and track.artists:
+                            artists = [a.name for a in track.artists]
+                        elif hasattr(track, 'artist') and track.artist:
+                            artists = [track.artist]
+                        
+                        tracks.append({
+                            'id': f"yandex_{track.id}",
+                            'title': track.title,
+                            'artists': artists,
+                            'artist': ', '.join(artists) if artists else 'Неизвестный',
+                            'cover_uri': f"https://{track.cover_uri.replace('%%', '300x300')}" if hasattr(track, 'cover_uri') and track.cover_uri else None,
+                            'duration': track.duration_ms if hasattr(track, 'duration_ms') else 0,
+                            'service': 'yandex'
+                        })
+            
+            return jsonify({
+                'tracks': tracks,
+                'station_id': station_id,
+                'service': 'yandex'
+            })
+        except Exception as e:
+            print(f"Radio tracks error: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Сервис не поддерживается'}), 400
+
 @app.route('/api/stats')
 @login_required
 def stats():
@@ -1255,7 +1363,25 @@ def add_track_to_playlist(playlist_id):
         db.session.commit()
         return jsonify({'success': True})
     
-    return jsonify({'success': False, 'error': 'Добавить можно только в локальные плейлисты'}), 400
+    if playlist_id.startswith('yandex_'):
+        user = db.session.get(User, session['user_id'])
+        if not user or not user.yandex_token:
+            return jsonify({'success': False, 'error': 'Токен Яндекса не настроен'}), 400
+        
+        from utils import get_yandex_client
+        client = get_yandex_client(user.yandex_token)
+        if not client:
+            return jsonify({'success': False, 'error': 'Ошибка подключения к Яндексу'}), 500
+        
+        try:
+            kind = int(playlist_id.replace('yandex_', ''))
+            track_id = track.get('id', track.get('track_id', '')).replace('yandex_', '')
+            client.users_playlists_insert_track(kind=kind, track_id=track_id)
+            return jsonify({'success': True, 'message': 'Добавлено в Яндекс.Плейлист'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    return jsonify({'success': False, 'error': 'Неподдерживаемый тип плейлиста'}), 400
 
 @app.route('/api/play_track/<track_id>')
 @login_required

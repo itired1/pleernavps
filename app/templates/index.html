@@ -145,6 +145,59 @@
     </div>
 </div>
 
+<!-- РАДИО -->
+<div id="radio" class="tab-content">
+    <div class="glass-card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0;"><i class="fas fa-radio" style="color: var(--accent); margin-right: 8px;"></i>Радио</h3>
+            <button class="glass-btn" onclick="loadRadioStations()">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+        </div>
+        
+        <div id="radioServiceSelector" class="source-selector" style="margin-bottom: 16px;">
+            <button type="button" class="source-btn active" data-service="yandex" onclick="selectRadioService('yandex')">
+                <i class="fab fa-yandex"></i> Яндекс
+            </button>
+        </div>
+        
+        <div id="radioLoading" style="text-align: center; padding: 40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+            <p style="margin-top: 12px; color: var(--text-muted);">Загрузка станций...</p>
+        </div>
+        
+        <div id="radioError" style="display: none; text-align: center; padding: 40px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff6b6b;"></i>
+            <p id="radioErrorText" style="margin-top: 12px; color: var(--text-muted);">Ошибка загрузки</p>
+        </div>
+        
+        <div id="radioContent" style="display: none;">
+            <div id="radioNowPlaying" class="glass-card" style="background: var(--bg-elevated); padding: 20px; border-radius: 12px; margin-bottom: 20px; display: none;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div id="radioStationCover" style="width: 80px; height: 80px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                        <i class="fas fa-radio" style="font-size: 2rem; color: #fff;"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 4px;">Сейчас играет:</p>
+                        <h4 id="radioStationName" style="margin: 0 0 4px;">Станция</h4>
+                        <p id="radioTrackInfo" style="color: var(--text-secondary); margin: 0; font-size: 14px;">Трек не выбран</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="radioSkipBtn" class="glass-btn" onclick="skipRadioTrack()" title="Следующий трек">
+                            <i class="fas fa-forward"></i>
+                        </button>
+                        <button id="radioStopBtn" class="btn-primary" onclick="stopRadio()" title="Остановить">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="radioStationsList"></div>
+        </div>
+    </div>
+</div>
+
 <!-- ПРОФИЛЬ -->
 <div id="profile" class="tab-content">
     <div class="grid-2col">

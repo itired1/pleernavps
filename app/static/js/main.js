@@ -328,6 +328,7 @@ window.switchTab = function(tabName) {
     if (tabName === 'history' && typeof loadHistory === 'function') loadHistory();
     if (tabName === 'shop' && typeof loadShopItems === 'function') loadShopItems();
     if (tabName === 'stats' && typeof loadStats === 'function') loadStats();
+    if (tabName === 'radio' && typeof loadRadioStations === 'function') loadRadioStations();
 };
 
 let searchTimeout = null;
@@ -778,4 +779,161 @@ window.playAndSetQueue = function(trackId, playlist) {
     var idx = playlist.findIndex(function(t) { return t.id === trackId; });
     window.currentTrackIndex = idx >= 0 ? idx : 0;
     playTrack(trackId);
+};
+
+window.currentRadioService = 'yandex';
+window.currentRadioStation = null;
+window.radioTracks = [];
+
+window.selectRadioService = function(service) {
+    window.currentRadioService = service;
+    document.querySelectorAll('#radioServiceSelector .source-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.service === service);
+    });
+    loadRadioStations();
+};
+
+window.loadRadioStations = async function() {
+    document.getElementById('radioLoading').style.display = 'block';
+    document.getElementById('radioError').style.display = 'none';
+    document.getElementById('radioContent').style.display = 'none';
+    
+    try {
+        var data = await apiCall('radio/stations?service=' + window.currentRadioService);
+        
+        if (data.error) {
+            document.getElementById('radioErrorText').textContent = data.error;
+            document.getElementById('radioLoading').style.display = 'none';
+            document.getElementById('radioError').style.display = 'block';
+            return;
+        }
+        
+        displayRadioStations(data.categories || []);
+        
+        document.getElementById('radioLoading').style.display = 'none';
+        document.getElementById('radioContent').style.display = 'block';
+    } catch (error) {
+        console.error('Load radio stations error:', error);
+        document.getElementById('radioErrorText').textContent = 'Ошибка загрузки станций';
+        document.getElementById('radioLoading').style.display = 'none';
+        document.getElementById('radioError').style.display = 'block';
+    }
+};
+
+function displayRadioStations(categories) {
+    var container = document.getElementById('radioStationsList');
+    var html = '';
+    
+    categories.forEach(function(category) {
+        html += '<div style="margin-bottom: 24px;">' +
+            '<h4 style="margin-bottom: 12px; color: var(--text-secondary);">' + escapeHtml(category.name) + '</h4>' +
+            '<div class="services-grid" style="gap: 12px;">';
+        
+        category.stations.forEach(function(station) {
+            var cover = station.cover_uri 
+                ? '<img src="' + station.cover_uri + '" alt="" style="width: 100%; height: 100%; object-fit: cover;">'
+                : '<i class="fas fa-radio" style="font-size: 2rem; color: #fff;"></i>';
+            
+            html += '<div class="glass-card" onclick="startRadio(\'' + station.station_id + '\', \'' + escapeHtml(station.name || '').replace(/'/g, "\\'") + '\', \'' + (station.cover_uri || '').replace(/'/g, "\\'") + '\')" ' +
+                'style="cursor: pointer; text-align: center; padding: 16px; transition: transform 0.2s, box-shadow 0.2s;" ' +
+                'onmouseenter="this.style.transform=\'scale(1.05)\'; this.style.boxShadow=\'0 8px 32px rgba(99,102,241,0.3)\';" ' +
+                'onmouseleave="this.style.transform=\'scale(1)\'; this.style.boxShadow=\'none\';">' +
+                '<div style="width: 80px; height: 80px; border-radius: 12px; background: var(--accent); margin: 0 auto 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">' + cover + '</div>' +
+                '<h5 style="margin: 0 0 4px; font-size: 14px;">' + escapeHtml(station.name || 'Станция') + '</h5>' +
+                '<p style="margin: 0; font-size: 12px; color: var(--text-muted);">' + escapeHtml(station.description || '') + '</p>' +
+                '</div>';
+        });
+        
+        html += '</div></div>';
+    });
+    
+    if (!html) {
+        html = '<p style="text-align: center; color: var(--text-muted); padding: 40px;">Станции не найдены. Настройте токен Яндекс.Музыки в профиле.</p>';
+    }
+    
+    container.innerHTML = html;
+}
+
+window.startRadio = async function(stationId, stationName, coverUri) {
+    try {
+        document.getElementById('radioNowPlaying').style.display = 'block';
+        document.getElementById('radioStationName').textContent = stationName;
+        
+        if (coverUri) {
+            document.getElementById('radioStationCover').innerHTML = '<img src="' + coverUri + '" alt="" style="width: 100%; height: 100%; object-fit: cover;">';
+        }
+        
+        window.currentRadioStation = {
+            id: stationId,
+            name: stationName,
+            cover: coverUri
+        };
+        
+        await loadMoreRadioTracks();
+        
+    } catch (error) {
+        console.error('Start radio error:', error);
+        showNotification('Ошибка запуска радио', 'error');
+    }
+};
+
+window.loadMoreRadioTracks = async function() {
+    if (!window.currentRadioStation) return;
+    
+    try {
+        var data = await apiCall('radio/tracks?service=' + window.currentRadioService + '&station_id=' + encodeURIComponent(window.currentRadioStation.id));
+        
+        if (data.tracks && data.tracks.length > 0) {
+            window.radioTracks = window.radioTracks.concat(data.tracks);
+            updateRadioQueue();
+        }
+    } catch (error) {
+        console.error('Load radio tracks error:', error);
+    }
+};
+
+function updateRadioQueue() {
+    if (window.radioTracks.length > 0) {
+        var nextTrack = window.radioTracks[0];
+        document.getElementById('radioTrackInfo').textContent = escapeHtml(nextTrack.title) + ' - ' + escapeHtml(nextTrack.artist);
+        
+        window.currentSource = 'radio';
+        window.currentSourceTracks = window.radioTracks;
+        window.queue = window.radioTracks.slice();
+        
+        playTrack(nextTrack.id);
+        
+        window.radioTracks.shift();
+        
+        if (window.radioTracks.length < 5) {
+            loadMoreRadioTracks();
+        }
+    }
+}
+
+window.skipRadioTrack = function() {
+    if (window.radioTracks.length > 0) {
+        var nextTrack = window.radioTracks[0];
+        document.getElementById('radioTrackInfo').textContent = escapeHtml(nextTrack.title) + ' - ' + escapeHtml(nextTrack.artist);
+        
+        playTrack(nextTrack.id);
+        
+        window.radioTracks.shift();
+        
+        if (window.radioTracks.length < 5) {
+            loadMoreRadioTracks();
+        }
+    } else {
+        loadMoreRadioTracks();
+    }
+};
+
+window.stopRadio = function() {
+    window.currentRadioStation = null;
+    window.radioTracks = [];
+    document.getElementById('radioNowPlaying').style.display = 'none';
+    
+    if (window.audioPlayer) {
+        window.audioPlayer.pause();
+    }
 };
