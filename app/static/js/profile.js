@@ -169,3 +169,100 @@ if (profileForm) {
 if (document.getElementById('profileDisplayName')) {
     loadProfileData();
 }
+
+window.openProfileCustomize = async function() {
+    openModal('profileCustomizeModal');
+    
+    document.getElementById('profileCustomizeLoading').style.display = 'block';
+    document.getElementById('profileCustomizeContent').style.display = 'none';
+    
+    try {
+        const inventory = await apiCall('shop/inventory');
+        const profile = await apiCall('profile');
+        
+        const badges = (inventory || []).filter(function(item) { return item.data && item.data.type === 'badge'; });
+        const frames = (inventory || []).filter(function(item) { return item.data && item.data.type === 'frame'; });
+        const themes = (inventory || []).filter(function(item) { return item.data && item.data.type === 'theme'; });
+        
+        let equippedBadge = profile.local?.equipped_badge;
+        let equippedFrame = profile.local?.equipped_frame;
+        let equippedTheme = profile.local?.equipped_theme;
+        
+        document.getElementById('badgeList').innerHTML = renderCustomizeItems(badges, 'badge', equippedBadge);
+        document.getElementById('frameList').innerHTML = renderCustomizeItems(frames, 'frame', equippedFrame);
+        document.getElementById('themeList').innerHTML = renderCustomizeItems(themes, 'theme', equippedTheme);
+        
+        document.getElementById('profileCustomizeLoading').style.display = 'none';
+        document.getElementById('profileCustomizeContent').style.display = 'block';
+    } catch (error) {
+        console.error('Load customize error:', error);
+        showNotification('Ошибка загрузки', 'error');
+    }
+};
+
+function renderCustomizeItems(items, type, equippedId) {
+    if (!items.length) {
+        return '<p style="color: var(--text-muted); font-size: 13px;">Нет купленных предметов</p>';
+    }
+    
+    let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+    
+    items.forEach(function(item) {
+        const isEquipped = item.item_id === equippedId;
+        let preview = '';
+        
+        if (type === 'badge') {
+            const icon = item.data.icon || 'fa-star';
+            const color = item.data.color || '#ffd700';
+            preview = '<i class="fas ' + icon + '" style="font-size: 24px; color: ' + color + ';"></i>';
+        } else if (type === 'frame') {
+            const color = item.data.color || '#ffd700';
+            preview = '<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid ' + color + '; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="font-size: 16px;"></i></div>';
+        } else if (type === 'theme') {
+            const accent = item.data.accent || '#6366f1';
+            preview = '<div style="width: 40px; height: 40px; border-radius: 8px; background: ' + accent + '; box-shadow: 0 0 10px ' + accent + ';"></div>';
+        }
+        
+        html += '<div onclick="equipCustomizeItem(\'' + item.item_id + '\', \'' + type + '\')" ' +
+            'style="width: 60px; height: 60px; background: var(--bg-elevated); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid ' + (isEquipped ? 'var(--accent)' : 'transparent') + '; transition: all 0.2s;" ' +
+            'title="' + escapeHtml(item.data.name || item.item_id) + '">' +
+            preview +
+            '</div>';
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+window.equipCustomizeItem = async function(itemId, type) {
+    try {
+        let result;
+        if (type === 'badge') {
+            result = await apiCall('shop/equip-badge', {
+                method: 'POST',
+                body: JSON.stringify({ badge_id: itemId })
+            });
+        } else if (type === 'frame') {
+            result = await apiCall('shop/equip-frame', {
+                method: 'POST',
+                body: JSON.stringify({ frame_id: itemId })
+            });
+        } else if (type === 'theme') {
+            result = await apiCall('shop/equip-theme', {
+                method: 'POST',
+                body: JSON.stringify({ theme_id: itemId })
+            });
+        }
+        
+        if (result && result.success) {
+            showNotification('Изменения сохранены', 'success');
+            openProfileCustomize();
+            loadProfileData();
+        } else {
+            showNotification(result.message || 'Ошибка', 'error');
+        }
+    } catch (error) {
+        console.error('Equip error:', error);
+        showNotification('Ошибка', 'error');
+    }
+};

@@ -394,6 +394,7 @@ def api_profile():
     if user:
         return jsonify({
             'local': {
+                'id': user.id,
                 'username': user.username,
                 'display_name': user.display_name,
                 'email': user.email,
@@ -405,7 +406,10 @@ def api_profile():
                 'soundcloud_proxy': user.soundcloud_proxy or '',
                 'current_source': user.current_source or 'yandex',
                 'created_at': user.created_at.isoformat(),
-                'is_admin': user.is_admin
+                'is_admin': user.is_admin,
+                'equipped_badge': user.equipped_badge,
+                'equipped_frame': user.equipped_frame,
+                'equipped_theme': user.equipped_theme
             },
             'yandex': yandex_info,
             'vk': vk_info
@@ -1888,6 +1892,59 @@ def get_active_banner():
         data['inventory_id'] = inv.id
         return jsonify(data)
     return jsonify(None)
+
+@app.route('/api/shop/equip-badge', methods=['POST'])
+@login_required
+def equip_badge():
+    data = request.get_json()
+    badge_id = data.get('badge_id')
+    user = db.session.get(User, session['user_id'])
+    
+    if badge_id:
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=badge_id, data__contains='badge').first()
+        if not inv:
+            return jsonify({'success': False, 'message': 'Значок не куплен'}), 400
+    else:
+        inv = None
+    
+    user.equipped_badge = badge_id if badge_id else None
+    db.session.commit()
+    
+    return jsonify({'success': True, 'equipped_badge': user.equipped_badge})
+
+@app.route('/api/shop/equip-frame', methods=['POST'])
+@login_required
+def equip_frame():
+    data = request.get_json()
+    frame_id = data.get('frame_id')
+    user = db.session.get(User, session['user_id'])
+    
+    if frame_id:
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=frame_id, data__contains='frame').first()
+        if not inv:
+            return jsonify({'success': False, 'message': 'Рамка не куплена'}), 400
+    
+    user.equipped_frame = frame_id if frame_id else None
+    db.session.commit()
+    
+    return jsonify({'success': True, 'equipped_frame': user.equipped_frame})
+
+@app.route('/api/shop/equip-theme', methods=['POST'])
+@login_required
+def equip_theme():
+    data = request.get_json()
+    theme_id = data.get('theme_id')
+    user = db.session.get(User, session['user_id'])
+    
+    if theme_id:
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=theme_id, data__contains='theme').first()
+        if not inv:
+            return jsonify({'success': False, 'message': 'Тема не куплена'}), 400
+    
+    user.equipped_theme = theme_id if theme_id else None
+    db.session.commit()
+    
+    return jsonify({'success': True, 'equipped_theme': user.equipped_theme})
 
 @socketio.on('connect')
 def handle_connect():
