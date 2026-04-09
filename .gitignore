@@ -1,17 +1,36 @@
-﻿node_modules
-src-tauri/target
-__pycache__
-*.pyc
-.env
-*.db
-logs
-instance
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
 *.log
 *.pdb
-*.d
-*.rlib
-*.rmeta
-*.dll
-*.dll.exp
-*.dll.lib
-*.msi
+
+# Environment
+.env
+.env.*
+
+# Database
+*.db
+instance/
+
+# Node
+node_modules/
+
+# Logs
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tauri
+src-tauri/target/
+
+# Build
+dist/
+build/
+*.exe

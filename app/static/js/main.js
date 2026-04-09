@@ -332,6 +332,21 @@ window.switchTab = function(tabName) {
 };
 
 let searchTimeout = null;
+window.currentSearchService = 'all';
+
+window.setSearchService = function(service) {
+    if (service === 'soundcloud') {
+        showNotification('SoundCloud временно недоступен', 'warning');
+        return;
+    }
+    window.currentSearchService = service;
+    document.querySelectorAll('.search-service-selector .source-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.service === service);
+    });
+    if (document.getElementById('globalSearch').value.trim().length >= 2) {
+        performSearch();
+    }
+};
 
 window.performSearch = async function() {
     var query = document.getElementById('globalSearch');
@@ -344,7 +359,12 @@ window.performSearch = async function() {
     showSearchLoading();
     
     try {
-        var results = await apiCall('search?q=' + encodeURIComponent(query));
+        var service = window.currentSearchService || 'all';
+        var apiUrl = 'search?q=' + encodeURIComponent(query);
+        if (service !== 'all') {
+            apiUrl += '&services=' + service;
+        }
+        var results = await apiCall(apiUrl);
         displaySearchDropdown(results);
     } catch (error) {
         console.error('Search error:', error);
@@ -356,13 +376,14 @@ function showSearchLoading() {
     var dropdown = document.getElementById('searchDropdown');
     if (!dropdown) return;
     dropdown.style.display = 'block';
-    dropdown.innerHTML = '<div class="search-loading"><i class="fas fa-spinner fa-spin"></i> Поиск...</div>';
+    dropdown.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size: 20px; margin-bottom: 8px;"></i><br><span style="font-size: 13px;">Поиск...</span></div>';
 }
 
-function showSearchEmpty() {
+function showSearchEmpty(message) {
     var dropdown = document.getElementById('searchDropdown');
     if (!dropdown) return;
-    dropdown.innerHTML = '<div class="search-no-results"><i class="fas fa-search"></i>Ничего не найдено</div>';
+    var msg = message || 'Ничего не найдено';
+    dropdown.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);"><i class="fas fa-search" style="font-size: 20px; margin-bottom: 8px;"></i><br><span style="font-size: 13px;">' + msg + '</span></div>';
 }
 
 function hideSearchDropdown() {
@@ -382,31 +403,37 @@ function displaySearchDropdown(results) {
         return;
     }
     
+    tracks = tracks.filter(function(t) { return t.service !== 'soundcloud'; });
+    
+    if (!tracks.length) {
+        showSearchEmpty('SoundCloud временно недоступен');
+        return;
+    }
+    
     var html = '';
     
-    html += '<div class="search-section">Результаты</div>';
+    html += '<div style="padding: 8px 12px; background: var(--bg-elevated); border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">' +
+        '<span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Результаты (' + tracks.length + ')</span>' +
+        '<span style="font-size: 11px; color: var(--accent); cursor: pointer;" onclick="document.getElementById(\'globalSearch\').value=\'' + escapeHtml(query) + '\'; performFullSearch(); hideSearchDropdown();">Все →</span>' +
+        '</div>';
     
-    tracks.slice(0, 8).forEach(function(t) {
+    tracks.slice(0, 6).forEach(function(t) {
         var artistsText = t.artists ? (Array.isArray(t.artists) ? t.artists.join(', ') : t.artists) : (t.artist || '');
+        var serviceIcon = t.service === 'soundcloud' ? '<i class="fab fa-soundcloud" style="color: #ff5500; font-size: 10px;"></i> ' : '';
         var cover = t.cover_uri 
-            ? '<img src="' + t.cover_uri + '" alt="" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">'
-            : '<div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-music" style="color: #fff; font-size: 12px;"></i></div>';
+            ? '<img src="' + t.cover_uri + '" alt="" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">'
+            : '<div style="width: 40px; height: 40px; background: var(--bg-elevated); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-music" style="color: var(--text-muted); font-size: 14px;"></i></div>';
         
-        html += '<div class="search-item" onclick="playTrack(\'' + t.id + '\'); hideSearchDropdown();">' +
+        html += '<div class="search-item" style="padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.15s; border-radius: 0;" onmouseover="this.style.background=\'var(--bg-elevated)\'" onmouseout="this.style.background=\'transparent\'" onclick="playTrack(\'' + t.id + '\'); hideSearchDropdown();">' +
             cover +
-            '<div class="search-item-info">' +
-            '<div class="search-item-title">' + escapeHtml(t.title) + '</div>' +
-            '<div class="search-item-artist">' + escapeHtml(artistsText) + '</div>' +
+            '<div style="flex: 1; min-width: 0;">' +
+            '<div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">' + serviceIcon + escapeHtml(t.title) + '</div>' +
+            '<div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</div>' +
             '</div>' +
-            '<div class="search-item-actions">' +
-            '<button onclick="event.stopPropagation(); addToQueue(\'' + t.id + '\')" title="В очередь"><i class="fas fa-list"></i></button>' +
-            '</div>' +
+            '<button onclick="event.stopPropagation(); addToQueue(\'' + t.id + '\')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;" title="В очередь"><i class="fas fa-plus"></i></button>' +
+            '<button onclick="event.stopPropagation(); showAddToPlaylistModal(' + JSON.stringify(t).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;" title="В плейлист"><i class="fas fa-list-plus"></i></button>' +
             '</div>';
     });
-    
-    if (tracks.length > 8) {
-        html += '<div class="search-more" onclick="document.getElementById(\'globalSearch\').value=\'' + escapeHtml(query) + '\'; performFullSearch(); hideSearchDropdown();">Ещё ' + (tracks.length - 8) + ' результатов →</div>';
-    }
     
     dropdown.innerHTML = html;
 }
@@ -421,7 +448,13 @@ function performFullSearch() {
         grid.innerHTML = '<div class="glass-card" style="padding: 40px; text-align: center;"><i class="fas fa-spinner fa-spin"></i></div>';
     }
     
-    apiCall('search?q=' + encodeURIComponent(query)).then(function(results) {
+    var service = window.currentSearchService || 'all';
+    var apiUrl = 'search?q=' + encodeURIComponent(query);
+    if (service !== 'all') {
+        apiUrl += '&services=' + service;
+    }
+    
+    apiCall(apiUrl).then(function(results) {
         displaySearchResults(results);
     }).catch(function(error) {
         console.error('Search error:', error);
@@ -729,6 +762,9 @@ function createTrackItemHTML(track, isFavorite, timeAgo) {
         timeAgoHtml +
         '<button class="like-btn ' + likedClass + '" onclick="event.stopPropagation(); toggleFavorite(\'' + trackId + '\', JSON.parse(\'' + JSON.stringify(track).replace(/'/g, "\\'") + '\'))" style="background: none; border: none; color: var(--accent); font-size: 18px; cursor: pointer; padding: 8px;">' +
         '<i class="' + heartIcon + '"></i>' +
+        '</button>' +
+        '<button onclick="event.stopPropagation(); showAddToPlaylistModal(' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 8px;" title="В плейлист">' +
+        '<i class="fas fa-list-plus"></i>' +
         '</button>' +
         '<div class="track-duration">' + duration + '</div>' +
         '<button class="play-item-btn" onclick="playTrack(\'' + trackId + '\')" style="background: none; border: none; color: var(--text); font-size: 18px; cursor: pointer; padding: 8px;">' +

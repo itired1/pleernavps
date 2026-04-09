@@ -17,6 +17,8 @@ class User(db.Model):
     yandex_uid = db.Column(db.String(50))
     vk_token = db.Column(db.String(500))
     soundcloud_token = db.Column(db.String(500))
+    soundcloud_client_id = db.Column(db.String(200))
+    soundcloud_proxy = db.Column(db.String(500))
     current_source = db.Column(db.String(20), default='yandex')
     discord_webhook = db.Column(db.String(500))
     discord_enabled = db.Column(db.Boolean, default=False)
@@ -26,6 +28,7 @@ class User(db.Model):
     verification_code_expires = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
     currency = db.relationship('UserCurrency', backref='user', uselist=False)
     inventory = db.relationship('UserInventory', backref='user')

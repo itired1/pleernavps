@@ -190,6 +190,29 @@
                     </label>
                     <input type="password" id="yandex_token" placeholder="Вставьте токен">
                 </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fab fa-soundcloud"></i> SoundCloud
+                            <i id="soundcloudCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
+                            <i id="soundcloudError" class="fas fa-exclamation-triangle" style="color: #ff6b6b; display: none;" title="Не настроен"></i>
+                        </span>
+                        <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openModal('soundcloudInfoModal')">
+                            <i class="fas fa-question-circle"></i> Инфо
+                        </button>
+                    </label>
+                    <div style="font-size: 12px; color: var(--text-muted); padding: 8px; background: var(--bg-elevated); border-radius: 8px;">
+                        <i class="fas fa-info-circle"></i> Настройка через .env файл на сервере. Прокси: <span id="soundcloudProxyStatus">Проверка...</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>SoundCloud Client ID</label>
+                    <input type="text" id="soundcloud_client_id" placeholder="Вставьте Client ID из SoundCloud">
+                </div>
+                <div class="form-group">
+                    <label>SoundCloud Прокси</label>
+                    <input type="text" id="soundcloud_proxy" placeholder="http://ip:port (оставьте пустым если не нужен)">
+                </div>
                 <!-- VK temporarily disabled
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
@@ -269,15 +292,83 @@
                 <span id="userBalance">0</span> монет
             </div>
         </div>
-        <div class="categories-nav" style="margin: 16px 0;">
+        <div class="categories-nav" style="margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="cat-chip active" data-category="all">Все</button>
             <button class="cat-chip" data-category="banner">Баннеры</button>
-            <button class="cat-chip" data-category="inventory">Мои предметы</button>
+            <button class="cat-chip" data-category="badge">Значки</button>
+            <button class="cat-chip" data-category="frame">Рамки</button>
+            <button class="cat-chip" data-category="theme">Темы</button>
+            <button class="cat-chip" data-category="inventory" style="margin-left: auto;">Мои предметы</button>
         </div>
         <div id="shopItemsList" class="services-grid"></div>
         <div id="inventoryList" style="display: none; margin-top: 24px;">
             <h4 style="margin-bottom: 12px;"><i class="fas fa-box"></i> Мои купленные предметы</h4>
             <div id="inventoryItems"></div>
+        </div>
+    </div>
+</div>
+
+<!-- АДМИНКА -->
+<div id="admin" class="tab-content" style="display: none;">
+    <div class="glass-card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <h3><i class="fas fa-shield-alt" style="color: var(--accent);"></i> Админ-панель</h3>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px;">
+            <div class="glass-card" style="padding: 16px; text-align: center; background: var(--bg-elevated);">
+                <div style="font-size: 32px; font-weight: 700; color: var(--accent);" id="adminTotalUsers">0</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Всего пользователей</div>
+            </div>
+            <div class="glass-card" style="padding: 16px; text-align: center; background: var(--bg-elevated);">
+                <div style="font-size: 32px; font-weight: 700; color: #2ed573;" id="adminOnlineUsers">0</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Онлайн сейчас</div>
+            </div>
+            <div class="glass-card" style="padding: 16px; text-align: center; background: var(--bg-elevated);">
+                <div style="font-size: 32px; font-weight: 700; color: #ffd700;" id="adminTotalCoins">0</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Всего монет</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="glass-card">
+            <h3 style="margin-bottom: 16px;"><i class="fas fa-coins"></i> Управление монетами</h3>
+            <div class="form-group">
+                <label>ID пользователя</label>
+                <input type="number" id="adminCoinUserId" placeholder="Введите ID пользователя">
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="number" id="adminCoinAmount" placeholder="Сумма" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text);">
+                <button onclick="adminAddCoins()" class="btn-primary" style="padding: 10px 16px;"><i class="fas fa-plus"></i></button>
+                <button onclick="adminRemoveCoins()" class="glass-btn" style="padding: 10px 16px; color: #ff6b6b;"><i class="fas fa-minus"></i></button>
+            </div>
+        </div>
+        
+        <div class="glass-card">
+            <h3 style="margin-bottom: 16px;"><i class="fas fa-store"></i> Управление магазином</h3>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="adminShopItemId" placeholder="ID предмета" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text);">
+                <button onclick="adminRemoveShopItem()" class="glass-btn" style="padding: 10px 16px; color: #ff6b6b;"><i class="fas fa-trash"></i></button>
+            </div>
+            <button onclick="adminLoadShopItems()" class="glass-btn" style="width: 100%;"><i class="fas fa-list"></i> Список предметов</button>
+            <div id="adminShopList" style="max-height: 200px; overflow-y: auto; margin-top: 12px;"></div>
+        </div>
+    </div>
+    
+    <div class="glass-card" style="margin-top: 16px;">
+        <h3 style="margin-bottom: 16px;"><i class="fas fa-users"></i> Пользователи</h3>
+        <div style="max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="padding: 8px; text-align: left;">ID</th>
+                        <th style="padding: 8px; text-align: left;">Имя</th>
+                        <th style="padding: 8px; text-align: left;">Баланс</th>
+                        <th style="padding: 8px; text-align: left;">Статус</th>
+                    </tr>
+                </thead>
+                <tbody id="adminUsersList"></tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -386,6 +477,38 @@
             </div>
         </div>
         <button class="btn-primary" style="width: 100%;" onclick="closeModal('soundcloudTokenModal')">Понятно</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА ИНФО SOUNDCLOUD -->
+<div id="soundcloudInfoModal" class="modal">
+    <div class="glass-card modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fab fa-soundcloud" style="color: #ff5500;"></i> SoundCloud</h3>
+            <div class="modal-close" onclick="closeModal('soundcloudInfoModal')">
+                <i class="fas fa-xmark"></i>
+            </div>
+        </div>
+        <div style="padding: 8px 0;">
+            <div style="padding: 16px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i id="scStatusIcon" class="fas fa-check-circle" style="font-size: 24px; color: #2ed573;"></i>
+                    <div>
+                        <div style="font-weight: 600;">Статус: <span id="scStatusText">Настроен</span></div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Поиск и воспроизведение работают</div>
+                    </div>
+                </div>
+            </div>
+            <h4 style="color: var(--accent); margin-bottom: 12px;">Настройка через .env:</h4>
+            <div style="background: var(--bg-elevated); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; margin-bottom: 12px;">
+                SOUNDCLOUD_CLIENT_ID=ваш_id<br>
+                SOUNDCLOUD_PROXY=http://ip:port
+            </div>
+            <p style="color: var(--text-secondary); font-size: 13px;">
+                <i class="fas fa-info-circle"></i> Для работы SoundCloud в России требуется прокси-сервер.
+            </p>
+        </div>
+        <button class="btn-primary" style="width: 100%;" onclick="closeModal('soundcloudInfoModal')">Закрыть</button>
     </div>
 </div>
 

@@ -3,14 +3,45 @@ let userBalance = 0;
 let userInventory = [];
 
 const DEFAULT_BANNERS = [
-    { id: 'banner_1', name: 'Неоновый закат', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz.jpg' } },
-    { id: 'banner_2', name: 'Космос', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/xz1.jpg' } },
-    { id: 'banner_3', name: 'Лесной туман', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz2.jpg' } },
-    { id: 'banner_4', name: 'Крутой GIF', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/kruto.gif' } },
-    { id: 'banner_5', name: 'Дракон', type: 'banner', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/dragon.gif' } },
-    { id: 'banner_6', name: 'Крутой 2', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/kruto1.gif' } },
-    { id: 'banner_7', name: 'Крутой 3', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/kruto2.gif' } },
-    { id: 'banner_8', name: 'Крутой 4', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/kruto3.gif' } },
+    { id: 'banner_zero_kiryu', name: 'Zero Kiryu', type: 'banner', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/zero-kiryu.gif' } },
+    { id: 'banner_samurai_jin', name: 'Jin (Samurai Champloo)', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/samurai-jin.gif' } },
+    { id: 'banner_undertaker', name: 'Undertaker', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/undertaker.gif' } },
+    { id: 'banner_anime_vibe', name: 'Anime Vibe', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/anime-vibe.gif' } },
+    { id: 'banner_1', name: 'Anime Mix #1', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_8585.gif' } },
+    { id: 'banner_2', name: 'Anime Mix #2', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_3106.gif' } },
+    { id: 'banner_3', name: 'One Piece', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9454.gif' } },
+    { id: 'banner_4', name: 'Demon Slayer', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_5912.gif' } },
+    { id: 'banner_5', name: 'Attack on Titan', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_4868.gif' } },
+    { id: 'banner_6', name: 'Bleach', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9862.gif' } },
+    { id: 'banner_7', name: 'Tokyo Ghoul', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/banner_5584.gif' } },
+    { id: 'banner_8', name: 'Anime Vibes', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/banner_4277.gif' } },
+    { id: 'banner_9', name: 'Dark Anime', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/banner_5545.gif' } },
+    { id: 'banner_10', name: 'Anime Legend', type: 'banner', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/banner_9518.gif' } },
+];
+
+const DEFAULT_BADGES = [
+    { id: 'badge_vip', name: 'VIP', type: 'badge', price: 500, rarity: 'legendary', data: { icon: 'fa-crown', color: '#ffd700' } },
+    { id: 'badge_early', name: 'Early Bird', type: 'badge', price: 300, rarity: 'rare', data: { icon: 'fa-rocket', color: '#f97316' } },
+    { id: 'badge_meloman', name: 'Меломан', type: 'badge', price: 200, rarity: 'epic', data: { icon: 'fa-music', color: '#ec4899' } },
+    { id: 'badge_contributor', name: 'Контрибьютор', type: 'badge', price: 400, rarity: 'legendary', data: { icon: 'fa-code', color: '#22c55e' } },
+    { id: 'badge_verified', name: 'Верифицирован', type: 'badge', price: 1000, rarity: 'legendary', data: { icon: 'fa-check-circle', color: '#3b82f6' } },
+];
+
+const DEFAULT_FRAMES = [
+    { id: 'frame_gold', name: 'Золотая рамка', type: 'frame', price: 250, rarity: 'epic', data: { color: '#ffd700' } },
+    { id: 'frame_rainbow', name: 'Радужная', type: 'frame', price: 350, rarity: 'legendary', data: { color: 'linear-gradient(45deg, red, orange, yellow, green, blue, purple)' } },
+    { id: 'frame_fire', name: 'Огненная', type: 'frame', price: 300, rarity: 'epic', data: { color: 'linear-gradient(45deg, #ff6b00, #ff0000)' } },
+    { id: 'frame_ice', name: 'Ледяная', type: 'frame', price: 300, rarity: 'epic', data: { color: 'linear-gradient(45deg, #00bfff, #00ffff)' } },
+    { id: 'frame_neon', name: 'Неон', type: 'frame', price: 200, rarity: 'rare', data: { color: '#bf00ff' } },
+];
+
+const DEFAULT_THEMES = [
+    { id: 'theme_purple', name: 'Фиолетовая', type: 'theme', price: 150, rarity: 'common', data: { accent: '#6366f1' } },
+    { id: 'theme_green', name: 'Зелёная', type: 'theme', price: 150, rarity: 'common', data: { accent: '#22c55e' } },
+    { id: 'theme_orange', name: 'Оранжевая', type: 'theme', price: 150, rarity: 'common', data: { accent: '#f97316' } },
+    { id: 'theme_red', name: 'Красная', type: 'theme', price: 150, rarity: 'common', data: { accent: '#ef4444' } },
+    { id: 'theme_gold', name: 'Золотая', type: 'theme', price: 250, rarity: 'rare', data: { accent: '#eab308' } },
+    { id: 'theme_pink', name: 'Розовая', type: 'theme', price: 200, rarity: 'epic', data: { accent: '#ec4899' } },
 ];
 
 async function loadShopItems() {
@@ -42,7 +73,7 @@ async function loadShopItems() {
         userInventory = [];
     }
     
-    shopItems = DEFAULT_BANNERS;
+    shopItems = [...DEFAULT_BANNERS, ...DEFAULT_BADGES, ...DEFAULT_FRAMES, ...DEFAULT_THEMES];
     displayShopItems();
 }
 
@@ -70,7 +101,7 @@ function displayShopItems(category) {
         return;
     }
     
-    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">';
+    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">';
     filteredItems.forEach(function(item) {
         const rarityColors = {
             common: '#9ca3af',
@@ -82,16 +113,34 @@ function displayShopItems(category) {
         const owned = userInventory.some(function(inv) { return inv.item_id === item.id; });
         const canAfford = userBalance >= item.price;
         
-        html += '<div style="background: var(--bg-elevated); border: 2px solid ' + rarityColor + '; border-radius: 12px; overflow: hidden; cursor: pointer;" onclick="openShopItemModal(\'' + item.id + '\')">' +
-            '<div style="height: 140px; overflow: hidden; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;">' +
-            '<img src="' + (item.data.image || '/static/shop/banners/xz.jpg') + '" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display=\'none\'">' +
+        let previewContent = '';
+        if (item.type === 'badge') {
+            const icon = item.data.icon || 'fa-star';
+            const color = item.data.color || '#ffd700';
+            previewContent = '<i class="fas ' + icon + '" style="font-size: 48px; color: ' + color + ';"></i>';
+        } else if (item.type === 'frame') {
+            const frameColor = item.data.color || '#ffd700';
+            previewContent = '<div style="width: 60px; height: 60px; border-radius: 50%; border: 6px solid ' + frameColor + '; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="font-size: 28px; color: var(--text);"></i></div>';
+        } else if (item.type === 'theme') {
+            const accent = item.data.accent || '#6366f1';
+            previewContent = '<div style="display: flex; gap: 8px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-secondary);"></div><div style="width: 40px; height: 40px; border-radius: 50%; background: ' + accent + '; box-shadow: 0 0 20px ' + accent + ';"></div></div>';
+        } else {
+            previewContent = '<img src="' + (item.data.image || '/static/shop/banners/xz.jpg') + '" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display=\'none\'">';
+        }
+        
+        const typeLabels = { banner: 'Баннер', badge: 'Значок', frame: 'Рамка', theme: 'Тема' };
+        
+        html += '<div style="background: var(--bg-elevated); border: 2px solid ' + rarityColor + '; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform=\'scale(1.02)\'" onmouseout="this.style.transform=\'scale(1)\'" onclick="openShopItemModal(\'' + item.id + '\')">' +
+            '<div style="height: 100px; overflow: hidden; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;">' +
+            previewContent +
             '</div>' +
-            '<div style="padding: 12px;">' +
-            '<h4 style="margin: 0 0 4px; font-size: 14px;">' + escapeHtml(item.name) + '</h4>' +
-            '<span style="font-size: 11px; color: ' + rarityColor + '; text-transform: uppercase; font-weight: bold;">' + item.rarity + '</span>';
+            '<div style="padding: 10px;">' +
+            '<div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">' + (typeLabels[item.type] || item.type) + '</div>' +
+            '<h4 style="margin: 0 0 4px; font-size: 13px;">' + escapeHtml(item.name) + '</h4>' +
+            '<span style="font-size: 10px; color: ' + rarityColor + '; text-transform: uppercase; font-weight: bold;">' + item.rarity + '</span>';
         
         if (owned) {
-            html += '<div style="margin-top: 8px; color: #2ed573; font-size: 12px;"><i class="fas fa-check-circle"></i> Куплено</div>';
+            html += '<div style="margin-top: 8px; color: #2ed573; font-size: 11px;"><i class="fas fa-check-circle"></i> Куплено</div>';
         } else {
             html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">' +
                 '<span style="color: ' + (canAfford ? 'var(--accent)' : '#ff6b6b') + '; font-weight: 600;"><i class="fas fa-coins"></i> ' + item.price + '</span>' +

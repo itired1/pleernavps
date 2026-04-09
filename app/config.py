@@ -24,7 +24,13 @@ class Config:
 
     # SoundCloud Proxy (если заблокирован в России)
     # Формат: 'http://user:pass@host:port' или 'http://host:port'
+    # Client ID теперь указывается каждым пользователем в профиле
+    SOUNDCLOUD_CLIENT_ID = os.getenv('SOUNDCLOUD_CLIENT_ID', '')
     SOUNDCLOUD_PROXY = os.getenv('SOUNDCLOUD_PROXY', None)
+    
+    # Cloudflare WARP
+    WARP_ENABLED = os.getenv('WARP_ENABLED', 'false').lower() == 'true'
+    WARP_PROXY = os.getenv('WARP_PROXY', 'socks5://127.0.0.1:40000')
 
     # Discord Rich Presence (Webhook для статуса)
     DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL', '')

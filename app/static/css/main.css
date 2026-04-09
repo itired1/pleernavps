@@ -1130,6 +1130,15 @@ body {
     font-size: 14px;
 }
 
+.search-service-selector .source-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.search-service-selector .source-btn i {
+    font-size: 14px;
+}
+
 .like-btn {
     transition: transform 0.2s, color 0.2s;
 }
@@ -1153,6 +1162,15 @@ body {
 
 .track-item:hover .like-btn {
     opacity: 1;
+}
+
+.track-item:hover .fa-list-plus {
+    opacity: 1;
+}
+
+.fa-list-plus {
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
 .loading-screen {
@@ -1580,7 +1598,12 @@ body {
         position: fixed !important;
         left: 10px !important;
         right: 10px !important;
-        max-height: 50vh;
+        max-height: 60vh;
         width: auto !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+        overflow: hidden;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border) !important;
     }
 }

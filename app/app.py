@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, current_app, send_file
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, current_app, send_file, Response, stream_with_context
 import requests
 import re
 from config import Config
@@ -268,6 +268,9 @@ def login():
         if not user or not user.check_password(password):
             return render_template('auth.html', mode='login', error='Неверные данные')
         
+        user.last_seen = datetime.utcnow()
+        db.session.commit()
+        
         session.permanent = True
         session['user_id'] = user.id
         return redirect(url_for('index'))
@@ -340,9 +343,10 @@ def register():
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        db.session.add(UserCurrency(user_id=user.id, balance=500))
+        db.session.add(UserCurrency(user_id=user.id, balance=1500))
         db.session.add(UserSetting(user_id=user.id))
         db.session.commit()
+        add_currency(user.id, 0, f'Бонус за регистрацию: 1500 монет')
         
         session.pop('captcha_num1', None)
         session.pop('captcha_num2', None)
@@ -397,9 +401,11 @@ def api_profile():
                 'avatar_url': user.avatar_url,
                 'yandex_token_set': bool(user.yandex_token),
                 'vk_token_set': bool(user.vk_token),
-                'soundcloud_token_set': False,
+                'soundcloud_client_id_set': bool(user.soundcloud_client_id),
+                'soundcloud_proxy': user.soundcloud_proxy or '',
                 'current_source': user.current_source or 'yandex',
-                'created_at': user.created_at.isoformat()
+                'created_at': user.created_at.isoformat(),
+                'is_admin': user.is_admin
             },
             'yandex': yandex_info,
             'vk': vk_info
@@ -412,6 +418,9 @@ def profile_page():
     if request.method == 'POST':
         data = request.get_json()
         user = db.session.get(User, session['user_id'])
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'Пользователь не найден'}), 404
         
         if 'display_name' in data:
             user.display_name = data['display_name']
@@ -436,6 +445,12 @@ def profile_page():
                 db.session.commit()
                 return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
             return jsonify({'success': False, 'message': 'Неверный токен VK'})
+        if 'soundcloud_client_id' in data:
+            user.soundcloud_client_id = data['soundcloud_client_id'] or None
+        if 'soundcloud_proxy' in data:
+            user.soundcloud_proxy = data['soundcloud_proxy'] or None
+            if user.soundcloud_proxy:
+                session['soundcloud_proxy'] = user.soundcloud_proxy
         
         db.session.commit()
         return jsonify({'success': True, 'message': 'Профиль обновлён'})
@@ -687,13 +702,21 @@ def get_lyrics():
 @login_required
 def search():
     q = request.args.get('q', '')
-    services = request.args.getlist('services') or session.get('active_sources', ['yandex'])
+    services = request.args.getlist('services') or session.get('active_sources', ['yandex', 'vk', 'soundcloud'])
     
     if not q:
         return jsonify({'tracks': []})
     
     result = {'tracks': []}
     user = db.session.get(User, session['user_id'])
+    
+    if 'soundcloud' in services:
+        from utils import soundcloud_search
+        try:
+            sc_tracks = soundcloud_search(q, limit=15)
+            result['tracks'].extend(sc_tracks)
+        except Exception as e:
+            print(f"SoundCloud search error: {e}")
     
     if 'yandex' in services and user and user.yandex_token:
         client = get_yandex_client(user.yandex_token)
@@ -1094,6 +1117,56 @@ def playlist_tracks(playlist_id):
     
     return jsonify(tracks)
 
+@app.route('/api/playlists/<playlist_id>/delete', methods=['POST'])
+@login_required
+def delete_playlist(playlist_id):
+    if playlist_id.startswith('local_'):
+        local_id = int(playlist_id.replace('local_', ''))
+        playlist = db.session.get(Playlist, local_id)
+        if playlist and playlist.user_id == session['user_id']:
+            PlaylistTrack.query.filter_by(playlist_id=local_id).delete()
+            db.session.delete(playlist)
+            db.session.commit()
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    
+    return jsonify({'success': False, 'error': 'Удалить можно только локальные плейлисты'}), 400
+
+@app.route('/api/playlists/<playlist_id>/tracks', methods=['POST'])
+@login_required
+def add_track_to_playlist(playlist_id):
+    data = request.get_json()
+    track = data.get('track')
+    
+    if not track:
+        return jsonify({'success': False, 'error': 'Трек не указан'}), 400
+    
+    if playlist_id.startswith('local_'):
+        local_id = int(playlist_id.replace('local_', ''))
+        playlist = db.session.get(Playlist, local_id)
+        if not playlist or playlist.user_id != session['user_id']:
+            return jsonify({'success': False, 'error': 'Плейлист не найден'}), 404
+        
+        existing = db.session.query(PlaylistTrack).filter_by(
+            playlist_id=local_id, 
+            track_id=track.get('id', track.get('track_id', ''))
+        ).first()
+        
+        if existing:
+            return jsonify({'success': True, 'message': 'Трек уже в плейлисте'})
+        
+        pt = PlaylistTrack(
+            playlist_id=local_id,
+            track_id=track.get('id', track.get('track_id', '')),
+            track_data=json.dumps(track)
+        )
+        db.session.add(pt)
+        playlist.track_count = (playlist.track_count or 0) + 1
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    return jsonify({'success': False, 'error': 'Добавить можно только в локальные плейлисты'}), 400
+
 @app.route('/api/play_track/<track_id>')
 @login_required
 def play_track(track_id):
@@ -1145,86 +1218,107 @@ def play_track(track_id):
         
         return jsonify(result)
     
+    elif track_id.startswith('sc_'):
+        from utils import soundcloud_get_url
+        
+        track_info = soundcloud_get_url(track_id)
+        
+        if not track_info:
+            return jsonify({'error': 'SoundCloud недоступен. Проверьте Client ID и прокси.'}), 500
+        
+        stream_url = track_info.get('url', '')
+        
+        return jsonify({
+            'url': f'/api/stream/sc/{track_id}',
+            'title': track_info.get('title'),
+            'artist': track_info.get('artist'),
+            'service': 'soundcloud',
+            'stream_url': stream_url
+        })
+    
+    elif track_id.startswith('dz_'):
+        import requests
+        dz_id = track_id.replace('dz_', '')
+        
+        url = f'https://api.deezer.com/track/{dz_id}'
+        resp = requests.get(url, timeout=10)
+        
+        if resp.status_code == 200:
+            track = resp.json()
+        return jsonify({
+            'url': track.get('preview', ''),
+            'title': track.get('title', ''),
+            'artist': track.get('artist', {}).get('name', ''),
+            'cover': track.get('album', {}).get('cover_medium', ''),
+            'service': 'deezer',
+            'duration': track.get('duration', 0) * 1000
+        })
+        return jsonify({'error': 'Трек не найден'}), 404
+    
+    elif track_id.startswith('yt_'):
+        import requests
+        video_id = track_id.replace('yt_', '')
+        
+        try:
+            yt_url = f'https://yewtu.be/api/v1/videos/{video_id}'
+            resp = requests.get(yt_url, timeout=15)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                return jsonify({
+                    'url': data.get('adaptive_formats', [{}])[0].get('url', ''),
+                    'title': data.get('title', ''),
+                    'artist': data.get('artist', ''),
+                    'service': 'youtube'
+                })
+        except Exception as e:
+            print(f"YouTube error: {e}")
+        
+        return jsonify({'error': 'YouTube недоступен'}), 500
+    
     return jsonify({'error': 'Трек не найден', 'code': 'NOT_FOUND'}), 404
 
-@app.route('/api/friends')
+@app.route('/api/stream/sc/<track_id>')
 @login_required
-def friends_list():
-    user = db.session.get(User, session['user_id'])
-    friends = []
-    sent = db.session.query(Friend).filter_by(user_id=user.id).all()
-    received = db.session.query(Friend).filter_by(friend_id=user.id).all()
-    for f in sent:
-        other = db.session.get(User, f.friend_id)
-        if other:
-            friends.append({
-                'id': other.id,
-                'username': other.username,
-                'display_name': other.display_name,
-                'avatar_url': other.avatar_url,
-                'status': f.status,
-                'direction': 'outgoing'
-            })
-    for f in received:
-        other = db.session.get(User, f.user_id)
-        if other:
-            friends.append({
-                'id': other.id,
-                'username': other.username,
-                'display_name': other.display_name,
-                'avatar_url': other.avatar_url,
-                'status': f.status,
-                'direction': 'incoming'
-            })
-    return jsonify(friends)
-
-@app.route('/api/friends/add/<int:friend_id>', methods=['POST'])
-@login_required
-def add_friend(friend_id):
+def stream_soundcloud(track_id):
+    from utils import soundcloud_get_url
+    
+    track_info = soundcloud_get_url(track_id)
+    if not track_info or not track_info.get('url'):
+        return jsonify({'error': 'SoundCloud не настроен. Введите Client ID в профиле.'}), 500
+    
+    stream_url = track_info['url']
+    
     try:
-        user = db.session.get(User, session['user_id'])
-        if user.id == friend_id:
-            return jsonify({'success': False, 'message': 'Нельзя добавить себя'}), 400
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://soundcloud.com/',
+            'Origin': 'http://localhost:5001'
+        }
         
-        friend_user = db.session.get(User, friend_id)
-        if not friend_user:
-            return jsonify({'success': False, 'message': 'Пользователь не найден'}), 404
+        req = requests.get(stream_url, headers=headers, stream=True, timeout=60)
         
-        existing = db.session.query(Friend).filter(
-            ((Friend.user_id == user.id) & (Friend.friend_id == friend_id)) |
-            ((Friend.user_id == friend_id) & (Friend.friend_id == user.id))
-        ).first()
+        def generate():
+            try:
+                for chunk in req.iter_content(chunk_size=32768):
+                    if chunk:
+                        yield chunk
+            except Exception as e:
+                print(f"Stream generate error: {e}")
         
-        if existing:
-            if existing.status == 'accepted':
-                return jsonify({'success': False, 'message': 'Вы уже друзья'}), 400
-            elif existing.status == 'pending':
-                if existing.user_id == friend_id:
-                    existing.status = 'accepted'
-                    db.session.commit()
-                    return jsonify({'success': True, 'message': 'Запрос принят'})
-                return jsonify({'success': False, 'message': 'Запрос уже существует'}), 400
-        
-        friend = Friend(user_id=user.id, friend_id=friend_id, status='pending', taste_match=random.randint(40, 95))
-        db.session.add(friend)
-        
-        activity = UserActivity(
-            user_id=friend_id,
-            activity_type='friend_request',
-            activity_data=json.dumps({
-                'from_user_id': user.id,
-                'from_username': user.username,
-                'from_display_name': user.display_name
-            })
+        return Response(
+            stream_with_context(generate()),
+            status=req.status_code,
+            headers={
+                'Content-Type': req.headers.get('Content-Type', 'audio/mpeg'),
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+                'Cache-Control': 'no-cache'
+            }
         )
-        db.session.add(activity)
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'Запрос отправлен'})
     except Exception as e:
-        db.session.rollback()
-        print(f"Add friend error: {e}")
-        return jsonify({'success': False, 'message': 'Ошибка сервера'}), 500
+        print(f"Stream error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/friends/accept/<int:friend_id>', methods=['POST'])
 @login_required
@@ -1369,19 +1463,75 @@ def get_user_profile(user_id):
         'friends_count': friends_count,
         'tracks_count': tracks_count,
         'playlists_count': playlists_count,
-        'taste_match': taste_match
+        'taste_match': existing_friend.taste_match if existing_friend and hasattr(existing_friend, 'taste_match') else 0
     })
 
 BANNERS = {
-    'banner_1': {'name': 'Неоновый закат', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz.jpg'},
-    'banner_2': {'name': 'Космос', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/xz1.jpg'},
-    'banner_3': {'name': 'Лесной туман', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz2.jpg'},
-    'banner_4': {'name': 'Крутой GIF', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/kruto.gif'},
-    'banner_5': {'name': 'Дракон', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/dragon.gif'},
-    'banner_6': {'name': 'Крутой 2', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/kruto1.gif'},
-    'banner_7': {'name': 'Крутой 3', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/kruto2.gif'},
-    'banner_8': {'name': 'Крутой 4', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/kruto3.gif'},
+    'banner_zero_kiryu': {'name': 'Zero Kiryu', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/zero-kiryu.gif'},
+    'banner_samurai_jin': {'name': 'Jin (Samurai Champloo)', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/samurai-jin.gif'},
+    'banner_undertaker': {'name': 'Undertaker', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/undertaker.gif'},
+    'banner_anime_vibe': {'name': 'Anime Vibe', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/anime-vibe.gif'},
+    'banner_1': {'name': 'Anime Mix #1', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_8585.gif'},
+    'banner_2': {'name': 'Anime Mix #2', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_3106.gif'},
+    'banner_3': {'name': 'One Piece', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9454.gif'},
+    'banner_4': {'name': 'Demon Slayer', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5912.gif'},
+    'banner_5': {'name': 'Attack on Titan', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_4868.gif'},
+    'banner_6': {'name': 'Bleach', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9862.gif'},
+    'banner_7': {'name': 'Tokyo Ghoul', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5584.gif'},
+    'banner_8': {'name': 'Anime Vibes', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/banner_4277.gif'},
+    'banner_9': {'name': 'Dark Anime', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/banner_5545.gif'},
+    'banner_10': {'name': 'Anime Legend', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_9518.gif'},
 }
+
+BADGES = {
+    'badge_vip': {'name': '⭐ VIP', 'price': 500, 'rarity': 'legendary', 'icon': 'fa-crown'},
+    'badge_early': {'name': '🚀 Early Bird', 'price': 300, 'rarity': 'rare', 'icon': 'fa-rocket'},
+    'badge_meloman': {'name': '🎵 Меломан', 'price': 200, 'rarity': 'epic', 'icon': 'fa-music'},
+    'badge_contributor': {'name': '💻 Контрибьютор', 'price': 400, 'rarity': 'legendary', 'icon': 'fa-code'},
+    'badge_verified': {'name': '✓ Верифицирован', 'price': 1000, 'rarity': 'legendary', 'icon': 'fa-check-circle'},
+}
+
+FRAMES = {
+    'frame_gold': {'name': '🟡 Золотая рамка', 'price': 250, 'rarity': 'epic', 'color': '#ffd700'},
+    'frame_rainbow': {'name': '🌈 Радужная', 'price': 350, 'rarity': 'legendary', 'color': 'linear-gradient(45deg, red, orange, yellow, green, blue, purple)'},
+    'frame_fire': {'name': '🔥 Огненная', 'price': 300, 'rarity': 'epic', 'color': 'linear-gradient(45deg, #ff6b00, #ff0000)'},
+    'frame_ice': {'name': '❄️ Ледяная', 'price': 300, 'rarity': 'epic', 'color': 'linear-gradient(45deg, #00bfff, #00ffff)'},
+    'frame_neon': {'name': '💜 Неон', 'price': 200, 'rarity': 'rare', 'color': '#bf00ff'},
+}
+
+THEMES = {
+    'theme_purple': {'name': '💜 Фиолетовая', 'price': 150, 'rarity': 'common', 'accent': '#6366f1'},
+    'theme_green': {'name': '💚 Зелёная', 'price': 150, 'rarity': 'common', 'accent': '#22c55e'},
+    'theme_orange': {'name': '🧡 Оранжевая', 'price': 150, 'rarity': 'common', 'accent': '#f97316'},
+    'theme_red': {'name': '❤️ Красная', 'price': 150, 'rarity': 'common', 'accent': '#ef4444'},
+    'theme_gold': {'name': '💛 Золотая', 'price': 250, 'rarity': 'rare', 'accent': '#eab308'},
+    'theme_pink': {'name': '💗 Розовая', 'price': 200, 'rarity': 'epic', 'accent': '#ec4899'},
+}
+
+def get_item_by_id(item_id):
+    all_items = {}
+    all_items.update(BANNERS)
+    all_items.update(BADGES)
+    all_items.update(FRAMES)
+    all_items.update(THEMES)
+    
+    item_type = 'unknown'
+    if item_id in BANNERS:
+        item_type = 'banner'
+        item = BANNERS[item_id]
+    elif item_id in BADGES:
+        item_type = 'badge'
+        item = BADGES[item_id]
+    elif item_id in FRAMES:
+        item_type = 'frame'
+        item = FRAMES[item_id]
+    elif item_id in THEMES:
+        item_type = 'theme'
+        item = THEMES[item_id]
+    else:
+        return None, None
+    
+    return item, item_type
 
 @app.route('/api/shop/buy', methods=['POST'])
 @login_required
@@ -1389,10 +1539,10 @@ def buy_item():
     data = request.get_json()
     item_id = data.get('item_id')
     
-    if item_id not in BANNERS:
+    item, item_type = get_item_by_id(item_id)
+    if not item:
         return jsonify({'success': False, 'message': 'Предмет не найден'}), 404
     
-    item = BANNERS[item_id]
     user = db.session.get(User, session['user_id'])
     balance = user.get_balance()
     
@@ -1405,12 +1555,22 @@ def buy_item():
     
     add_currency(user.id, -item['price'], f'Покупка: {item["name"]}')
     
-    inv = UserInventory(user_id=user.id, item_id=item_id, data=json.dumps({
-        'type': 'banner', 
+    item_data = {
+        'type': item_type, 
         'name': item['name'],
-        'image': item.get('image', ''),
         'rarity': item['rarity']
-    }))
+    }
+    if item_type == 'banner':
+        item_data['image'] = item.get('image', '')
+    elif item_type == 'badge':
+        item_data['icon'] = item.get('icon', 'fa-star')
+        item_data['color'] = item.get('color', '#ffd700')
+    elif item_type == 'frame':
+        item_data['color'] = item.get('color', '#ffd700')
+    elif item_type == 'theme':
+        item_data['accent'] = item.get('accent', '#6366f1')
+    
+    inv = UserInventory(user_id=user.id, item_id=item_id, data=json.dumps(item_data))
     db.session.add(inv)
     db.session.commit()
     
@@ -1423,7 +1583,8 @@ def gift_item():
     item_id = data.get('item_id')
     friend_id = data.get('friend_id')
     
-    if item_id not in BANNERS:
+    item, item_type = get_item_by_id(item_id)
+    if not item:
         return jsonify({'success': False, 'message': 'Предмет не найден'}), 404
     
     if not friend_id:
@@ -1433,7 +1594,6 @@ def gift_item():
     if not friend:
         return jsonify({'success': False, 'message': 'Пользователь не найден'})
     
-    item = BANNERS[item_id]
     user = db.session.get(User, session['user_id'])
     balance = user.get_balance()
     
@@ -1442,14 +1602,24 @@ def gift_item():
     
     add_currency(user.id, -item['price'], f'Подарок: {item["name"]} для {friend.username}')
     
-    inv = UserInventory(user_id=friend_id, item_id=item_id, data=json.dumps({
-        'type': 'banner', 
+    item_data = {
+        'type': item_type, 
         'name': item['name'],
-        'image': item.get('image', ''),
         'rarity': item['rarity'],
         'from_user': user.username,
         'gifted': True
-    }))
+    }
+    if item_type == 'banner':
+        item_data['image'] = item.get('image', '')
+    elif item_type == 'badge':
+        item_data['icon'] = item.get('icon', 'fa-star')
+        item_data['color'] = item.get('color', '#ffd700')
+    elif item_type == 'frame':
+        item_data['color'] = item.get('color', '#ffd700')
+    elif item_type == 'theme':
+        item_data['accent'] = item.get('accent', '#6366f1')
+    
+    inv = UserInventory(user_id=friend_id, item_id=item_id, data=json.dumps(item_data))
     db.session.add(inv)
     
     notif = UserActivity(user_id=friend_id, activity_type='gift_received', activity_data=json.dumps({
@@ -1489,6 +1659,160 @@ def equip_banner(inventory_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Баннер установлен'})
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        user = db.session.get(User, session['user_id'])
+        if not user or not user.is_admin:
+            return jsonify({'error': 'Forbidden'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/api/admin/stats')
+@login_required
+@admin_required
+def admin_stats():
+    total_users = db.session.query(User).count()
+    online_users = db.session.query(User).filter(User.last_seen > datetime.utcnow() - timedelta(minutes=5)).count()
+    total_balance = db.session.query(UserCurrency).all()
+    total_coins = sum(c.balance for c in total_balance)
+    
+    return jsonify({
+        'total_users': total_users,
+        'online_users': online_users,
+        'total_coins': total_coins
+    })
+
+@app.route('/api/admin/users')
+@login_required
+@admin_required
+def admin_users():
+    users = db.session.query(User).order_by(User.created_at.desc()).limit(100).all()
+    result = []
+    for u in users:
+        result.append({
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'display_name': u.display_name,
+            'balance': u.get_balance(),
+            'is_admin': u.is_admin,
+            'created_at': u.created_at.isoformat(),
+            'last_seen': u.last_seen.isoformat() if u.last_seen else None,
+            'is_online': u.last_seen > datetime.utcnow() - timedelta(minutes=5) if u.last_seen else False
+        })
+    return jsonify(result)
+
+@app.route('/api/admin/add-coins', methods=['POST'])
+@login_required
+@admin_required
+def admin_add_coins():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    amount = data.get('amount', 0)
+    
+    if not user_id or not amount:
+        return jsonify({'success': False, 'message': 'Укажите пользователя и сумму'})
+    
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'success': False, 'message': 'Пользователь не найден'})
+    
+    add_currency(user.id, amount, f'Админ: начисление {amount} монет')
+    
+    return jsonify({'success': True, 'message': f'{amount} монет добавлено', 'new_balance': user.get_balance()})
+
+@app.route('/api/admin/remove-coins', methods=['POST'])
+@login_required
+@admin_required
+def admin_remove_coins():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    amount = data.get('amount', 0)
+    
+    if not user_id or not amount:
+        return jsonify({'success': False, 'message': 'Укажите пользователя и сумму'})
+    
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'success': False, 'message': 'Пользователь не найден'})
+    
+    if user.get_balance() < amount:
+        return jsonify({'success': False, 'message': 'Недостаточно монет'})
+    
+    add_currency(user.id, -amount, f'Админ: списание {amount} монет')
+    
+    return jsonify({'success': True, 'message': f'{amount} монет списано', 'new_balance': user.get_balance()})
+
+@app.route('/api/admin/shop/add', methods=['POST'])
+@login_required
+@admin_required
+def admin_add_shop_item():
+    data = request.get_json()
+    item_id = data.get('id')
+    item_data = data.get('data', {})
+    
+    if not item_id or not item_data:
+        return jsonify({'success': False, 'message': 'Укажите ID и данные предмета'})
+    
+    category = item_data.get('category', 'banner')
+    
+    if category == 'banner':
+        BANNERS[item_id] = item_data
+    elif category == 'badge':
+        BADGES[item_id] = item_data
+    elif category == 'frame':
+        FRAMES[item_id] = item_data
+    elif category == 'theme':
+        THEMES[item_id] = item_data
+    
+    return jsonify({'success': True, 'message': 'Предмет добавлен'})
+
+@app.route('/api/admin/shop/remove', methods=['POST'])
+@login_required
+@admin_required
+def admin_remove_shop_item():
+    data = request.get_json()
+    item_id = data.get('item_id')
+    
+    if not item_id:
+        return jsonify({'success': False, 'message': 'Укажите ID предмета'})
+    
+    removed = False
+    if item_id in BANNERS:
+        del BANNERS[item_id]
+        removed = True
+    elif item_id in BADGES:
+        del BADGES[item_id]
+        removed = True
+    elif item_id in FRAMES:
+        del FRAMES[item_id]
+        removed = True
+    elif item_id in THEMES:
+        del THEMES[item_id]
+        removed = True
+    
+    if removed:
+        return jsonify({'success': True, 'message': 'Предмет удалён'})
+    return jsonify({'success': False, 'message': 'Предмет не найден'})
+
+@app.route('/api/admin/shop/list')
+@login_required
+@admin_required
+def admin_shop_list():
+    items = []
+    for k, v in BANNERS.items():
+        items.append({'id': k, 'type': 'banner', **v})
+    for k, v in BADGES.items():
+        items.append({'id': k, 'type': 'badge', **v})
+    for k, v in FRAMES.items():
+        items.append({'id': k, 'type': 'frame', **v})
+    for k, v in THEMES.items():
+        items.append({'id': k, 'type': 'theme', **v})
+    return jsonify(items)
 
 @app.route('/api/upload/avatar', methods=['POST'])
 @login_required
@@ -2119,5 +2443,5 @@ def add_playlist_by_link():
     return jsonify({'error': 'Неподдерживаемый формат ссылки. Используйте ссылку на плейлист Яндекс.Музыки или VK'}), 400
 
 if __name__ == '__main__':
-    print("🚀 Starting iTired server...")
+    print("Starting iTired server...")
     socketio.run(app, debug=True, host='0.0.0.0', port=5001)

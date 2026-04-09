@@ -11,6 +11,7 @@ let bypassCensorship = true;
 let listenHistory = [];
 window.currentSource = null;
 window.currentSourceTracks = [];
+let hlsPlayer = null;
 
 function saveQueueState() {
     const state = {
@@ -26,6 +27,14 @@ function saveQueueState() {
 function loadQueueState() {
     try {
         const saved = localStorage.getItem('itired_queue');
+        const savedUserId = localStorage.getItem('itired_user_id');
+        const currentUserId = document.body.dataset.userId;
+        
+        if (saved && savedUserId && savedUserId !== currentUserId) {
+            localStorage.removeItem('itired_queue');
+            return false;
+        }
+        
         if (saved) {
             const state = JSON.parse(saved);
             if (state.queue && state.queue.length > 0) {
@@ -36,11 +45,23 @@ function loadQueueState() {
                 
                 if (state.currentTrack) {
                     currentTrack = window.currentTrack = state.currentTrack;
-                    if (state.currentTrack.url && audioPlayer) {
-                        audioPlayer.src = state.currentTrack.url;
-                    }
                     updatePlayerUI(currentTrack);
                     updatePlayButton();
+                    
+                    const playBtn = document.getElementById('playPauseBtn');
+                    if (playBtn) {
+                        playBtn.dataset.autoPlay = 'true';
+                        playBtn.addEventListener('click', function autoPlayHandler() {
+                            if (playBtn.dataset.autoPlay === 'true') {
+                                playBtn.dataset.autoPlay = 'false';
+                                playBtn.removeEventListener('click', autoPlayHandler);
+                                const trackId = currentTrack.id || currentTrack;
+                                if (trackId) {
+                                    playTrack(trackId);
+                                }
+                            }
+                        }, { once: true });
+                    }
                 }
                 
                 updateQueueUI();
@@ -227,7 +248,15 @@ function initAudioPlayer() {
     });
     audioPlayer.addEventListener('error', function(e) {
         console.error('Audio error:', e);
-        showNotification('Ошибка воспроизведения', 'error');
+        console.log('Audio source:', audioPlayer.src);
+        console.log('Error code:', audioPlayer.error?.code);
+        console.log('Error message:', audioPlayer.error?.message);
+        
+        if (audioPlayer.src && audioPlayer.src.includes('api/stream/sc')) {
+            showNotification('SoundCloud: ошибка потока', 'error');
+        } else {
+            showNotification('Ошибка воспроизведения', 'error');
+        }
     });
 }
 
@@ -583,12 +612,81 @@ window.playQueueItem = async function(index) {
 
 async function playTrackById(trackId, trackData) {
     try {
+        if (hlsPlayer) {
+            hlsPlayer.destroy();
+            hlsPlayer = null;
+        }
+        
         const trackInfo = await apiCall('play_track/' + trackId);
         
         if (trackInfo && trackInfo.url) {
             audioPlayer.pause();
-            audioPlayer.src = trackInfo.url;
-            await audioPlayer.play();
+            
+            if (trackInfo.service === 'soundcloud') {
+                showNotification('SoundCloud: загрузка...', 'info');
+                console.log('Playing from SoundCloud:', trackInfo.url, 'stream_url:', trackInfo.stream_url);
+                
+                if (trackInfo.stream_url) {
+                    const scUrl = trackInfo.stream_url;
+                    
+                    if (scUrl.includes('.m3u8') && Hls.isSupported()) {
+                        hlsPlayer = new Hls({
+                            xhrSetup: function(xhr) {
+                                xhr.setRequestHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+                                xhr.setRequestHeader('Referer', 'https://soundcloud.com/');
+                            }
+                        });
+                        hlsPlayer.loadSource(scUrl);
+                        hlsPlayer.attachMedia(audioPlayer);
+                        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                            audioPlayer.play().then(function() {
+                                showNotification('SoundCloud ▶', 'success');
+                            }).catch(function(e) {
+                                console.error('SC play error:', e);
+                                showNotification('SoundCloud: ошибка', 'error');
+                            });
+                        });
+                        hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+                            console.error('HLS error:', data);
+                            if (data.fatal) {
+                                showNotification('SoundCloud: ошибка HLS', 'error');
+                            }
+                        });
+                    } else {
+                        audioPlayer.src = trackInfo.url;
+                        audioPlayer.play().then(function() {
+                            showNotification('SoundCloud ▶', 'success');
+                        }).catch(function(e) {
+                            console.error('SC play error:', e);
+                            showNotification('SoundCloud: ошибка', 'error');
+                        });
+                    }
+                } else {
+                    audioPlayer.src = trackInfo.url;
+                    audioPlayer.play().then(function() {
+                        showNotification('SoundCloud ▶', 'success');
+                    }).catch(function(e) {
+                        console.error('SC play error:', e);
+                        showNotification('SoundCloud: ошибка', 'error');
+                    });
+                }
+            } else if (trackInfo.url && trackInfo.url.includes('.m3u8')) {
+                showNotification('HLS: загрузка...', 'info');
+                if (Hls.isSupported()) {
+                    hlsPlayer = new Hls();
+                    hlsPlayer.loadSource(trackInfo.url);
+                    hlsPlayer.attachMedia(audioPlayer);
+                    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                        audioPlayer.play();
+                    });
+                } else {
+                    audioPlayer.src = trackInfo.url;
+                    audioPlayer.play();
+                }
+            } else {
+                audioPlayer.src = trackInfo.url;
+                audioPlayer.play();
+            }
             
             currentTrack = window.currentTrack = trackInfo;
             

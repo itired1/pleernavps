@@ -1,55 +1,68 @@
 # 🎧 iTired Music
 
-Music streaming platform with Yandex Music and VK integration.
+Музыкальный стриминг с Яндекс.Музыкой, VK и SoundCloud интеграцией.
 
-## Quick Start
+## Быстрый старт
 
-### 1. Install dependencies
+### 1. Установка зависимостей
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Start server
+### 2. Запуск сервера
 ```bash
 python app.py
 ```
 
-### 3. Give access to friends
+### 3. Откройте http://localhost:5001
 
-Download ngrok: https://ngrok.com/download
+## VPS Deployment
 
-In new terminal:
+### Быстрая установка:
 ```bash
-ngrok http 5001
+# Установка Docker
+curl -fsSL https://get.docker.com | sh
+
+# Клонирование и запуск
+git clone https://github.com/your-repo/itiredmp3.git
+cd itiredmp3
+chmod +x deploy.sh
+./deploy.sh
 ```
 
-Copy the URL and send to friends.
+### Ручная установка:
+```bash
+# Сборка образа
+docker build -t itired .
 
-### 4. Friends connect
-
-Download `dist/iTired.exe`, run, enter URL.
-
-## For Hosting (no VPS)
-
-Use `dist/start.bat` for automatic ngrok + server launch.
-
-## Project Structure
-
-```
-itiredmp3-main/
-├── app.py           # Flask application
-├── models.py        # Database models
-├── utils.py         # API clients
-├── config.py        # Configuration
-├── requirements.txt  # Python dependencies
-├── dist/            # Ready-to-share client
-│   ├── iTired.exe   # Desktop app
-│   ├── setup.html   # Connection page
-│   └── start.bat    # Auto-launch with ngrok
-└── templates/       # HTML templates
+# Запуск
+docker run -d -p 5001:5001 --name itired itired
 ```
 
-## Requirements
+## Структура проекта
 
-- Python 3.10+
-- Windows 10+
+```
+itiredmp3/
+├── app/
+│   ├── static/          # CSS, JS, изображения
+│   ├── templates/       # HTML шаблоны
+│   ├── app.py          # Основной файл
+│   ├── models.py       # Модели БД
+│   ├── utils.py        # API клиенты
+│   └── config.py       # Конфигурация
+├── Dockerfile
+├── docker-compose.yml
+├── nginx.conf
+└── deploy.sh
+```
+
+## Возможности
+
+- 🎵 Поиск музыки из Яндекс.Музыки
+- 👥 Друзья и комнаты
+- 🛒 Магазин (баннеры, значки, рамки, темы)
+- 🎨 Кастомизация профиля
+
+## Лицензия
+
+MIT

@@ -56,6 +56,10 @@
                     <span>Уведомления</span>
                     <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
                 </div>
+                <div class="nav-item admin-nav" data-tab="admin" style="display: none;">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Админка</span>
+                </div>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-card">
@@ -76,10 +80,25 @@
 
         <main class="main-content">
             <header class="glass-header">
-                <div class="search-box" style="position: relative;">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="globalSearch" placeholder="Поиск..." autocomplete="off">
-                    <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="search-box" style="position: relative;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="globalSearch" placeholder="Поиск..." autocomplete="off">
+                        <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
+                    </div>
+                    <div class="search-service-selector" style="display: flex; gap: 4px;">
+                        <button type="button" class="source-btn active" data-service="all" onclick="setSearchService('all')" title="Все">
+                            <i class="fas fa-globe"></i>
+                        </button>
+                        <button type="button" class="source-btn" data-service="yandex" onclick="setSearchService('yandex')" title="Яндекс">
+                            <i class="fab fa-yandex"></i>
+                        </button>
+                        <!-- SoundCloud временно отключён
+                        <button type="button" class="source-btn" data-service="soundcloud" onclick="setSearchService('soundcloud')" title="SoundCloud (в разработке)">
+                            <i class="fab fa-soundcloud" style="opacity: 0.4;"></i>
+                        </button>
+                        -->
+                    </div>
                 </div>
                 <div class="header-actions">
                     <div class="header-balance">
@@ -143,6 +162,9 @@
         </div>
         <button id="playerLikeBtn" class="player-like-btn" onclick="togglePlayerLike()">
             <i class="far fa-heart"></i>
+        </button>
+        <button id="playerAddToPlaylistBtn" class="player-like-btn" onclick="showAddToPlaylistFromPlayer()" title="Добавить в плейлист">
+            <i class="fas fa-list-plus"></i>
         </button>
         <div class="player-volume">
             <i class="fas fa-volume-up"></i>
@@ -356,6 +378,7 @@
     <audio id="audioPlayer" hidden></audio>
     
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/player.js"></script>
     <script src="/static/js/friends.js"></script>
@@ -365,6 +388,7 @@
     <script src="/static/js/shop.js"></script>
     <script src="/static/js/room.js"></script>
     <script src="/static/js/lyrics.js"></script>
+    <script src="/static/js/admin.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
         window.closeApp = function() {
