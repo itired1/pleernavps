@@ -1320,6 +1320,27 @@ def stream_soundcloud(track_id):
         print(f"Stream error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/friends')
+@login_required
+def get_friends():
+    user_id = session['user_id']
+    friends = db.session.query(Friend).filter(
+        ((Friend.user_id == user_id) | (Friend.friend_id == user_id)) & (Friend.status == 'accepted')
+    ).all()
+    result = []
+    for f in friends:
+        friend_id = f.friend_id if f.user_id == user_id else f.user_id
+        friend_user = db.session.get(User, friend_id)
+        if friend_user:
+            result.append({
+                'id': f.id,
+                'friend_id': friend_id,
+                'username': friend_user.username,
+                'display_name': friend_user.display_name or friend_user.username,
+                'avatar_url': friend_user.avatar_url
+            })
+    return jsonify(result)
+
 @app.route('/api/friends/accept/<int:friend_id>', methods=['POST'])
 @login_required
 def accept_friend(friend_id):
