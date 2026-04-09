@@ -14,6 +14,16 @@ const DEFAULT_BADGES = [
     { id: 'badge_meloman', name: 'Меломан', type: 'badge', price: 200, rarity: 'epic', data: { icon: 'fa-music', color: '#ec4899' } },
     { id: 'badge_contributor', name: 'Контрибьютор', type: 'badge', price: 400, rarity: 'legendary', data: { icon: 'fa-code', color: '#22c55e' } },
     { id: 'badge_verified', name: 'Верифицирован', type: 'badge', price: 1000, rarity: 'legendary', data: { icon: 'fa-check-circle', color: '#3b82f6' } },
+    { id: 'badge_animemix1', name: 'Anime Mix #1', type: 'badge', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_8585.gif' } },
+    { id: 'badge_animemix2', name: 'Anime Mix #2', type: 'badge', price: 100, rarity: 'common', data: { image: '/static/shop/banners/banner_3106.gif' } },
+    { id: 'badge_onepiece', name: 'One Piece', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9454.gif' } },
+    { id: 'badge_demonslayer', name: 'Demon Slayer', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_5912.gif' } },
+    { id: 'badge_aot', name: 'Attack on Titan', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_4868.gif' } },
+    { id: 'badge_bleach', name: 'Bleach', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_9862.gif' } },
+    { id: 'badge_tokyo', name: 'Tokyo Ghoul', type: 'badge', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/banner_5584.gif' } },
+    { id: 'badge_animevibes', name: 'Anime Vibes', type: 'badge', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/banner_4277.gif' } },
+    { id: 'badge_darkanime', name: 'Dark Anime', type: 'badge', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/banner_5545.gif' } },
+    { id: 'badge_animelegend', name: 'Anime Legend', type: 'badge', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/banner_9518.gif' } },
 ];
 
 const DEFAULT_FRAMES = [

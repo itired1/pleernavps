@@ -1503,6 +1503,16 @@ BADGES = {
     'badge_meloman': {'name': '🎵 Меломан', 'price': 200, 'rarity': 'epic', 'icon': 'fa-music'},
     'badge_contributor': {'name': '💻 Контрибьютор', 'price': 400, 'rarity': 'legendary', 'icon': 'fa-code'},
     'badge_verified': {'name': '✓ Верифицирован', 'price': 1000, 'rarity': 'legendary', 'icon': 'fa-check-circle'},
+    'badge_animemix1': {'name': '🎌 Anime Mix #1', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_8585.gif'},
+    'badge_animemix2': {'name': '🎌 Anime Mix #2', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/banner_3106.gif'},
+    'badge_onepiece': {'name': '🏴‍☠️ One Piece', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9454.gif'},
+    'badge_demonslayer': {'name': '👹 Demon Slayer', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5912.gif'},
+    'badge_aot': {'name': '⚔️ Attack on Titan', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_4868.gif'},
+    'badge_bleach': {'name': '⚡ Bleach', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_9862.gif'},
+    'badge_tokyo': {'name': '🩸 Tokyo Ghoul', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/banner_5584.gif'},
+    'badge_animevibes': {'name': '✨ Anime Vibes', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/banner_4277.gif'},
+    'badge_darkanime': {'name': '🌑 Dark Anime', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/banner_5545.gif'},
+    'badge_animelegend': {'name': '👑 Anime Legend', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_9518.gif'},
 }
 
 FRAMES = {

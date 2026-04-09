@@ -137,12 +137,13 @@ body {
     width: 40px;
     height: 40px;
     background: var(--accent);
-    border-radius: 12px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
+    border: 2px solid var(--border);
 }
 
 .user-avatar img {
@@ -703,7 +704,7 @@ body {
 
 /* === PROFILE === */
 .profile-banner {
-    height: 160px;
+    height: 280px;
     border-radius: var(--radius-lg);
     background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
     background-size: cover;

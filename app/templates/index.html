@@ -164,7 +164,10 @@
                 </div>
                 <input type="file" id="avatarInput" accept="image/*" style="display: none;">
                 <div>
-                    <h2 id="profileDisplayName" style="margin-bottom: 2px;">Загрузка...</h2>
+                    <h2 style="margin-bottom: 2px; display: flex; align-items: center; gap: 8px;">
+                        <span id="profileDisplayName">Загрузка...</span>
+                        <span class="user-badge" style="display: inline-flex; align-items: center;"></span>
+                    </h2>
                     <p id="profileUsername" style="color: var(--text-muted); font-size: 13px;">@username</p>
                     <p id="joinDate" style="color: var(--text-muted); font-size: 12px;"></p>
                     <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="triggerAvatarUpload()">

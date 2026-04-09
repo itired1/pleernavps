@@ -58,6 +58,10 @@ function updateProfileForm(profile) {
         updateAllAvatars(local.avatar_url);
     }
     
+    if (local.equipped_badge) {
+        updateProfileBadge(local.equipped_badge);
+    }
+    
     loadActiveBanner();
 }
 
@@ -84,6 +88,42 @@ function updateAllAvatars(url) {
         const el = document.getElementById(id);
         if (el) el.innerHTML = avatarHtml;
     });
+}
+
+function updateProfileBadge(badgeId) {
+    const BADGES_DATA = {
+        'badge_vip': { icon: 'fa-crown', color: '#ffd700' },
+        'badge_early': { icon: 'fa-rocket', color: '#f97316' },
+        'badge_meloman': { icon: 'fa-music', color: '#ec4899' },
+        'badge_contributor': { icon: 'fa-code', color: '#22c55e' },
+        'badge_verified': { icon: 'fa-check-circle', color: '#3b82f6' },
+    };
+    
+    let badgeHtml = '';
+    if (badgeId && badgeId.startsWith('badge_')) {
+        if (badgeId.startsWith('badge_anime')) {
+            const imageMap = {
+                'badge_animemix1': '/static/shop/banners/banner_8585.gif',
+                'badge_animemix2': '/static/shop/banners/banner_3106.gif',
+                'badge_onepiece': '/static/shop/banners/banner_9454.gif',
+                'badge_demonslayer': '/static/shop/banners/banner_5912.gif',
+                'badge_aot': '/static/shop/banners/banner_4868.gif',
+                'badge_bleach': '/static/shop/banners/banner_9862.gif',
+                'badge_tokyo': '/static/shop/banners/banner_5584.gif',
+                'badge_animevibes': '/static/shop/banners/banner_4277.gif',
+                'badge_darkanime': '/static/shop/banners/banner_5545.gif',
+                'badge_animelegend': '/static/shop/banners/banner_9518.gif',
+            };
+            badgeHtml = '<img src="' + (imageMap[badgeId] || '') + '" style="width: 20px; height: 20px; object-fit: cover;">';
+        } else {
+            const data = BADGES_DATA[badgeId];
+            if (data) {
+                badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
+            }
+        }
+    }
+    
+    document.querySelectorAll('.user-badge').forEach(function(el) { el.innerHTML = badgeHtml; });
 }
 
 document.querySelectorAll('#profile .source-btn').forEach(function(btn) {
