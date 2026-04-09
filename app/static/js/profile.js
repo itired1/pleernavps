@@ -57,6 +57,24 @@ function updateProfileForm(profile) {
     if (local.avatar_url) {
         updateAllAvatars(local.avatar_url);
     }
+    
+    loadActiveBanner();
+}
+
+async function loadActiveBanner() {
+    try {
+        const response = await apiCall('shop/active-banner');
+        if (response && response.image) {
+            const bannerImg = document.querySelector('.profile-banner');
+            if (bannerImg) {
+                bannerImg.style.backgroundImage = 'url(' + response.image + ')';
+                bannerImg.style.backgroundSize = 'cover';
+                bannerImg.style.backgroundPosition = 'center';
+            }
+        }
+    } catch (error) {
+        console.error('Load active banner error:', error);
+    }
 }
 
 function updateAllAvatars(url) {

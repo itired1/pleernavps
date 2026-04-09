@@ -1874,7 +1874,9 @@ def upload_avatar():
 def get_active_banner():
     inv = db.session.query(UserInventory).filter_by(user_id=session['user_id'], equipped=True).first()
     if inv and inv.data:
-        return jsonify(json.loads(inv.data))
+        data = json.loads(inv.data)
+        data['inventory_id'] = inv.id
+        return jsonify(data)
     return jsonify(None)
 
 @socketio.on('connect')
