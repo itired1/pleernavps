@@ -77,7 +77,7 @@ async function loadActiveBanner() {
             }
         }
     } catch (error) {
-        console.error('Load active banner error:', error);
+        // Ignore banner loading errors
     }
 }
 

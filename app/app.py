@@ -1707,6 +1707,13 @@ BANNERS = {
     'banner_1': {'name': 'Неоновый закат', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz.jpg'},
     'banner_2': {'name': 'Космос', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/xz1.jpg'},
     'banner_3': {'name': 'Лесной туман', 'price': 100, 'rarity': 'common', 'image': '/static/shop/banners/xz2.jpg'},
+    'banner_knight': {'name': '⚔️ Рыцарь', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/badge_knight.gif'},
+    'banner_demon': {'name': '😈 Демон', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/badge_demon.gif'},
+    'banner_skull': {'name': '💀 Череп', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/badge_skull.gif'},
+    'banner_dragon': {'name': '🐉 Дракон', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/badge_dragon.gif'},
+    'banner_samurai': {'name': '🗡️ Самурай', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/badge_samurai.jpg'},
+    'banner_street': {'name': '🏙️ Street Style', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/badge_street.jpg'},
+    'banner_graffiti': {'name': '🎨 Graffiti', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/badge_graffiti.jpg'},
 }
 
 BADGES = {

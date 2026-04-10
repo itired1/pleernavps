@@ -937,3 +937,13 @@ window.stopRadio = function() {
         window.audioPlayer.pause();
     }
 };
+
+if (typeof window.openProfileCustomize !== 'function') {
+    window.openProfileCustomize = function() {
+        openModal('profileCustomizeModal');
+    };
+}
+
+if (typeof window.loadActiveBanner !== 'function') {
+    window.loadActiveBanner = function() {};
+}
