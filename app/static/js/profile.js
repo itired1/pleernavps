@@ -175,23 +175,47 @@ window.triggerAvatarUpload = function() {
     if (input) input.click();
 };
 
+window.saveProfile = async function() {
+    var activeSource = document.querySelector('#profile .source-btn.active');
+    var data = {
+        display_name: document.getElementById('display_name')?.value || '',
+        bio: document.getElementById('bio')?.value || '',
+        yandex_token: document.getElementById('yandex_token')?.value || '',
+        vk_token: document.getElementById('vk_token')?.value || '',
+        soundcloud_client_id: document.getElementById('soundcloud_client_id')?.value || '',
+        soundcloud_proxy: document.getElementById('soundcloud_proxy')?.value || '',
+        current_source: activeSource?.dataset.source || 'yandex'
+    };
+    
+    if (data.yandex_token === '***') delete data.yandex_token;
+    if (data.vk_token === '***') delete data.vk_token;
+    
+    try {
+        var result = await fetch('/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(function(r) { return r.json(); });
+        
+        if (result.success) {
+            showNotification('Профиль сохранён', 'success');
+            loadProfileData();
+        } else {
+            showNotification(result.message || 'Ошибка сохранения', 'error');
+        }
+    } catch (error) {
+        console.error('Save profile error:', error);
+        showNotification('Ошибка сохранения', 'error');
+    }
+};
+
 const profileForm = document.getElementById('profileForm');
 if (profileForm) {
     profileForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        var activeSource = document.querySelector('#profile .source-btn.active');
-        var data = {
-            display_name: document.getElementById('display_name')?.value || '',
-            bio: document.getElementById('bio')?.value || '',
-            yandex_token: document.getElementById('yandex_token')?.value || '',
-            vk_token: document.getElementById('vk_token')?.value || '',
-            soundcloud_client_id: document.getElementById('soundcloud_client_id')?.value || '',
-            soundcloud_proxy: document.getElementById('soundcloud_proxy')?.value || '',
-            current_source: activeSource?.dataset.source || 'yandex'
-        };
-        
-        if (data.yandex_token === '***') delete data.yandex_token;
-        if (data.vk_token === '***') delete data.vk_token;
+        saveProfile();
+    });
+}
         
         try {
             var result = await fetch('/profile', {

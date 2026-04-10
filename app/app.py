@@ -1714,6 +1714,10 @@ BANNERS = {
     'banner_samurai': {'name': '🗡️ Самурай', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/badge_samurai.jpg'},
     'banner_street': {'name': '🏙️ Street Style', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/badge_street.jpg'},
     'banner_graffiti': {'name': '🎨 Graffiti', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/badge_graffiti.jpg'},
+    'banner_knight2': {'name': '⚔️ Рыцарь 2', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/banner_knight2.gif'},
+    'banner_demon2': {'name': '😈 Демон 2', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/banner_demon2.gif'},
+    'banner_skull2': {'name': '💀 Череп 2', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/banner_skull2.gif'},
+    'banner_dragon2': {'name': '🐉 Дракон 2', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/banner_dragon2.gif'},
 }
 
 BADGES = {
