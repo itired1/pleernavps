@@ -1725,6 +1725,13 @@ BADGES = {
     'badge_animevibes': {'name': '✨ Anime Vibes', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/banner_4277.gif'},
     'badge_darkanime': {'name': '🌑 Dark Anime', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/banner_5545.gif'},
     'badge_animelegend': {'name': '👑 Anime Legend', 'price': 300, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_9518.gif'},
+    'badge_knight': {'name': '⚔️ Рыцарь', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/badge_knight.gif'},
+    'badge_demon': {'name': '😈 Демон', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/badge_demon.gif'},
+    'badge_skull': {'name': '💀 Череп', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/badge_skull.gif'},
+    'badge_dragon': {'name': '🐉 Дракон', 'price': 250, 'rarity': 'epic', 'image': '/static/shop/banners/badge_dragon.gif'},
+    'badge_samurai': {'name': '🗡️ Самурай', 'price': 200, 'rarity': 'epic', 'image': '/static/shop/banners/badge_samurai.jpg'},
+    'badge_street': {'name': '🏙️ Street Style', 'price': 150, 'rarity': 'rare', 'image': '/static/shop/banners/badge_street.jpg'},
+    'badge_graffiti': {'name': '🎨 Graffiti', 'price': 180, 'rarity': 'rare', 'image': '/static/shop/banners/badge_graffiti.jpg'},
 }
 
 FRAMES = {

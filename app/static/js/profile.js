@@ -104,7 +104,7 @@ function updateProfileBadge(badgeId) {
         const data = BADGES_DATA[badgeId];
         if (data) {
             badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
-        } else if (badgeId.startsWith('badge_anime')) {
+        } else {
             const imageMap = {
                 'badge_animemix1': '/static/shop/banners/banner_8585.gif',
                 'badge_animemix2': '/static/shop/banners/banner_3106.gif',
@@ -116,8 +116,17 @@ function updateProfileBadge(badgeId) {
                 'badge_animevibes': '/static/shop/banners/banner_4277.gif',
                 'badge_darkanime': '/static/shop/banners/banner_5545.gif',
                 'badge_animelegend': '/static/shop/banners/banner_9518.gif',
+                'badge_knight': '/static/shop/banners/badge_knight.gif',
+                'badge_demon': '/static/shop/banners/badge_demon.gif',
+                'badge_skull': '/static/shop/banners/badge_skull.gif',
+                'badge_dragon': '/static/shop/banners/badge_dragon.gif',
+                'badge_samurai': '/static/shop/banners/badge_samurai.jpg',
+                'badge_street': '/static/shop/banners/badge_street.jpg',
+                'badge_graffiti': '/static/shop/banners/badge_graffiti.jpg',
             };
-            badgeHtml = '<img src="' + (imageMap[badgeId] || '') + '" style="width: 20px; height: 20px; object-fit: cover;">';
+            if (imageMap[badgeId]) {
+                badgeHtml = '<img src="' + imageMap[badgeId] + '" style="width: 20px; height: 20px; object-fit: cover;">';
+            }
         }
     }
     
