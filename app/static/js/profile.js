@@ -178,7 +178,7 @@ window.triggerAvatarUpload = function() {
     if (input) input.click();
 };
 
-window.saveProfile = async function() {
+async function saveProfile() {
     var activeSource = document.querySelector('#profile .source-btn.active');
     var data = {
         display_name: document.getElementById('display_name')?.value || '',
@@ -210,7 +210,7 @@ window.saveProfile = async function() {
         console.error('Save profile error:', error);
         showNotification('Ошибка сохранения', 'error');
     }
-};
+}
 
 const profileForm = document.getElementById('profileForm');
 if (profileForm) {
@@ -219,26 +219,9 @@ if (profileForm) {
         saveProfile();
     });
 }
-        
-        try {
-            var result = await fetch('/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).then(function(r) { return r.json(); });
-            
-            if (result.success) {
-                showNotification('Профиль сохранён', 'success');
-                loadProfileData();
-            } else {
-                showNotification(result.message || 'Ошибка сохранения', 'error');
-            }
-        } catch (error) {
-            console.error('Save profile error:', error);
-            showNotification('Ошибка сохранения', 'error');
-        }
-    });
-}
+
+window.saveProfile = saveProfile;
+window.loadProfileData = loadProfileData;
 
 if (document.getElementById('profileDisplayName')) {
     loadProfileData();
