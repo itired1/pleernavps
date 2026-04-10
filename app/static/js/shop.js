@@ -6,6 +6,17 @@ const DEFAULT_BANNERS = [
     { id: 'banner_1', name: 'Неоновый закат', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz.jpg' } },
     { id: 'banner_2', name: 'Космос', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/xz1.jpg' } },
     { id: 'banner_3', name: 'Лесной туман', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz2.jpg' } },
+    { id: 'banner_knight', name: 'Рыцарь', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/badge_knight.gif' } },
+    { id: 'banner_demon', name: 'Демон', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/badge_demon.gif' } },
+    { id: 'banner_skull', name: 'Череп', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/badge_skull.gif' } },
+    { id: 'banner_dragon', name: 'Дракон', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/badge_dragon.gif' } },
+    { id: 'banner_samurai', name: 'Самурай', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/badge_samurai.jpg' } },
+    { id: 'banner_street', name: 'Street Style', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/badge_street.jpg' } },
+    { id: 'banner_graffiti', name: 'Graffiti', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/badge_graffiti.jpg' } },
+    { id: 'banner_knight2', name: 'Рыцарь 2', type: 'banner', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/banner_knight2.gif' } },
+    { id: 'banner_demon2', name: 'Демон 2', type: 'banner', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/banner_demon2.gif' } },
+    { id: 'banner_skull2', name: 'Череп 2', type: 'banner', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/banner_skull2.gif' } },
+    { id: 'banner_dragon2', name: 'Дракон 2', type: 'banner', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/banner_dragon2.gif' } },
 ];
 
 const DEFAULT_BADGES = [
@@ -24,6 +35,13 @@ const DEFAULT_BADGES = [
     { id: 'badge_animevibes', name: 'Anime Vibes', type: 'badge', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/banner_4277.gif' } },
     { id: 'badge_darkanime', name: 'Dark Anime', type: 'badge', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/banner_5545.gif' } },
     { id: 'badge_animelegend', name: 'Anime Legend', type: 'badge', price: 300, rarity: 'legendary', data: { image: '/static/shop/banners/banner_9518.gif' } },
+    { id: 'badge_knight', name: 'Рыцарь', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/badge_knight.gif' } },
+    { id: 'badge_demon', name: 'Демон', type: 'badge', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/badge_demon.gif' } },
+    { id: 'badge_skull', name: 'Череп', type: 'badge', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/badge_skull.gif' } },
+    { id: 'badge_dragon', name: 'Дракон', type: 'badge', price: 250, rarity: 'epic', data: { image: '/static/shop/banners/badge_dragon.gif' } },
+    { id: 'badge_samurai', name: 'Самурай', type: 'badge', price: 200, rarity: 'epic', data: { image: '/static/shop/banners/badge_samurai.jpg' } },
+    { id: 'badge_street', name: 'Street Style', type: 'badge', price: 150, rarity: 'rare', data: { image: '/static/shop/banners/badge_street.jpg' } },
+    { id: 'badge_graffiti', name: 'Graffiti', type: 'badge', price: 180, rarity: 'rare', data: { image: '/static/shop/banners/badge_graffiti.jpg' } },
 ];
 
 const DEFAULT_FRAMES = [
