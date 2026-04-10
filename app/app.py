@@ -663,7 +663,7 @@ def radio_stations():
             for station in stations:
                 if hasattr(station, 'station') and station.station:
                     s = station.station
-                    cat = s.category or 'Другие'
+                    cat = getattr(s, 'category', None) or getattr(s, 'name', None) or 'Радио'
                     
                     if cat not in categories:
                         categories[cat] = {
@@ -677,9 +677,9 @@ def radio_stations():
                     categories[cat]['stations'].append({
                         'id': str(station_id),
                         'station_id': str(station_id),
-                        'name': s.name or cat,
-                        'description': s.description or '',
-                        'cover_uri': f"https://{s.cover_uri.replace('%%', '300x300')}" if s.cover_uri else None,
+                        'name': getattr(s, 'name', cat),
+                        'description': getattr(s, 'description', '') or '',
+                        'cover_uri': f"https://{s.cover_uri.replace('%%', '300x300')}" if hasattr(s, 'cover_uri') and s.cover_uri else None,
                         'service': 'yandex'
                     })
             
