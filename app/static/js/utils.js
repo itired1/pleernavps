@@ -2,7 +2,7 @@ const apiCall = async function(endpoint, options = {}) {
     const cacheTime = 5 * 60 * 1000;
     const cacheKey = 'api_cache_' + endpoint;
     
-    if (!options.method && !options.body) {
+    if ((options.cache !== false) && !options.method && !options.body) {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
             try {

@@ -1,6 +1,6 @@
 async function loadProfileData() {
     try {
-        const profile = await apiCall('profile');
+        const profile = await apiCall('profile', { cache: false });
         if (profile) updateProfileForm(profile);
     } catch (error) {
         console.error('Load profile error:', error);
@@ -9,7 +9,10 @@ async function loadProfileData() {
 }
 
 function updateProfileForm(profile) {
-    if (!profile.local) return;
+    if (!profile || !profile.local) {
+        console.error('Profile data missing:', profile);
+        return;
+    }
     const local = profile.local;
     
     localStorage.setItem('itired_user_id', local.id || '');
