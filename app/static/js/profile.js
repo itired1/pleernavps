@@ -376,16 +376,3 @@ window.loadStats = async function() {
         document.getElementById('statsLoading').innerHTML = '<p style="color: var(--text-muted);">Ошибка загрузки статистики</p>';
     }
 };
-
-function formatTimeAgo(isoString) {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const now = new Date();
-    const diff = Math.floor((now - date) / 1000);
-    
-    if (diff < 60) return 'только что';
-    if (diff < 3600) return Math.floor(diff / 60) + ' мин назад';
-    if (diff < 86400) return Math.floor(diff / 3600) + ' ч назад';
-    if (diff < 604800) return Math.floor(diff / 86400) + ' дн назад';
-    return date.toLocaleDateString('ru');
-}

@@ -27,9 +27,15 @@ async function initApp() {
     }
     
     try {
-        await loadMyWave();
+        loadMyWave();
     } catch (e) {
         console.error('My Wave load error:', e);
+    }
+    
+    try {
+        loadLikedTracks('yandex');
+    } catch (e) {
+        console.error('Liked tracks load error:', e);
     }
     
     try {
@@ -42,9 +48,72 @@ async function initApp() {
     hideLoadingScreen();
 }
 
-async function loadMyWave() {
-    await loadLikedTracks('yandex');
-}
+window.playMyWave = async function() {
+    const container = document.getElementById('myWaveContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--accent);"></i><p style="margin-top: 16px;">Загрузка волны...</p></div>';
+    
+    try {
+        const recommendations = await apiCall('recommendations');
+        
+        if (!recommendations || recommendations.length === 0) {
+            container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Лайкните треки в Яндекс.Музыке для персонализации</p></div>';
+            showNotification('Лайкните треки в Яндекс.Музыке', 'info');
+            return;
+        }
+        
+        let html = '';
+        recommendations.forEach(function(track) {
+            let artistsText = '';
+            if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
+                artistsText = track.artists.join(', ');
+            } else if (track.artist) {
+                artistsText = track.artist;
+            }
+            
+            let coverUrl = track.cover_uri || '';
+            if (coverUrl && coverUrl.includes('%%')) {
+                coverUrl = coverUrl.replace('%%', '200x200');
+            }
+            
+            const coverHtml = coverUrl 
+                ? '<img src="' + coverUrl + '" alt="" style="width: 100%; height: 100%; object-fit: cover;">'
+                : '<i class="fas fa-music" style="font-size: 2rem;"></i>';
+            
+            const duration = track.duration ? formatDuration(track.duration) : '';
+            const trackId = track.id || '';
+            
+            html += '<div class="track-item" data-track-id="' + trackId + '" onclick="playTrack(\'' + trackId + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
+                '<div class="track-item-cover">' + coverHtml + '</div>' +
+                '<div class="track-item-info">' +
+                '<div class="track-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
+                '<div class="track-item-artist">' + escapeHtml(artistsText) + '</div>' +
+                '</div>' +
+                '<div class="track-duration">' + duration + '</div>' +
+                '</div>';
+        });
+        
+        container.innerHTML = html;
+        
+        window.currentSource = 'wave';
+        window.currentSourceTracks = recommendations;
+        
+        playTrack(recommendations[0].id);
+        showNotification('▶ Моя Волна', 'success');
+        
+    } catch (error) {
+        console.error('Play wave error:', error);
+        container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff6b6b;"></i><p style="margin-top: 12px; color: var(--text-muted);">Ошибка загрузки</p></div>';
+    }
+};
+
+window.loadMyWave = function() {
+    const container = document.getElementById('myWaveContainer');
+    if (container) {
+        container.innerHTML = '<div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 3rem; color: var(--text-muted);"></i><p style="margin-top: 16px; font-size: 14px; color: var(--text-muted);">Нажми "Слушать" для запуска персональной подборки</p></div>';
+    }
+};
 
 window.refreshLikedTracks = function() {
     loadLikedTracks('yandex');
@@ -328,7 +397,6 @@ window.switchTab = function(tabName) {
     if (tabName === 'history' && typeof loadHistory === 'function') loadHistory();
     if (tabName === 'shop' && typeof loadShopItems === 'function') loadShopItems();
     if (tabName === 'stats' && typeof loadStats === 'function') loadStats();
-    if (tabName === 'radio' && typeof loadRadioStations === 'function') loadRadioStations();
 };
 
 let searchTimeout = null;

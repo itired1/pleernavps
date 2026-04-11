@@ -660,28 +660,39 @@ def radio_stations():
             result = []
             
             categories = {}
-            for station in stations:
-                if hasattr(station, 'station') and station.station:
-                    s = station.station
-                    cat = getattr(s, 'category', None) or getattr(s, 'name', None) or 'Радио'
-                    
-                    if cat not in categories:
-                        categories[cat] = {
-                            'name': cat,
-                            'icon': 'fa-radio',
-                            'stations': []
-                        }
-                    
-                    station_id = f"yandex:{s.id}" if isinstance(s.id, str) else s.id
-                    
-                    categories[cat]['stations'].append({
-                        'id': str(station_id),
-                        'station_id': str(station_id),
-                        'name': getattr(s, 'name', cat),
-                        'description': getattr(s, 'description', '') or '',
-                        'cover_uri': f"https://{s.cover_uri.replace('%%', '300x300')}" if hasattr(s, 'cover_uri') and s.cover_uri else None,
-                        'service': 'yandex'
-                    })
+            for item in stations:
+                s = getattr(item, 'station', None) or item
+                name = getattr(s, 'name', str(s)) or 'Радио'
+                station_id = getattr(s, 'id', None)
+                
+                if station_id is None:
+                    continue
+                
+                cat = 'Радио'
+                
+                if cat not in categories:
+                    categories[cat] = {
+                        'name': cat,
+                        'icon': 'fa-radio',
+                        'stations': []
+                    }
+                
+                station_id_str = f"yandex:{station_id}" if isinstance(station_id, str) else str(station_id)
+                
+                cover_uri = None
+                if hasattr(s, 'cover') and s.cover:
+                    cover = getattr(s.cover, 'uri', None)
+                    if cover:
+                        cover_uri = f"https://{cover.replace('%%', '300x300')}"
+                
+                categories[cat]['stations'].append({
+                    'id': station_id_str,
+                    'station_id': station_id_str,
+                    'name': name,
+                    'description': getattr(s, 'description', '') or '',
+                    'cover_uri': cover_uri,
+                    'service': 'yandex'
+                })
             
             for cat in categories:
                 result.append(categories[cat])
@@ -692,6 +703,8 @@ def radio_stations():
             })
         except Exception as e:
             print(f"Radio stations error: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 500
     
     return jsonify({'error': 'Сервис не поддерживается'}), 400
@@ -1817,14 +1830,17 @@ def buy_item():
     if item_type == 'banner':
         item_data['image'] = item.get('image', '')
     elif item_type == 'badge':
-        item_data['icon'] = item.get('icon', 'fa-star')
-        item_data['color'] = item.get('color', '#ffd700')
+        if item.get('image'):
+            item_data['image'] = item.get('image', '')
+        else:
+            item_data['icon'] = item.get('icon', 'fa-star')
+            item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'frame':
         item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'theme':
         item_data['accent'] = item.get('accent', '#6366f1')
     
-    inv = UserInventory(user_id=user.id, item_id=item_id, data=json.dumps(item_data))
+    inv = UserInventory(user_id=user.id, item_id=item_id, item_type=item_type, data=json.dumps(item_data))
     db.session.add(inv)
     db.session.commit()
     
