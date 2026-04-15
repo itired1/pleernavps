@@ -959,6 +959,11 @@ body {
     }
 }
 
+/* Mobile nav - hide on desktop by default */
+.mobile-nav {
+    display: none;
+}
+
 /* === AUTH === */
 .auth-page {
     min-height: 100vh;
@@ -1719,25 +1724,187 @@ body {
     }
 }
 
-@media (max-width: 360px) {
+/* === MOBILE NAV (already in base) === */
+@media (max-width: 768px) {
+    /* Better mobile nav - show bottom navigation */
+    .mobile-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border);
+        padding: 0;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .mobile-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 10px;
+        gap: 2px;
+    }
+    
+    .mobile-nav-item.active {
+        color: var(--accent);
+    }
+    
+    .mobile-nav-item i {
+        font-size: 20px;
+    }
+    
+    .mobile-nav-item span {
+        font-size: 10px;
+    }
+}
+
+/* === BETTER RESPONSIVE === */
+@media (max-width: 768px) {
+    body {
+        padding-bottom: 70px;
+    }
+    
     .app-container {
-        padding-bottom: 120px;
+        padding: 8px;
+        padding-bottom: 140px;
+        gap: 8px;
+    }
+    
+    .sidebar {
+        display: none !important;
+    }
+    
+    .player-glass {
+        left: 8px;
+        right: 8px;
+        bottom: 68px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .player-info {
+        min-width: auto;
+        flex: 1;
+    }
+    
+    .player-cover {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .track-title {
+        font-size: 13px;
+        max-width: 100px;
+    }
+    
+    .track-artist {
+        font-size: 11px;
+        max-width: 100px;
+    }
+    
+    .player-controls {
+        order: 2;
+    }
+    
+    .player-progress {
+        order: 3;
+        width: 100%;
+        max-width: none;
+    }
+    
+    .glass-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+    
+    .services-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .wave-tracks {
+        gap: 8px;
+    }
+    
+    .track-item {
+        min-width: 140px;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .content {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-container {
+        padding: 4px;
+        padding-bottom: 130px;
+    }
+    
+    .player-glass {
+        left: 4px;
+        right: 4px;
+        bottom: 64px;
+        padding: 6px 8px;
     }
     
     .services-grid {
         grid-template-columns: 1fr 1fr;
     }
     
-    .wave-track-card {
-        min-width: 90px !important;
+    .glass-card {
+        padding: 10px;
+    }
+    
+    h2 {
+        font-size: 16px;
+    }
+    
+    .btn-primary {
+        padding: 10px 16px;
+        font-size: 13px;
     }
 }
+
+@media (max-width: 360px) {
+    .player-glass {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .player-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .player-controls {
+        justify-content: center;
+    }
     
     .player-progress {
-        position: fixed;
-        bottom: 80px;
-        left: 0;
-        right: 0;
+        order: 3;
+    }
+    
+    .services-grid {
+        grid-template-columns: 1fr;
     }
     
     .search-dropdown {
@@ -1746,10 +1913,5 @@ body {
         right: 10px !important;
         max-height: 60vh;
         width: auto !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
-        overflow: hidden;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
     }
 }

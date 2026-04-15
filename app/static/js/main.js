@@ -81,6 +81,7 @@ window.playMyWave = async function() {
     
     container.innerHTML = '<div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--accent);"></i><p style="margin-top: 16px;">Загрузка волны...</p></div>';
     
+    console.log('playMyWave: loading...');
     try {
         // Load liked tracks from Yandex as personal wave
         const likedTracks = await apiCall('liked-tracks');
@@ -104,7 +105,7 @@ window.playMyWave = async function() {
         }
         
         let html = '';
-        recommendations.forEach(function(track) {
+        tracks.forEach(function(track) {
             let artistsText = '';
             if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
                 artistsText = track.artists.join(', ');
