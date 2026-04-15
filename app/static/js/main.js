@@ -5,7 +5,9 @@ if (document.querySelector('.auth-page')) {
     window.loadFavorites = function() {};
     window.loadHistory = function() {};
 } else {
+    console.log('Main JS loaded, adding DOMContentLoaded listener');
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded fired');
         initApp();
     });
 }
@@ -22,17 +24,22 @@ function updateBalanceDisplay() {
 }
 
 async function initApp() {
+    console.log('initApp started');
     applySavedTheme();
     initAudioPlayer();
     
     // Load balance on start
     try {
+        console.log('Loading balance...');
         const balance = await apiCall('currency/balance');
+        console.log('Balance:', balance);
         if (balance && balance.balance !== undefined) {
             userBalance = balance.balance;
             updateBalanceDisplay();
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('Balance error:', e);
+    }
     
     try {
         await loadProfile();
