@@ -6,23 +6,16 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     
-    # Database - PostgreSQL for production, SQLite for dev
+    # Database
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///itired.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Session
     PERMANENT_SESSION_LIFETIME = 30 * 24 * 3600  # 30 дней
     
-    # Redis Cache
-    CACHE_REDIS_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
-    CACHE_TYPE = 'redis' if os.getenv('CACHE_REDIS_URL') else 'SimpleCache'
+    # Cache - SimpleCache (без Redis)
+    CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
-    
-    # Redis Session
-    REDIS_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/1')
-    
-    # Redis for WebSocket rooms
-    REDIS_SOCKET_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/2')
     
     # Email для верификации (пример для Gmail)
     MAIL_SERVER = 'smtp.gmail.com'
@@ -53,7 +46,7 @@ class Config:
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
     AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET', '')
     AWS_S3_REGION = os.getenv('AWS_S3_REGION', 'ru-central1')
-    AWS_S3_ENDPOINT = os.getenv('AWS_S3_ENDPOINT', '')  # For Yandex Cloud / MinIO
+    AWS_S3_ENDPOINT = os.getenv('AWS_S3_ENDPOINT', '')
     
     # Local upload fallback
     UPLOAD_FOLDER = 'static/uploads/avatars'
@@ -61,7 +54,3 @@ class Config:
     
     # CDN URL (Cloudflare, S3, etc.)
     CDN_URL = os.getenv('CDN_URL', '')
-
-    # RQ/ Celery for async tasks
-    RQ_RESULT_BACKEND = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/3')
-    BROKER_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/4')

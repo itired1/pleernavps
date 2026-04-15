@@ -30,14 +30,8 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
-# Redis cache for production
-cache_config = {'CACHE_TYPE': 'simple'}
-if hasattr(Config, 'CACHE_REDIS_URL') and Config.CACHE_REDIS_URL:
-    cache_config = {
-        'CACHE_TYPE': 'redis',
-        'CACHE_REDIS_URL': Config.CACHE_REDIS_URL
-    }
-cache = Cache(app, config=cache_config)
+# Simple cache (no Redis required)
+cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
 track_cache = {}
 
