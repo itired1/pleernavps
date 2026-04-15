@@ -82,9 +82,22 @@ window.playMyWave = async function() {
     container.innerHTML = '<div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--accent);"></i><p style="margin-top: 16px;">Загрузка волны...</p></div>';
     
     try {
-        const recommendations = await apiCall('recommendations');
+        // Load liked tracks from Yandex as personal wave
+        const likedTracks = await apiCall('liked-tracks');
+        let tracks = [];
         
-        if (!recommendations || recommendations.length === 0) {
+        if (likedTracks && likedTracks.tracks && likedTracks.tracks.length > 0) {
+            // Filter Yandex tracks and use them
+            tracks = likedTracks.tracks.filter(t => t.service === 'yandex' || t.id.toString().startsWith('yandex_'));
+        }
+        
+        if (tracks.length === 0) {
+            // Fallback to recommendations
+            const recs = await apiCall('recommendations');
+            tracks = recs || [];
+        }
+        
+        if (!tracks || tracks.length === 0) {
             container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Лайкните треки в Яндекс.Музыке для персонализации</p></div>';
             showNotification('Лайкните треки в Яндекс.Музыке', 'info');
             return;
@@ -108,7 +121,12 @@ window.playMyWave = async function() {
                 ? '<img src="' + coverUrl + '" alt="" style="width: 100%; height: 100%; object-fit: cover;">'
                 : '<i class="fas fa-music" style="font-size: 2rem;"></i>';
             
-            const duration = track.duration ? formatDuration(track.duration) : '';
+            // Handle duration - can be in seconds or milliseconds
+            let durationMs = track.duration;
+            if (durationMs && durationMs < 1000) {
+                durationMs = durationMs * 1000; // Convert seconds to ms
+            }
+            const duration = durationMs ? formatDuration(durationMs) : '';
             const trackId = track.id || '';
             
             html += '<div class="track-item" data-track-id="' + trackId + '" onclick="playTrack(\'' + trackId + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
@@ -124,10 +142,12 @@ window.playMyWave = async function() {
         container.innerHTML = html;
         
         window.currentSource = 'wave';
-        window.currentSourceTracks = recommendations;
+        window.currentSourceTracks = tracks;
         
-        playTrack(recommendations[0].id);
-        showNotification('▶ Моя Волна', 'success');
+        if (tracks.length > 0) {
+            playTrack(tracks[0].id);
+            showNotification('▶ Моя Волна (ЯндексМузыка)', 'success');
+        }
         
     } catch (error) {
         console.error('Play wave error:', error);
