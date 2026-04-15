@@ -785,6 +785,17 @@ def stats():
     services = session.get('active_sources', ['yandex'])
     total_playlists = 0
     total_liked = 0
+    total_listening_seconds = 0
+    
+    # Get listening history stats
+    history = db.session.query(ListeningHistory).filter_by(user_id=user.id).all()
+    for h in history:
+        if h.duration_seconds:
+            total_listening_seconds += h.duration_seconds
+    
+    # Convert to readable format
+    hours = total_listening_seconds // 3600
+    minutes = (total_listening_seconds % 3600) // 60
     
     if 'yandex' in services and user and user.yandex_token:
         client = get_yandex_client(user.yandex_token)
@@ -796,7 +807,10 @@ def stats():
     
     return jsonify({
         'total_playlists': total_playlists,
-        'total_liked_tracks': total_liked
+        'total_liked_tracks': total_liked,
+        'total_listening_hours': hours,
+        'total_listening_minutes': minutes,
+        'total_listening_formatted': f'{hours}ч {minutes}м'
     })
 
 @app.route('/logout')
