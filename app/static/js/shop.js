@@ -1,5 +1,5 @@
 let shopItems = [];
-let userBalance = 0;
+// userBalance is globally defined in main.js
 let userInventory = [];
 let currentCategory = 'all';
 
