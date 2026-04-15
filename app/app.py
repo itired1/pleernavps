@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, current_app, send_file, Response, stream_with_context
 import requests
 import re
+from sqlalchemy import func
 from config import Config
 from models import db, User, UserCurrency, UserSetting, Friend, UserActivity, ListeningHistory, LikedTrack, UserInventory, ShopItem, Playlist, PlaylistTrack
 from utils import send_verification_email, get_yandex_client, get_vk_api, Recommender
@@ -28,7 +29,15 @@ db.init_app(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
-cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+
+# Redis cache for production
+cache_config = {'CACHE_TYPE': 'simple'}
+if hasattr(Config, 'CACHE_REDIS_URL') and Config.CACHE_REDIS_URL:
+    cache_config = {
+        'CACHE_TYPE': 'redis',
+        'CACHE_REDIS_URL': Config.CACHE_REDIS_URL
+    }
+cache = Cache(app, config=cache_config)
 
 track_cache = {}
 
@@ -242,6 +251,14 @@ def add_currency(user_id, amount, reason):
         db.session.add(curr)
     db.session.commit()
     return curr.balance
+
+@app.errorhandler(404)
+def error_404(e):
+    return render_template('error.html', code=404, title='404', message='Страница не найдена', desc='Запрошенная страница не существует или была перемещена.'), 404
+
+@app.errorhandler(500)
+def error_500(e):
+    return render_template('error.html', code=500, title='500', message='Ошибка сервера', desc='Что-то пошло не так. Попробуйте позже.'), 500
 
 @app.route('/')
 def index():
@@ -498,7 +515,10 @@ def public_profile(user_id):
         'avatar_url': user.avatar_url,
         'created_at': user.created_at.isoformat(),
         'equipped_badge': user.equipped_badge,
-        'playlists': [{'id': p.id, 'title': p.title, 'track_count': p.tracks.count()} for p in playlists],
+        'playlists': [
+            {'id': p.id, 'title': p.title, 'track_count': db.session.query(func.count(PlaylistTrack.id)).filter(PlaylistTrack.playlist_id == p.id).scalar() or 0}
+            for p in playlists
+        ],
         'liked_count': liked_count
     })
 
@@ -548,6 +568,7 @@ def profile_page():
 
 @app.route('/api/home')
 @login_required
+@limiter.limit("30 per minute")
 def home():
     user = db.session.get(User, session['user_id'])
     services = session.get('active_sources', ['yandex'])
@@ -635,6 +656,7 @@ def home():
 
 @app.route('/api/recommendations')
 @login_required
+@limiter.limit("30 per minute")
 def recommendations():
     user = db.session.get(User, session['user_id'])
     services = session.get('active_sources', ['yandex'])
@@ -911,6 +933,7 @@ def get_lyrics():
 
 @app.route('/api/search')
 @login_required
+@limiter.limit("60 per minute")
 def search():
     q = request.args.get('q', '')
     services = request.args.getlist('services') or session.get('active_sources', ['yandex', 'vk', 'soundcloud'])
@@ -1398,6 +1421,7 @@ def add_track_to_playlist(playlist_id):
 
 @app.route('/api/play_track/<track_id>')
 @login_required
+@limiter.limit("120 per minute")
 def play_track(track_id):
     user = db.session.get(User, session['user_id'])
     
@@ -1802,6 +1826,7 @@ def get_item_by_id(item_id):
 
 @app.route('/api/shop/buy', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def buy_item():
     data = request.get_json()
     item_id = data.get('item_id')
@@ -2157,7 +2182,7 @@ def equip_badge():
     user = db.session.get(User, session['user_id'])
     
     if badge_id:
-        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=badge_id, data__contains='badge').first()
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=badge_id, item_type='badge').first()
         if not inv:
             return jsonify({'success': False, 'message': 'Значок не куплен'}), 400
     else:

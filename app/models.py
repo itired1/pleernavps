@@ -91,7 +91,8 @@ class UserInventory(db.Model):
     __tablename__ = 'user_inventory'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    item_id = db.Column(db.String(100), nullable=False)  # строка для совместимости с BANNERS dict
+    item_id = db.Column(db.String(100), nullable=False)
+    item_type = db.Column(db.String(50))  # banner, badge, frame, theme
     data = db.Column(db.Text)
     purchased_at = db.Column(db.DateTime, default=datetime.utcnow)
     equipped = db.Column(db.Boolean, default=False)
@@ -125,38 +126,38 @@ class UserTheme(db.Model):
 class Friend(db.Model):
     __tablename__ = 'friends'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    friend_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    friend_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, accepted, rejected
     taste_match = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class UserActivity(db.Model):
     __tablename__ = 'user_activity'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    activity_type = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    activity_type = db.Column(db.String(50), nullable=False, index=True)
     activity_data = db.Column(db.Text)  # JSON
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ListeningHistory(db.Model):
     __tablename__ = 'listening_history'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     track_id = db.Column(db.String(100))
     track_data = db.Column(db.Text)
     artist_name = db.Column(db.String(200))
     duration_seconds = db.Column(db.Integer, default=0)
-    played_at = db.Column(db.DateTime, default=datetime.utcnow)
+    played_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 class Playlist(db.Model):
     __tablename__ = 'playlists'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     cover_url = db.Column(db.String(200))
-    is_public = db.Column(db.Boolean, default=True)
+    is_public = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -166,8 +167,8 @@ class Playlist(db.Model):
 class PlaylistTrack(db.Model):
     __tablename__ = 'playlist_tracks'
     id = db.Column(db.Integer, primary_key=True)
-    playlist_id = db.Column(db.Integer, db.ForeignKey('playlists.id'), nullable=False)
-    track_id = db.Column(db.String(100), nullable=False)
+    playlist_id = db.Column(db.Integer, db.ForeignKey('playlists.id'), nullable=False, index=True)
+    track_id = db.Column(db.String(100), nullable=False, index=True)
     track_data = db.Column(db.Text)  # JSON with track info
     position = db.Column(db.Integer, default=0)
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -175,8 +176,8 @@ class PlaylistTrack(db.Model):
 class LikedTrack(db.Model):
     __tablename__ = 'liked_tracks'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    track_id = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    track_id = db.Column(db.String(100), nullable=False, index=True)
     track_data = db.Column(db.Text)
     liked_at = db.Column(db.DateTime, default=datetime.utcnow)
     

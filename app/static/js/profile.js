@@ -1,6 +1,16 @@
 async function loadProfileData() {
     try {
-        const profile = await apiCall('profile', { cache: false });
+        // Clear caches before loading profile
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('api_cache_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        const profile = await apiCall('profile');
         if (profile) updateProfileForm(profile);
     } catch (error) {
         console.error('Load profile error:', error);
@@ -70,6 +80,14 @@ function updateProfileForm(profile) {
 
 async function loadActiveBanner() {
     try {
+        // Clear caches
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('api_cache_')) {
+                localStorage.removeItem(key);
+            }
+        }
+        
         const response = await apiCall('shop/active-banner');
         if (response && response.image) {
             const bannerImg = document.querySelector('.profile-banner');
@@ -128,12 +146,15 @@ function updateProfileBadge(badgeId) {
                 'badge_graffiti': '/static/shop/banners/badge_graffiti.jpg',
             };
             if (imageMap[badgeId]) {
-                badgeHtml = '<img src="' + imageMap[badgeId] + '" style="width: 20px; height: 20px; object-fit: cover;">';
+                badgeHtml = '<img src="' + imageMap[badgeId] + '" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">';
             }
         }
     }
     
-    document.querySelectorAll('.user-badge').forEach(function(el) { el.innerHTML = badgeHtml; });
+    document.querySelectorAll('.user-badge').forEach(function(el) { 
+        el.innerHTML = badgeHtml;
+        el.style.fontSize = '24px';
+    });
 }
 
 document.querySelectorAll('#profile .source-btn').forEach(function(btn) {
@@ -234,12 +255,28 @@ window.openProfileCustomize = async function() {
     document.getElementById('profileCustomizeContent').style.display = 'none';
     
     try {
+        // Clear caches before loading
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('api_cache_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
         const inventory = await apiCall('shop/inventory');
         const profile = await apiCall('profile');
         
-        const badges = (inventory || []).filter(function(item) { return item.data && item.data.type === 'badge'; });
-        const frames = (inventory || []).filter(function(item) { return item.data && item.data.type === 'frame'; });
-        const themes = (inventory || []).filter(function(item) { return item.data && item.data.type === 'theme'; });
+        const badges = (inventory || []).filter(function(item) { 
+            return item.data && (item.data.type === 'badge' || item.item_id.startsWith('badge_')); 
+        });
+        const frames = (inventory || []).filter(function(item) { 
+            return item.data && (item.data.type === 'frame' || item.item_id.startsWith('frame_')); 
+        });
+        const themes = (inventory || []).filter(function(item) { 
+            return item.data && (item.data.type === 'theme' || item.item_id.startsWith('theme_')); 
+        });
         
         let equippedBadge = profile.local?.equipped_badge;
         let equippedFrame = profile.local?.equipped_frame;

@@ -464,3 +464,57 @@ class Recommender:
         
         random.shuffle(recommendations)
         return recommendations[:15]
+
+# === S3 Storage (Cloud/Cloudflare R2 / Yandex Cloud) ===
+def upload_to_s3(file_data, filename, content_type='image/png'):
+    """Upload file to S3-compatible storage"""
+    from flask import current_app
+    import base64
+    import hmac
+    import hashlib
+    from datetime import datetime
+    
+    config = current_app.config
+    access_key = config.get('AWS_ACCESS_KEY_ID')
+    secret_key = config.get('AWS_SECRET_ACCESS_KEY')
+    bucket = config.get('AWS_S3_BUCKET')
+    region = config.get('AWS_S3_REGION', 'ru-central1')
+    endpoint = config.get('AWS_S3_ENDPOINT')
+    cdn_url = config.get('CDN_URL')
+    
+    if not all([access_key, secret_key, bucket]):
+        return None
+    
+    try:
+        import boto3
+        from botocore.config import Config
+        
+        s3_config = Config(region_name=region)
+        s3_kwargs = {'endpoint_url': endpoint} if endpoint else {}
+        s3_client = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, config=s3_config, **s3_kwargs)
+        
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=f'avatars/{filename}',
+            Body=file_data,
+            ContentType=content_type
+        )
+        
+        if cdn_url:
+            return f'{cdn_url}/avatars/{filename}'
+        elif endpoint:
+            return f'{endpoint}/avatars/{filename}'
+        else:
+            return f'https://{bucket}.s3.{region}.amazonaws.com/avatars/{filename}'
+    
+    except Exception as e:
+        print(f'S3 upload error: {e}')
+        return None
+
+def get_cdn_url(path):
+    """Get CDN URL for static files"""
+    from flask import current_app
+    cdn = current_app.config.get('CDN_URL')
+    if cdn:
+        return f'{cdn}{path}'
+    return path

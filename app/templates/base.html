@@ -177,6 +177,30 @@
     </div>
     {% endblock %}
 
+    <!-- МОБИЛЬНАЯ НАВИГАЦИЯ -->
+    <div class="mobile-nav">
+        <button class="mobile-nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+            <i class="fas fa-home"></i>
+            <span>Главная</span>
+        </button>
+        <button class="mobile-nav-item" data-tab="playlists" onclick="switchTab('playlists')">
+            <i class="fas fa-list"></i>
+            <span>Плейлисты</span>
+        </button>
+        <button class="mobile-nav-item" data-tab="favorites" onclick="switchTab('favorites')">
+            <i class="fas fa-heart"></i>
+            <span>Лайки</span>
+        </button>
+        <button class="mobile-nav-item" data-tab="shop" onclick="switchTab('shop')">
+            <i class="fas fa-store"></i>
+            <span>Магазин</span>
+        </button>
+        <button class="mobile-nav-item" data-tab="profile" onclick="switchTab('profile')">
+            <i class="fas fa-user"></i>
+            <span>Профиль</span>
+        </button>
+    </div>
+
     <!-- УВЕДОМЛЕНИЯ -->
     <div id="notificationsModal" class="modal">
         <div class="glass-card modal-content">
@@ -330,31 +354,6 @@
         </div>
     </div>
 
-    <!-- СОЗДАНИЕ ПЛЕЙЛИСТА -->
-    <div id="createPlaylistModal" class="modal">
-        <div class="glass-card modal-content">
-            <div class="modal-header">
-                <h3>Новый плейлист</h3>
-                <div class="modal-close" onclick="closeModal('createPlaylistModal')">
-                    <i class="fas fa-xmark"></i>
-                </div>
-            </div>
-            <form id="createPlaylistForm">
-                <div class="form-group">
-                    <label>Название</label>
-                    <input type="text" id="playlistName" placeholder="Мой плейлист" required>
-                </div>
-                <div class="form-group">
-                    <label>Описание</label>
-                    <textarea id="playlistDescription" rows="2" placeholder="Описание..."></textarea>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%;">
-                    Создать
-                </button>
-            </form>
-        </div>
-    </div>
-
     <!-- МОДАЛКА ПРЕДМЕТА МАГАЗИНА -->
     <div id="shopItemModal" class="modal">
         <div class="glass-card modal-content" style="max-width: 400px;">
@@ -421,5 +420,18 @@
         };
     </script>
     {% block extra_js %}{% endblock %}
+    
+    <!-- FOOTER LINKS -->
+    <footer style="text-align:center;padding:20px;border-top:1px solid var(--border);margin-top:40px;">
+        <a href="https://github.com/itiredmp3" target="_blank" style="color:var(--text-muted);margin:0 12px;text-decoration:none;font-size:13px;">
+            <i class="fab fa-github"></i> GitHub
+        </a>
+        <a href="https://soundcloud.com/itired" target="_blank" style="color:var(--text-muted);margin:0 12px;text-decoration:none;font-size:13px;">
+            <i class="fab fa-soundcloud"></i> SoundCloud
+        </a>
+        <a href="https://github.com/itiredmp3/itiredmp3" target="_blank" style="color:var(--text-muted);margin:0 12px;text-decoration:none;font-size:13px;">
+            <i class="fas fa-music"></i> iTired
+        </a>
+    </footer>
 </body>
 </html>

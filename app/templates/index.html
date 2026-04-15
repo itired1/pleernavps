@@ -225,35 +225,14 @@
                     <label>SoundCloud Прокси</label>
                     <input type="text" id="soundcloud_proxy" placeholder="http://ip:port (оставьте пустым если не нужен)">
                 </div>
-                <!-- VK temporarily disabled
                 <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
-                        <span style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fab fa-vk"></i> Токен VK
-                            <i id="vkCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
-                        </span>
-                        <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openModal('vkTokenModal')">
-                            <i class="fas fa-question-circle"></i> Как получить
+                    <label>Моя волна</label>
+                    <div class="source-selector">
+                        <button type="button" class="source-btn active" data-source="yandex">
+                            <i class="fab fa-yandex"></i> Яндекс
                         </button>
-                    </label>
-                    <input type="password" id="vk_token" placeholder="Вставьте токен">
-                </div>-->
-                    <div class="form-group">
-                        <label>Моя волна</label>
-                        <div class="source-selector">
-                            <button type="button" class="source-btn active" data-source="yandex">
-                                <i class="fab fa-yandex"></i> Яндекс
-                            </button>
-                            <!-- VK temporarily disabled
-                            <button type="button" class="source-btn" data-source="vk">
-                                <i class="fab fa-vk"></i> VK
-                            </button>
-                            <button type="button" class="source-btn" data-source="all">
-                                <i class="fas fa-globe"></i> Все
-                            </button>
-                            -->
-                        </div>
                     </div>
+                </div>
                 <button type="button" class="btn-primary" style="width: 100%;" onclick="saveProfile()">
                     Сохранить изменения
                 </button>

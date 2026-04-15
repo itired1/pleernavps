@@ -5,10 +5,25 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///itired.db'
+    
+    # Database - PostgreSQL for production, SQLite for dev
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///itired.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Session
     PERMANENT_SESSION_LIFETIME = 30 * 24 * 3600  # 30 дней
-
+    
+    # Redis Cache
+    CACHE_REDIS_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
+    CACHE_TYPE = 'redis' if os.getenv('CACHE_REDIS_URL') else 'SimpleCache'
+    CACHE_DEFAULT_TIMEOUT = 300
+    
+    # Redis Session
+    REDIS_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/1')
+    
+    # Redis for WebSocket rooms
+    REDIS_SOCKET_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/2')
+    
     # Email для верификации (пример для Gmail)
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
@@ -23,8 +38,6 @@ class Config:
     GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5001/auth/google/callback')
 
     # SoundCloud Proxy (если заблокирован в России)
-    # Формат: 'http://user:pass@host:port' или 'http://host:port'
-    # Client ID теперь указывается каждым пользователем в профиле
     SOUNDCLOUD_CLIENT_ID = os.getenv('SOUNDCLOUD_CLIENT_ID', '')
     SOUNDCLOUD_PROXY = os.getenv('SOUNDCLOUD_PROXY', None)
     
@@ -35,10 +48,20 @@ class Config:
     # Discord Rich Presence (Webhook для статуса)
     DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL', '')
 
-    # Папка загрузки аватаров
+    # Cloud Storage для аватарок (S3-compatible)
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET', '')
+    AWS_S3_REGION = os.getenv('AWS_S3_REGION', 'ru-central1')
+    AWS_S3_ENDPOINT = os.getenv('AWS_S3_ENDPOINT', '')  # For Yandex Cloud / MinIO
+    
+    # Local upload fallback
     UPLOAD_FOLDER = 'static/uploads/avatars'
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
+    
+    # CDN URL (Cloudflare, S3, etc.)
+    CDN_URL = os.getenv('CDN_URL', '')
 
-    # Кэширование (простое, для разработки)
-    CACHE_TYPE = 'SimpleCache'
-    CACHE_DEFAULT_TIMEOUT = 300
+    # RQ/ Celery for async tasks
+    RQ_RESULT_BACKEND = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/3')
+    BROKER_URL = os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/4')

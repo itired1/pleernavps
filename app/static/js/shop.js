@@ -1,6 +1,7 @@
 let shopItems = [];
 let userBalance = 0;
 let userInventory = [];
+let currentCategory = 'all';
 
 const DEFAULT_BANNERS = [
     { id: 'banner_1', name: 'Неоновый закат', type: 'banner', price: 100, rarity: 'common', data: { image: '/static/shop/banners/xz.jpg' } },
@@ -61,108 +62,80 @@ const DEFAULT_THEMES = [
     { id: 'theme_pink', name: 'Розовая', type: 'theme', price: 200, rarity: 'epic', data: { accent: '#ec4899' } },
 ];
 
-async function loadShopItems() {
+function initShop() {
     const container = document.getElementById('shopItemsList');
     if (!container) {
-        console.log('Shop container not found');
+        console.log('SHOP: container not found');
         return;
     }
     
-    container.innerHTML = '<div style="padding: 40px; text-align: center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p style="margin-top: 12px;">Загрузка...</p></div>';
+    container.innerHTML = '<p style="text-align:center;padding:40px;">Загрузка...</p>';
     
-    userBalance = 0;
-    try {
-        const balance = await apiCall('currency/balance');
-        if (balance && balance.balance !== undefined) {
-            userBalance = balance.balance;
-        }
-    } catch (error) {
-        console.error('Balance error:', error);
-    }
-    
-    updateBalanceDisplay();
-    
-    try {
-        const inventory = await apiCall('shop/inventory');
-        userInventory = inventory || [];
-    } catch (error) {
-        console.error('Inventory error:', error);
-        userInventory = [];
-    }
-    
-    shopItems = [...DEFAULT_BANNERS, ...DEFAULT_BADGES, ...DEFAULT_FRAMES, ...DEFAULT_THEMES];
-    displayShopItems();
+    Promise.all([
+        fetch('/api/currency/balance', { credentials: 'include' }).then(r => r.json()).catch(() => ({ balance: 0 })),
+        fetch('/api/shop/inventory', { credentials: 'include' }).then(r => r.json()).catch(() => [])
+    ])
+    .then(([balanceData, inventoryData]) => {
+        userBalance = balanceData?.balance || 0;
+        userInventory = inventoryData || [];
+        
+        const be = document.getElementById('userBalance');
+        if (be) be.textContent = userBalance;
+        const he = document.getElementById('headerBalance');
+        if (he) he.textContent = userBalance;
+        
+        shopItems = [...DEFAULT_BANNERS, ...DEFAULT_BADGES, ...DEFAULT_FRAMES, ...DEFAULT_THEMES];
+        displayShopItems(currentCategory);
+    })
+    .catch(err => {
+        console.error('SHOP init error:', err);
+        container.innerHTML = '<p style="text-align:center;padding:40px;color:var(--error);">Ошибка загрузки</p>';
+    });
 }
 
 function displayShopItems(category) {
+    currentCategory = category || 'all';
     const container = document.getElementById('shopItemsList');
-    if (!container) {
-        console.log('Container shopItemsList not found!');
+    if (!container || !shopItems.length) {
+        if (container) container.innerHTML = '<p>Товары не загружены</p>';
         return;
     }
     
-    if (!shopItems || !shopItems.length) {
-        console.log('No shop items loaded!');
-        container.innerHTML = '<div style="padding: 40px; text-align: center;"><i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff6b6b;"></i><p>Товары не загружены</p></div>';
-        return;
-    }
+    const filtered = currentCategory === 'all' ? shopItems : shopItems.filter(i => i.type === currentCategory);
     
-    const filteredItems = (category === 'all' || !category) 
-        ? shopItems 
-        : shopItems.filter(function(item) { return item.type === category; });
-    
-    console.log('Displaying ' + filteredItems.length + ' items (category: ' + category + ')');
-    
-    if (!filteredItems.length) {
-        container.innerHTML = '<div style="padding: 40px; text-align: center;"><i class="fas fa-shopping-bag" style="font-size: 3rem; color: var(--text-muted);"></i><p>Пусто</p></div>';
-        return;
-    }
-    
-    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">';
-    filteredItems.forEach(function(item) {
-        const rarityColors = {
-            common: '#9ca3af',
-            rare: '#3b82f6',
-            epic: '#a855f7',
-            legendary: '#f59e0b'
-        };
-        const rarityColor = rarityColors[item.rarity] || '#9ca3af';
-        const owned = userInventory.some(function(inv) { return inv.item_id === item.id; });
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;">';
+    filtered.forEach(item => {
+        const owned = userInventory.some(inv => inv.item_id === item.id);
         const canAfford = userBalance >= item.price;
+        const rarityColor = { common: '#9ca3af', rare: '#3b82f6', epic: '#a855f7', legendary: '#f59e0b' }[item.rarity] || '#9ca3af';
         
-        let previewContent = '';
+        let preview = '';
         if (item.type === 'badge') {
-            const icon = item.data.icon || 'fa-star';
-            const color = item.data.color || '#ffd700';
-            previewContent = '<i class="fas ' + icon + '" style="font-size: 48px; color: ' + color + ';"></i>';
+            if (item.data.image) preview = '<img src="' + item.data.image + '" style="width:100%;height:100%;object-fit:cover;">';
+            else preview = '<i class="fas ' + (item.data.icon || 'fa-star') + '" style="font-size:48px;color:' + (item.data.color || '#ffd700') + '"></i>';
         } else if (item.type === 'frame') {
-            const frameColor = item.data.color || '#ffd700';
-            previewContent = '<div style="width: 60px; height: 60px; border-radius: 50%; border: 6px solid ' + frameColor + '; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="font-size: 28px; color: var(--text);"></i></div>';
+            preview = '<div style="width:60px;height:60px;border-radius:50%;border:6px solid ' + item.data.color + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:28px;"></i></div>';
         } else if (item.type === 'theme') {
-            const accent = item.data.accent || '#6366f1';
-            previewContent = '<div style="display: flex; gap: 8px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-secondary);"></div><div style="width: 40px; height: 40px; border-radius: 50%; background: ' + accent + '; box-shadow: 0 0 20px ' + accent + ';"></div></div>';
+            preview = '<div style="width:60px;height:60px;border-radius:8px;background:' + item.data.accent + ';box-shadow:0 0 20px ' + item.data.accent + ';"></div>';
         } else {
-            previewContent = '<img src="' + (item.data.image || '/static/shop/banners/xz.jpg') + '" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display=\'none\'">';
+            preview = '<img src="' + (item.data.image || '/static/shop/banners/xz.jpg') + '" style="width:100%;height:100%;object-fit:cover;">';
         }
         
-        const typeLabels = { banner: 'Баннер', badge: 'Значок', frame: 'Рамка', theme: 'Тема' };
+        const typeLabel = { banner: 'Баннер', badge: 'Значок', frame: 'Рамка', theme: 'Тема' }[item.type] || item.type;
         
-        html += '<div style="background: var(--bg-elevated); border: 2px solid ' + rarityColor + '; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform=\'scale(1.02)\'" onmouseout="this.style.transform=\'scale(1)\'" onclick="openShopItemModal(\'' + item.id + '\')">' +
-            '<div style="height: 100px; overflow: hidden; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;">' +
-            previewContent +
-            '</div>' +
-            '<div style="padding: 10px;">' +
-            '<div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">' + (typeLabels[item.type] || item.type) + '</div>' +
-            '<h4 style="margin: 0 0 4px; font-size: 13px;">' + escapeHtml(item.name) + '</h4>' +
-            '<span style="font-size: 10px; color: ' + rarityColor + '; text-transform: uppercase; font-weight: bold;">' + item.rarity + '</span>';
+        html += '<div style="background:var(--bg-elevated);border:2px solid ' + rarityColor + ';border-radius:12px;overflow:hidden;cursor:pointer;" onclick="openShopItemModal(\'' + item.id + '\')">' +
+            '<div style="height:100px;overflow:hidden;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;">' + preview + '</div>' +
+            '<div style="padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">' + typeLabel + '</div>' +
+            '<h4 style="margin:0 0 4px;font-size:13px;">' + item.name + '</h4>' +
+            '<span style="font-size:10px;color:' + rarityColor + ';text-transform:uppercase;font-weight:bold;">' + item.rarity + '</span>';
         
         if (owned) {
-            html += '<div style="margin-top: 8px; color: #2ed573; font-size: 11px;"><i class="fas fa-check-circle"></i> Куплено</div>';
+            html += '<div style="margin-top:8px;color:#2ed573;font-size:11px;"><i class="fas fa-check-circle"></i> Куплено</div>';
         } else {
-            html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">' +
-                '<span style="color: ' + (canAfford ? 'var(--accent)' : '#ff6b6b') + '; font-weight: 600;"><i class="fas fa-coins"></i> ' + item.price + '</span>' +
-                '<button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="event.stopPropagation(); buyItem(\'' + item.id + '\')">Купить</button>' +
-                '</div>';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">' +
+                '<span style="color:' + (canAfford ? 'var(--accent)' : '#ff6b6b') + ';font-weight:600;"><i class="fas fa-coins"></i> ' + item.price + '</span>' +
+                '<button class="btn-primary" style="padding:6px 12px;font-size:12px;" onclick="event.stopPropagation();buyItem(\'' + item.id + '\')">Купить</button></div>';
         }
         
         html += '</div></div>';
@@ -172,59 +145,54 @@ function displayShopItems(category) {
     container.innerHTML = html;
 }
 
+window.loadShopItems = initShop;
+
+function loadShopItemsFresh() {
+    const container = document.getElementById('shopItemsList');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="padding:40px;text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><p>Загрузка...</p></div>';
+    
+    shopItems = [...DEFAULT_BANNERS, ...DEFAULT_BADGES, ...DEFAULT_FRAMES, ...DEFAULT_THEMES];
+    displayShopItems(currentCategory);
+}
+
 window.openShopItemModal = function(itemId) {
-    const item = shopItems.find(function(i) { return i.id === itemId; });
+    const item = shopItems.find(i => i.id === itemId);
     if (!item) return;
     
     const modal = document.getElementById('shopItemModal');
     if (!modal) return;
     
     const previewEl = document.getElementById('shopItemPreview');
-    const nameEl = document.getElementById('shopItemName');
-    const rarityEl = document.getElementById('shopItemRarity');
-    const priceEl = document.getElementById('shopItemPrice');
-    const buyBtn = document.getElementById('shopItemBuyBtn');
-    const giftBtn = modal.querySelector('.glass-btn');
-    
     if (previewEl) {
-        previewEl.innerHTML = '<img src="' + (item.data.image || '') + '" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">';
+        if (item.data.image) previewEl.innerHTML = '<img src="' + item.data.image + '" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">';
+        else if (item.type === 'badge') previewEl.innerHTML = '<i class="fas ' + (item.data.icon || 'fa-star') + '" style="font-size:80px;color:' + (item.data.color || '#ffd700') + '"></i>';
+        else previewEl.innerHTML = '';
     }
-    if (nameEl) nameEl.textContent = item.name;
-    if (rarityEl) rarityEl.textContent = item.rarity;
-    if (priceEl) priceEl.innerHTML = '<i class="fas fa-coins"></i> ' + item.price;
     
-    const owned = userInventory.some(function(inv) { return inv.item_id === itemId; });
+    const nameEl = document.getElementById('shopItemName');
+    if (nameEl) nameEl.textContent = item.name;
+    
+    const buyBtn = document.getElementById('shopItemBuyBtn');
+    const owned = userInventory.some(inv => inv.item_id === itemId);
     
     if (buyBtn) {
         if (owned) {
             buyBtn.textContent = 'Куплено';
             buyBtn.disabled = true;
-            buyBtn.style.opacity = '0.5';
         } else {
             buyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Купить';
             buyBtn.disabled = userBalance < item.price;
-            buyBtn.style.opacity = userBalance < item.price ? '0.5' : '1';
+            buyBtn.onclick = function() { buyItem(itemId); };
         }
-        buyBtn.onclick = function() { 
-            if (!owned) buyItem(itemId); 
-            closeModal('shopItemModal'); 
-        };
     }
     
-    if (giftBtn) {
-        giftBtn.style.display = owned ? 'none' : 'flex';
-        giftBtn.onclick = function() { 
-            closeModal('shopItemModal');
-            giftItem(itemId); 
-        };
-    }
-    
-    modal.dataset.itemId = itemId;
     openModal('shopItemModal');
 };
 
 window.buyItem = async function(itemId) {
-    const item = shopItems.find(function(i) { return i.id === itemId; });
+    const item = shopItems.find(i => i.id === itemId);
     if (!item) return;
     
     if (userBalance < item.price) {
@@ -233,161 +201,116 @@ window.buyItem = async function(itemId) {
     }
     
     try {
-        const result = await apiCall('shop/buy', {
+        const result = await fetch('/api/shop/buy', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ item_id: itemId })
         });
         
-        if (result && result.success) {
+        const data = await result.json();
+        
+        if (data && data.success) {
             showNotification('Покупка совершена!', 'success');
-            userBalance = result.new_balance;
-            updateBalanceDisplay();
-            loadShopItems();
+            
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('api_cache_')) keysToRemove.push(key);
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            
+            window.location.reload();
         } else {
-            showNotification(result?.message || 'Ошибка покупки', 'error');
+            showNotification(data?.message || 'Ошибка', 'error');
         }
     } catch (error) {
-        console.error('Buy item error:', error);
+        console.error(error);
         showNotification('Ошибка покупки', 'error');
     }
 };
 
-window.giftItem = async function(itemId) {
-    const friendId = prompt('Введите ID пользователя для подарка:');
-    if (!friendId) return;
-    
-    const item = shopItems.find(function(i) { return i.id === itemId; });
-    if (!item) return;
-    
-    if (userBalance < item.price) {
-        showNotification('Недостаточно монет', 'error');
-        return;
-    }
-    
-    try {
-        const result = await apiCall('shop/gift', {
-            method: 'POST',
-            body: JSON.stringify({ item_id: itemId, friend_id: parseInt(friendId) })
-        });
-        
-        if (result && result.success) {
-            showNotification('Подарок отправлен!', 'success');
-            userBalance = result.new_balance;
-            updateBalanceDisplay();
-        } else {
-            showNotification(result?.message || 'Ошибка отправки подарка', 'error');
-        }
-    } catch (error) {
-        console.error('Gift item error:', error);
-        showNotification('Ошибка отправки подарка', 'error');
-    }
-};
-
-window.equipBanner = async function(inventoryId) {
-    try {
-        const result = await apiCall('shop/equip/' + inventoryId, {
-            method: 'POST'
-        });
-        
-        if (result && result.success) {
-            showNotification('Баннер установлен!', 'success');
-            loadInventory();
-        } else {
-            showNotification(result?.message || 'Ошибка', 'error');
-        }
-    } catch (error) {
-        showNotification('Ошибка установки баннера', 'error');
-    }
-};
-
-async function loadInventory() {
-    try {
-        const inventory = await apiCall('shop/inventory');
-        userInventory = inventory || [];
-        displayInventory();
-    } catch (error) {
-        console.error('Load inventory error:', error);
-    }
-}
-
-function displayInventory() {
-    const container = document.getElementById('inventoryItems');
+window.loadInventory = function() {
+    const container = document.getElementById('inventoryList');
     if (!container) return;
     
-    if (!userInventory.length) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">У вас пока нет купленных предметов. Купите что-нибудь в магазине!</p>';
-        return;
-    }
+    container.innerHTML = '<div style="padding:40px;text-align:center;"><i class="fas fa-spinner fa-spin"></i></div>';
     
-    let html = '';
-    userInventory.forEach(function(item) {
-        const data = item.data || {};
-        const rarityColors = {
-            common: '#9ca3af',
-            rare: '#3b82f6',
-            epic: '#a855f7',
-            legendary: '#f59e0b'
-        };
-        const rarityColor = rarityColors[data.rarity] || '#9ca3af';
+    fetch('/api/shop/inventory', { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+        const items = data || [];
+        if (items.length === 0) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-muted);">Инвентарь пуст</p>';
+            return;
+        }
         
-        html += '<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ' + rarityColor + ';">' +
-            '<img src="' + (data.image || '/static/shop/banners/xz.jpg') + '" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;" onerror="this.style.display=\'none\'">' +
-            '<div style="flex: 1;">' +
-            '<h4 style="margin: 0;">' + escapeHtml(data.name || 'Баннер') + '</h4>' +
-            '<span style="font-size: 12px; color: ' + rarityColor + '; text-transform: uppercase;">' + (data.rarity || '') + '</span>' +
-            (item.equipped ? '<span style="margin-left: 8px; font-size: 11px; color: #2ed573;">(Установлен)</span>' : '') +
-            '</div>' +
-            '<button class="btn-primary" onclick="equipBanner(' + item.id + ')" ' + (item.equipped ? 'disabled style="opacity: 0.5;"' : '') + '>' +
-            '<i class="fas fa-check"></i> ' + (item.equipped ? 'Установлен' : 'Установить') +
-            '</button>' +
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">';
+        items.forEach(item => {
+            const itemData = item.data || {};
+            const isEquipped = item.equipped ? 'border:2px solid var(--accent);' : '';
+            
+            let icon = '';
+            if (itemData.image) {
+                icon = '<img src="' + itemData.image + '" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">';
+            } else if (itemData.icon) {
+                icon = '<i class="fas ' + itemData.icon + '" style="font-size:24px;color:' + (itemData.color || '#ffd700') + ';"></i>';
+            } else if (itemData.color) {
+                icon = '<div style="width:50px;height:50px;background:' + itemData.color + ';border-radius:8px;"></div>';
+            } else {
+                icon = '<i class="fas fa-gift" style="font-size:24px;"></i>';
+            }
+            
+            html += '<div style="background:var(--bg-elevated);border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px;' + isEquipped + '">' +
+                '<div style="flex-shrink:0;">' + icon + '</div>' +
+                '<div style="flex:1;">' +
+                    '<div style="font-weight:600;">' + (itemData.name || item.item_id) + '</div>' +
+                    '<div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">' + (itemData.rarity || item.item_type) + '</div>' +
+                '</div>' +
+                '<button class="btn-primary" style="padding:8px 16px;font-size:12px;" onclick="equipItem(' + item.id + ')">' +
+                    (item.equipped ? 'Снять' : 'Надеть') +
+                '</button>' +
             '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    })
+    .catch(() => {
+        container.innerHTML = '<p style="text-align:center;color:var(--error);">Ошибка загрузки</p>';
     });
-    container.innerHTML = html;
-}
-
-window.showInventory = function() {
-    const shopList = document.getElementById('shopItemsList');
-    const inventoryList = document.getElementById('inventoryList');
-    
-    if (shopList) shopList.style.display = 'none';
-    if (inventoryList) {
-        inventoryList.style.display = 'block';
-        loadInventory();
-    }
-    
-    document.querySelectorAll('.cat-chip').forEach(function(c) { c.classList.remove('active'); });
 };
 
-function updateBalanceDisplay() {
-    const els = document.querySelectorAll('#userBalance, #headerBalance, #coinBadge');
-    els.forEach(function(el) {
-        if (el) {
-            if (el.id === 'coinBadge') {
-                el.textContent = userBalance > 0 ? userBalance : '';
-                el.style.display = userBalance > 0 ? 'inline' : 'none';
-            } else {
-                el.textContent = userBalance;
-            }
+window.equipItem = function(inventoryId) {
+    fetch('/api/shop/equip/' + inventoryId, {
+        method: 'POST',
+        credentials: 'include'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Готово!', 'success');
+            loadInventory();
+        } else {
+            showNotification(data.message || 'Ошибка', 'error');
         }
-    });
-}
+    })
+    .catch(() => showNotification('Ошибка', 'error'));
+};
 
+// Category chips
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.cat-chip').forEach(function(chip) {
+    document.querySelectorAll('.cat-chip').forEach(chip => {
         chip.addEventListener('click', function() {
-            document.querySelectorAll('.cat-chip').forEach(function(c) { c.classList.remove('active'); });
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             
-            var shopList = document.getElementById('shopItemsList');
-            var inventoryList = document.getElementById('inventoryList');
-            
             if (chip.dataset.category === 'inventory') {
-                if (shopList) shopList.style.display = 'none';
-                if (inventoryList) inventoryList.style.display = 'block';
+                document.getElementById('shopItemsList').style.display = 'none';
+                document.getElementById('inventoryList').style.display = 'block';
                 loadInventory();
             } else {
-                if (shopList) shopList.style.display = 'block';
-                if (inventoryList) inventoryList.style.display = 'none';
+                document.getElementById('shopItemsList').style.display = 'block';
+                document.getElementById('inventoryList').style.display = 'none';
                 displayShopItems(chip.dataset.category);
             }
         });

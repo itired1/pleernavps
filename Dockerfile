@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install boto3 for S3/Cloud Storage
+RUN pip install --no-cache-dir boto3 botocore
+
 COPY . .
 
 RUN mkdir -p static/uploads instance

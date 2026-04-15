@@ -925,27 +925,37 @@ body {
 }
 
 @media (max-width: 768px) {
-    .glass-header {
-        border-radius: var(--radius-sm);
+    .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border);
+        padding: 8px 16px;
+        justify-content: space-around;
+        z-index: 100;
+    }
+    
+    .mobile-nav-item {
+        display: flex;
         flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: var(--text-muted);
+        font-size: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
     }
-    .search-box {
-        max-width: 100%;
-        width: 100%;
+    
+    .mobile-nav-item.active {
+        color: var(--accent);
     }
-    .player-glass {
-        flex-wrap: wrap;
-        justify-content: center;
-        padding: 12px 16px;
-        gap: 12px;
-        border-radius: var(--radius-sm);
-    }
-    .player-info {
-        min-width: auto;
-    }
-    .player-progress {
-        order: 3;
-        width: 100%;
+    
+    .mobile-nav-item i {
+        font-size: 20px;
     }
 }
 
@@ -1543,50 +1553,185 @@ body {
     font-size: 24px;
 }
 
+@media (max-width: 1200px) {
+    .player-glass {
+        left: calc(200px + 24px);
+    }
+}
+
+@media (max-width: 1024px) {
+    .player-glass {
+        left: calc(180px + 20px);
+        right: 10px;
+        bottom: 10px;
+    }
+}
+
 @media (max-width: 768px) {
-    .app-container {
-        grid-template-columns: 1fr !important;
-        padding-bottom: 180px;
-    }
-    
-    .sidebar {
-        display: none !important;
-    }
-    
-    .glass-header {
-        flex-wrap: wrap;
+    .player-glass {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        padding: 12px;
         gap: 8px;
     }
     
-    .search-box {
-        width: 100%;
-        order: 3;
+    .player-info {
+        min-width: 100px;
+        flex: 1;
     }
     
-    .content {
-        padding: 12px;
+    .player-cover {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .player-controls {
+        order: 2;
+    }
+    
+    .player-progress {
+        order: 3;
+        width: 100%;
+        flex: none;
+    }
+}
+}
+
+@media (max-width: 480px) {
+    .player-glass {
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        padding: 8px;
+        border-radius: 10px;
+    }
+    
+    .player-info {
+        min-width: 100px;
+    }
+    
+    .track-title {
+        font-size: 13px;
+    }
+    
+    .track-artist {
+        font-size: 11px;
+    }
+    
+    .player-controls button {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .time-display {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .player-glass {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .player-info {
+        min-width: auto;
+    }
+    
+    .player-controls {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-container {
+        padding: 4px;
+        padding-bottom: 140px;
     }
     
     .glass-card {
-        padding: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    
+    .glass-header h2 {
+        font-size: 16px;
+    }
+    
+    .search-input {
+        font-size: 14px;
+        padding: 8px 12px 8px 32px;
     }
     
     .services-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 6px;
     }
     
     .wave-tracks {
-        gap: 8px;
+        gap: 6px;
     }
     
     .wave-track-card {
-        min-width: 130px !important;
+        min-width: 110px !important;
     }
     
-    .player-glass {
+    .track-item {
+        min-width: 100px !important;
+    }
+    
+    .glass-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .btn-primary {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group textarea {
         padding: 10px 12px;
     }
+    
+    .modal {
+        padding: 16px;
+    }
+    
+    .modal-content {
+        max-width: 95%;
+        padding: 16px;
+    }
+    
+    h3 {
+        font-size: 16px;
+    }
+    
+    .player-controls {
+        gap: 8px !important;
+    }
+    
+    .player-buttons button {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .app-container {
+        padding-bottom: 120px;
+    }
+    
+    .services-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .wave-track-card {
+        min-width: 90px !important;
+    }
+}
     
     .player-progress {
         position: fixed;

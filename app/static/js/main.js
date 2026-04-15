@@ -10,9 +10,29 @@ if (document.querySelector('.auth-page')) {
     });
 }
 
+let userBalance = 0;
+
+function updateBalanceDisplay() {
+    const el = document.getElementById('userBalance');
+    if (el) el.textContent = userBalance;
+    const headerEl = document.getElementById('headerBalance');
+    if (headerEl) headerEl.textContent = userBalance;
+    const badge = document.getElementById('coinBadge');
+    if (badge) badge.textContent = userBalance > 0 ? userBalance : '';
+}
+
 async function initApp() {
     applySavedTheme();
     initAudioPlayer();
+    
+    // Load balance on start
+    try {
+        const balance = await apiCall('currency/balance');
+        if (balance && balance.balance !== undefined) {
+            userBalance = balance.balance;
+            updateBalanceDisplay();
+        }
+    } catch (e) {}
     
     try {
         await loadProfile();
@@ -219,10 +239,6 @@ function displayWaveTracks(tracks) {
     container.innerHTML = html;
 }
 
-window.changeWaveSource = function(source) {
-    loadLikedTracks(source);
-};
-
 function displayWavesList(waves) {
     const container = document.getElementById('waveTracksContainer');
     const playlistsContainer = document.getElementById('wavePlaylistsContainer');
@@ -387,15 +403,18 @@ window.switchTab = function(tabName) {
     if (targetTab) targetTab.classList.add('active');
     
     document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    document.querySelectorAll('.mobile-nav-item').forEach(function(n) { n.classList.remove('active'); });
     var targetNav = document.querySelector('.nav-item[data-tab="' + tabName + '"]');
+    var targetMobileNav = document.querySelector('.mobile-nav-item[data-tab="' + tabName + '"]');
     if (targetNav) targetNav.classList.add('active');
+    if (targetMobileNav) targetMobileNav.classList.add('active');
     
     if (tabName === 'profile' && typeof loadProfileData === 'function') loadProfileData();
     if (tabName === 'playlists' && typeof loadPlaylists === 'function') loadPlaylists();
     if (tabName === 'notifications' && typeof loadNotifications === 'function') loadNotifications();
     if (tabName === 'favorites' && typeof loadFavorites === 'function') loadFavorites();
     if (tabName === 'history' && typeof loadHistory === 'function') loadHistory();
-    if (tabName === 'shop' && typeof loadShopItems === 'function') loadShopItems();
+    if (tabName === 'shop' && typeof initShop === 'function') initShop();
     if (tabName === 'stats' && typeof loadStats === 'function') loadStats();
 };
 

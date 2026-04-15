@@ -1,32 +1,19 @@
-# iTired - Simple Redis setup for VPS
-# Usage: docker-compose up -d (or just run redis manually)
-
 version: '3.8'
 
-services:
-  # === Redis (Cache + Session + WebSocket) ===
-  redis:
-    image: redis:7-alpine
-    restart: always
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - itired-net
+# Production compose with external services
+# Usage: docker-compose -f docker-compose.production.yml up -d
 
-  # === App (Flask) ===
+services:
   app:
     build: .
     restart: always
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@10.0.0.1:5432/itired}
-      - CACHE_REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+      - CACHE_REDIS_URL=${CACHE_REDIS_URL}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
@@ -34,18 +21,27 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-      - AWS_S3_REGION=${AWS_S3_REGION:-ru-central1}
+      - AWS_S3_REGION=${AWS_S3_REGION}
       - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
       - CDN_URL=${CDN_URL}
     volumes:
       - ./instance:/app/instance
-      - ./static/uploads:/app/static/uploads
-    depends_on:
-      - redis
     networks:
       - itired-net
+    depends_on:
+      - redis
 
-  # === Nginx (Reverse Proxy) ===
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - itired-net
+    mem_limit: 512m
+    cpus: 0.5
+
   nginx:
     image: nginx:alpine
     restart: always

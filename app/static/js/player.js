@@ -1,4 +1,3 @@
-console.log('=== player.js loading ===');
 let audioPlayer = null;
 window.currentTrack = null;
 let currentPlaylist = [];
@@ -75,27 +74,6 @@ function loadQueueState() {
     }
     return false;
 }
-
-window.addToQueue = async function(trackId) {
-    try {
-        const track = await apiCall('track/' + trackId);
-        if (track) {
-            queue.push({
-                id: track.id,
-                title: track.title,
-                artists: track.artists,
-                cover_uri: track.cover_uri,
-                service: track.service,
-                url: track.url
-            });
-            showNotification('Добавлено в очередь', 'success');
-            updateQueueDisplay();
-        }
-    } catch (error) {
-        console.error('Add to queue error:', error);
-        showNotification('Ошибка добавления', 'error');
-    }
-};
 
 function updateQueueDisplay() {
     const container = document.getElementById('queueContainer');
@@ -330,16 +308,8 @@ window.pauseTrack = function() {
 };
 
 window.testPause = function() {
-    console.log('=== testPause called ===');
-    console.log('socket:', window.socket ? window.socket.id : 'null');
-    console.log('currentRoom:', window.currentRoom);
-    console.log('isHost:', window.isHost);
-    console.log('roomHost:', window.roomHost);
     if (window.socket && window.currentRoom && window.isHost) {
-        console.log('Sending pause_track...');
         window.socket.emit('pause_track', { current_time: audioPlayer ? audioPlayer.currentTime : 0 });
-    } else {
-        console.log('Skipping - missing conditions');
     }
 };
 
