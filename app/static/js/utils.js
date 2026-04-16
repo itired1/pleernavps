@@ -28,9 +28,9 @@ const apiCall = async function(endpoint, options = {}) {
         
         const data = await response.json();
         
-        if (!response.ok) throw new Error(data.error || data.message || `HTTP ${response.status}`);
+        if (!response.ok) throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
         
-        if (!options.method && !options.body && !data.error) {
+        if (!options.method && !options.body && data && !data.error) {
             localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
         }
         
