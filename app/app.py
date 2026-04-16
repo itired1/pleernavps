@@ -559,13 +559,39 @@ def profile_page():
             session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk']
         
         if 'yandex_token' in data and data['yandex_token']:
+            print(f"[PROFILE] Saving yandex_token: {data['yandex_token'][:20]}...")
             user.yandex_token = data['yandex_token']
             db.session.commit()
+            
+            # Test if token works
+            try:
+                client = get_yandex_client(user.yandex_token)
+                if client:
+                    print(f"[PROFILE] Yandex token WORKS!")
+                    return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
+                else:
+                    print(f"[PROFILE] Yandex token invalid - client is None")
+            except Exception as e:
+                print(f"[PROFILE] Yandex token error: {e}")
+            
             return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
         
         if 'vk_token' in data and data['vk_token']:
+            print(f"[PROFILE] Saving vk_token: {data['vk_token'][:20]}...")
             user.vk_token = data['vk_token']
             db.session.commit()
+            
+            # Test if token works
+            try:
+                vk = get_vk_api(user.vk_token)
+                if vk:
+                    print(f"[PROFILE] VK token WORKS!")
+                    return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
+                else:
+                    print(f"[PROFILE] VK token invalid - vk is None")
+            except Exception as e:
+                print(f"[PROFILE] VK token error: {e}")
+            
             return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
             user.soundcloud_client_id = data['soundcloud_client_id'] or None
