@@ -213,14 +213,8 @@ window.buyItem = async function(itemId) {
         if (data && data.success) {
             showNotification('Покупка совершена!', 'success');
             
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('api_cache_')) keysToRemove.push(key);
-            }
-            keysToRemove.forEach(k => localStorage.removeItem(k));
-            
-            window.location.reload();
+            initShop();
+            loadInventory();
         } else {
             showNotification(data?.message || 'Ошибка', 'error');
         }
