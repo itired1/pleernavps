@@ -391,8 +391,9 @@ def api_profile():
         if client:
             try:
                 acc = client.account_status()
-                yandex_info = {'login': acc.account.login, 'premium': acc.account.premium}
-            except: pass
+                yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
+            except Exception as e:
+                print(f"Yandex account error: {e}")
     
     if user and user.vk_token:
         vk = get_vk_api(user.vk_token)
