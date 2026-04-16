@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# iTired - Simple VPS Deployment
+# iTired - Simple VPS Deployment v2.1
 # Использование: ./deploy.sh [screen|docker]
 
 set -e
