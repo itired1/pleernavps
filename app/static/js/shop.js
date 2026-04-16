@@ -213,6 +213,14 @@ window.buyItem = async function(itemId) {
         if (data && data.success) {
             showNotification('Покупка совершена!', 'success');
             
+            fetch('/api/currency/balance', { credentials: 'include' })
+                .then(r => r.json())
+                .then(b => {
+                    userBalance = b?.balance || 0;
+                    const be = document.getElementById('userBalance');
+                    if (be) be.textContent = userBalance;
+                });
+            
             initShop();
             loadInventory();
         } else {
