@@ -980,7 +980,10 @@ def search():
         return jsonify({'tracks': []})
     
     result = {'tracks': []}
-    user = db.session.get(User, session['user_id'])
+    user_id = session.get('user_id')
+    user = db.session.get(User, user_id) if user_id else None
+    
+    print(f"[SEARCH] user_id={user_id}, user={user}, yandex_token={user.yandex_token if user else 'None'}")
     
     if 'soundcloud' in services:
         from utils import soundcloud_search
