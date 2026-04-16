@@ -6,7 +6,7 @@ Flask-SocketIO==5.3.6
 python-socketio==5.10.0
 eventlet==0.35.1
 yandex-music==2.1.0
-vk-api
+vk-api>=7.0
 bcrypt==4.0.1
 Pillow==10.0.0
 python-dotenv==1.0.0
