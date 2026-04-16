@@ -559,12 +559,26 @@ def profile_page():
             session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk']
         if 'yandex_token' in data and data['yandex_token']:
             user.yandex_token = data['yandex_token']
+            try:
+                client = get_yandex_client(data['yandex_token'])
+                if client:
+                    db.session.commit()
+                    return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
+            except Exception:
+                pass
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
+            return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён (без проверки)', 'source': 'yandex'})
         if 'vk_token' in data and data['vk_token']:
             user.vk_token = data['vk_token']
+            try:
+                vk = get_vk_api(data['vk_token'])
+                if vk:
+                    db.session.commit()
+                    return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
+            except Exception:
+                pass
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
+            return jsonify({'success': True, 'message': 'Токен VK сохранён (без проверки)', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
             user.soundcloud_client_id = data['soundcloud_client_id'] or None
         if 'soundcloud_proxy' in data:
