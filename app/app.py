@@ -387,13 +387,16 @@ def api_profile():
     vk_info = None
     
     if user and user.yandex_token:
-        client = get_yandex_client(user.yandex_token)
-        if client:
-            try:
-                acc = client.account_status()
-                yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
-            except Exception as e:
-                print(f"Yandex account error: {e}")
+        try:
+            client = get_yandex_client(user.yandex_token)
+            if client:
+                try:
+                    acc = client.account_status()
+                    yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
+                except Exception:
+                    pass
+        except Exception:
+            pass
     
     if user and user.vk_token:
         vk = get_vk_api(user.vk_token)
