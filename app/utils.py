@@ -283,8 +283,7 @@ def get_yandex_client(token):
         client = Client(token)
         client.init()
         return client
-    except Exception as e:
-        print(f"Yandex client error: {e}")
+    except Exception:
         return None
 
 def get_vk_api(token):
