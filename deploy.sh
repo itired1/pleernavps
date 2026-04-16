@@ -33,7 +33,8 @@ if [ "$MODE" = "screen" ]; then
     # Update code
     if [ -d ".git" ]; then
         echo -e "${YELLOW}Updating code...${NC}"
-        git pull origin main || echo "Not a git repo, skipping update"
+        git fetch origin
+        git reset --hard origin/main
     fi
     
     # Create screen session and run
