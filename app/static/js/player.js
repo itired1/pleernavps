@@ -256,6 +256,20 @@ function updatePlayButton() {
 }
 
 function handleTrackEnd() {
+    const listenedSeconds = audioPlayer.duration ? Math.floor(audioPlayer.duration) : 0;
+    if (listenedSeconds > 0 && currentTrack && currentTrack.id) {
+        fetch('/api/listen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                track_id: currentTrack.id,
+                title: currentTrack.title || '',
+                artist: currentTrack.artist || '',
+                duration: listenedSeconds
+            })
+        }).catch(function(e) { console.error('Listen tracking error:', e); });
+    }
+    
     if (repeatMode === 'one') {
         audioPlayer.currentTime = 0;
         audioPlayer.play().catch(console.error);
@@ -416,6 +430,21 @@ window.addToQueue = function(track) {
     }
 };
 
+window.playNext = function(track) {
+    if (typeof track === 'string') {
+        track = { id: track };
+    }
+    const insertIndex = currentTrackIndex + 1;
+    queue.splice(insertIndex, 0, track);
+    if (currentPlaylist.length === 0) {
+        currentPlaylist = [track];
+        currentTrackIndex = 0;
+    }
+    saveQueueState();
+    updateQueueUI();
+showNotification('Будет воспроизведено следующим', 'success');
+};
+
 window.removeFromQueue = function(index) {
     if (index < currentTrackIndex) {
         currentTrackIndex--;
@@ -430,9 +459,55 @@ window.removeFromQueue = function(index) {
 
 window.clearQueue = function() {
     queue = [];
+    currentPlaylist = [];
+    currentTrackIndex = 0;
     saveQueueState();
     updateQueueUI();
     showNotification('Очередь очищена', 'info');
+};
+
+window.saveCurrentQueue = async function() {
+    if (!queue.length) {
+        showNotification('Очередь пуста', 'error');
+        return;
+    }
+    try {
+        const response = await fetch('/api/queue/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tracks: queue, name: 'Сохранённая очередь' })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showNotification('Очередь сохранена', 'success');
+        } else {
+            showNotification(result.error || 'Ошибка', 'error');
+        }
+    } catch (e) {
+        console.error('Save queue error:', e);
+        showNotification('Ошибка сохранения', 'error');
+    }
+};
+
+window.loadSavedQueue = async function(queueId) {
+    try {
+        const response = await fetch('/api/queue/saved/' + queueId);
+        const result = await response.json();
+        if (result.tracks) {
+            queue = result.tracks;
+            currentPlaylist = [].concat(queue);
+            currentTrackIndex = 0;
+            saveQueueState();
+            updateQueueUI();
+            if (queue.length > 0) {
+                playTrack(queue[0].id);
+            }
+            showNotification('Очередь загружена', 'success');
+        }
+    } catch (e) {
+        console.error('Load queue error:', e);
+        showNotification('Ошибка загрузки', 'error');
+    }
 };
 
 window.reorderQueue = function(fromIndex, toIndex) {
@@ -463,7 +538,11 @@ function updateQueueUI() {
         return;
     }
     
-    let html = '';
+    let html = '<div style="padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border);">' +
+        '<button onclick="saveCurrentQueue()" style="flex:1; padding: 8px; background: var(--accent); border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;"><i class="fas fa-save"></i> Сохранить</button>' +
+        '<button onclick="clearQueue(); showNotification(\'Очищено\', \'info\')" style="padding: 8px; background: var(--bg-elevated); border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;font-size:12px;"><i class="fas fa-trash"></i></button>' +
+        '</div>' +
+        '<div style="padding: 8px 12px; font-size: 11px; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border); margin-top: 8px;">В очереди (' + queue.length + ')</div>';
     queue.forEach(function(track, index) {
         const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
         const cover = track.cover_uri || track.coverUrl || '';
@@ -672,15 +751,6 @@ async function playTrackById(trackId, trackData) {
             }
             
             addToHistory(currentTrack);
-            
-            apiCall('listen', {
-                method: 'POST',
-                body: JSON.stringify({
-                    track_id: trackId,
-                    artist: currentTrack.artist || '',
-                    duration: currentTrack.duration || 180
-                })
-            }).catch(function(e) { console.error('Listen tracking error:', e); });
             
             updatePlayerUI(currentTrack);
             updatePlayButton();

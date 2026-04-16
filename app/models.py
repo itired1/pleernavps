@@ -182,3 +182,12 @@ class LikedTrack(db.Model):
     liked_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     user = db.relationship('User', backref='liked_tracks')
+
+class SavedQueue(db.Model):
+    __tablename__ = 'saved_queues'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), default='Очередь')
+    tracks_data = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

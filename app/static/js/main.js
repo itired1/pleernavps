@@ -546,6 +546,7 @@ function displaySearchDropdown(results) {
             '<div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</div>' +
             '</div>' +
             '<button onclick="event.stopPropagation(); addToQueue(\'' + t.id + '\')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;" title="В очередь"><i class="fas fa-plus"></i></button>' +
+            '<button onclick="event.stopPropagation(); playNext(\'' + t.id + '\')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;" title="Воспроизвести следующим"><i class="fas fa-step-forward"></i></button>' +
             '<button onclick="event.stopPropagation(); showAddToPlaylistModal(' + JSON.stringify(t).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;" title="В плейлист"><i class="fas fa-list-plus"></i></button>' +
             '</div>';
     });

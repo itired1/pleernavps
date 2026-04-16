@@ -3,7 +3,7 @@ import requests
 import re
 from sqlalchemy import func
 from config import Config
-from models import db, User, UserCurrency, UserSetting, Friend, UserActivity, ListeningHistory, LikedTrack, UserInventory, ShopItem, Playlist, PlaylistTrack
+from models import db, User, UserCurrency, UserSetting, Friend, UserActivity, ListeningHistory, LikedTrack, UserInventory, ShopItem, Playlist, PlaylistTrack, SavedQueue
 from utils import send_verification_email, get_yandex_client, get_vk_api, Recommender
 import bcrypt
 import uuid
@@ -451,9 +451,12 @@ def get_user_stats():
     
     recent_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).order_by(ListeningHistory.played_at.desc()).limit(20).all()
     recent = []
+    import json
     for t in recent_tracks:
+        track_info = json.loads(t.track_data) if t.track_data else {}
         recent.append({
             'track_id': t.track_id,
+            'title': track_info.get('title', ''),
             'artist': t.artist_name,
             'played_at': t.played_at.isoformat() if t.played_at else None
         })
@@ -477,12 +480,27 @@ def record_listen():
     track_id = data.get('track_id')
     artist = data.get('artist', '')
     duration = data.get('duration', 0)
+    title = data.get('title', '')
+    
+    import json
+    print(f"[LISTEN] track_id={track_id}, duration={duration}, title={title}, artist={artist}")
+    
+    if duration and duration > 0:
+        if duration > 3600:
+            duration = 180
+        if duration < 10:
+            duration = 10
+    else:
+        duration = 0
+    
+    track_data = json.dumps({'title': title, 'artist': artist}) if title else None
     
     entry = ListeningHistory(
         user_id=user_id,
         track_id=track_id,
+        track_data=track_data,
         artist_name=artist,
-        duration_seconds=duration
+        duration_seconds=duration or 0
     )
     db.session.add(entry)
     db.session.commit()
@@ -1232,6 +1250,67 @@ def check_favorite(track_id):
     existing = db.session.query(LikedTrack).filter_by(user_id=session['user_id'], track_id=track_id).first()
     return jsonify({'liked': existing is not None})
 
+@app.route('/api/queue/save', methods=['POST'])
+@login_required
+def save_queue():
+    data = request.get_json()
+    tracks = data.get('tracks', [])
+    name = data.get('name', 'Очередь')
+    
+    import json
+    saved_queue = SavedQueue(
+        user_id=session['user_id'],
+        name=name,
+        tracks_data=json.dumps(tracks)
+    )
+    db.session.add(saved_queue)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'queue_id': saved_queue.id})
+
+@app.route('/api/queue/saved')
+@login_required
+def get_saved_queues():
+    queues = db.session.query(SavedQueue).filter_by(user_id=session['user_id']).order_by(SavedQueue.updated_at.desc()).all()
+    result = []
+    import json
+    for q in queues:
+        tracks = json.loads(q.tracks_data) if q.tracks_data else []
+        result.append({
+            'id': q.id,
+            'name': q.name,
+            'track_count': len(tracks),
+            'created_at': q.created_at.isoformat() if q.created_at else None,
+            'updated_at': q.updated_at.isoformat() if q.updated_at else None
+        })
+    return jsonify(result)
+
+@app.route('/api/queue/saved/<int:queue_id>')
+@login_required
+def get_saved_queue(queue_id):
+    queue = db.session.get(SavedQueue, queue_id)
+    if not queue or queue.user_id != session['user_id']:
+        return jsonify({'error': 'Очередь не найдена'}), 404
+    
+    import json
+    tracks = json.loads(queue.tracks_data) if queue.tracks_data else []
+    return jsonify({
+        'id': queue.id,
+        'name': queue.name,
+        'tracks': tracks
+    })
+
+@app.route('/api/queue/saved/<int:queue_id>', methods=['DELETE'])
+@login_required
+def delete_saved_queue(queue_id):
+    queue = db.session.get(SavedQueue, queue_id)
+    if not queue or queue.user_id != session['user_id']:
+        return jsonify({'error': 'Очередь не найдена'}), 404
+    
+    db.session.delete(queue)
+    db.session.commit()
+    return jsonify({'success': True})
+
 @app.route('/api/playlists/<playlist_id>/tracks')
 @login_required
 def playlist_tracks(playlist_id):
@@ -1443,18 +1522,6 @@ def play_track(track_id):
             if result.get('error'):
                 return jsonify(result), 404 if result.get('code') == 'NOT_FOUND' else 500
             
-            history = ListeningHistory(
-                user_id=session['user_id'],
-                track_id=track_id,
-                track_data=json.dumps({
-                    'title': result.get('title'),
-                    'artists': result.get('artist', '').split(', '),
-                    'cover_uri': result.get('cover')
-                })
-            )
-            db.session.add(history)
-            db.session.commit()
-            
             return jsonify(result)
         else:
             return jsonify({'error': 'Токен Яндекс.Музыки не настроен', 'code': 'NO_TOKEN'}), 400
@@ -1464,18 +1531,6 @@ def play_track(track_id):
         
         if result.get('error'):
             return jsonify(result), 404 if result.get('code') == 'NOT_FOUND' else 500
-        
-        history = ListeningHistory(
-            user_id=session['user_id'],
-            track_id=track_id,
-            track_data=json.dumps({
-                'title': result.get('title'),
-                'artists': [result.get('artist', '')],
-                'cover_uri': result.get('cover')
-            })
-        )
-        db.session.add(history)
-        db.session.commit()
         
         return jsonify(result)
     

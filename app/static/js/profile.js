@@ -397,8 +397,9 @@ window.loadStats = async function() {
         if (stats.recent_tracks && stats.recent_tracks.length > 0) {
             let recentHtml = '';
             stats.recent_tracks.slice(0, 10).forEach(function(track) {
+                const trackTitle = track.title ? escapeHtml(track.title) + ' - ' : '';
                 recentHtml += '<div class="glass-card" style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-elevated);">' +
-                    '<div><i class="fas fa-music" style="color: var(--accent); margin-right: 8px;"></i> ' + escapeHtml(track.artist || 'Неизвестный') + '</div>' +
+                    '<div><i class="fas fa-music" style="color: var(--accent); margin-right: 8px;"></i> ' + trackTitle + escapeHtml(track.artist || 'Неизвестный') + '</div>' +
                     '<span style="color: var(--text-muted); font-size: 12px;">' + formatTimeAgo(track.played_at) + '</span></div>';
             });
             recentEl.innerHTML = recentHtml;

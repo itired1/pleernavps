@@ -16,7 +16,8 @@ body {
     color: var(--text);
     font-family: 'Inter', -apple-system, sans-serif;
     line-height: 1.6;
-    overflow-x: hidden;
+    overflow-x: auto;
+    min-width: 320px;
 }
 
 .noise-overlay {
@@ -29,11 +30,24 @@ body {
 }
 
 .app-container {
-    display: grid;
-    grid-template-columns: 240px 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 16px;
     min-height: 100vh;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    margin-left: 0;
 }
 
 /* === SIDEBAR === */
@@ -204,6 +218,8 @@ body {
     flex-direction: column;
     gap: 16px;
     padding-bottom: 100px;
+    flex: 1;
+    min-width: 0;
 }
 
 .glass-header {
@@ -1089,6 +1105,34 @@ body {
     object-fit: cover;
 }
 
+.search-dropdown .search-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 0;
+    transition: background 0.15s;
+}
+
+.search-dropdown .search-item:hover {
+    background: var(--bg-elevated) !important;
+}
+
+.search-dropdown .search-item:hover button {
+    opacity: 1 !important;
+}
+
+.search-dropdown button {
+    opacity: 0.7;
+    padding: 8px;
+    transition: opacity 0.2s;
+}
+
+.search-dropdown button:hover {
+    opacity: 1 !important;
+    color: var(--accent) !important;
+}
+
 .track-item-info {
     flex: 1;
     min-width: 0;
@@ -1184,8 +1228,28 @@ body {
     opacity: 1;
 }
 
+.track-item:hover .fa-step-forward {
+    opacity: 1;
+}
+
+.track-item button[title="Воспроизвести следующим"] {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.track-item button[title="В плейлист"] {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.track-item button[title="В плейлист"]:hover,
+.track-item button[title="Воспроизвести следующим"]:hover {
+    color: var(--accent) !important;
+    opacity: 1;
+}
+
 .fa-list-plus {
-    opacity: 0;
+    opacity: 0.7;
     transition: opacity 0.2s;
 }
 
@@ -1559,16 +1623,30 @@ body {
 }
 
 @media (max-width: 1200px) {
-    .player-glass {
-        left: calc(200px + 24px);
+    .sidebar {
+        width: 160px !important;
     }
 }
 
 @media (max-width: 1024px) {
-    .player-glass {
-        left: calc(180px + 20px);
-        right: 10px;
-        bottom: 10px;
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main-content {
+        width: 100% !important;
+        padding: 12px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        padding: 8px !important;
+    }
+    
+    .main-content {
+        padding: 8px !important;
+        gap: 8px !important;
     }
 }
 
@@ -1772,18 +1850,31 @@ body {
 
 /* === BETTER RESPONSIVE === */
 @media (max-width: 768px) {
-    body {
-        padding-bottom: 70px;
-    }
-    
-    .app-container {
-        padding: 8px;
-        padding-bottom: 140px;
-        gap: 8px;
-    }
-    
     .sidebar {
         display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 12px !important;
+    }
+    
+    .glass-header {
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+    
+    .search-box {
+        max-width: 100% !important;
+    }
+    
+    .header-actions {
+        gap: 4px !important;
+    }
+    
+    .glass-btn {
+        padding: 6px 8px !important;
     }
     
     .player-glass {

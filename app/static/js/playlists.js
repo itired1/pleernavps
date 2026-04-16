@@ -275,6 +275,9 @@ function displayPlaylistTracks(tracks, playlist) {
                 '<button class="like-btn" onclick="event.stopPropagation(); toggleFavorite(\'' + track.id + '\', ' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--accent); font-size: 16px; cursor: pointer; padding: 8px; opacity: 0; transition: opacity 0.2s;">' +
                 '<i class="far fa-heart"></i>' +
                 '</button>' +
+                '<button onclick="event.stopPropagation(); playNext(' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 8px; opacity: 0; transition: opacity 0.2s;" title="Воспроизвести следующим">' +
+                '<i class="fas fa-step-forward"></i>' +
+                '</button>' +
                 '<button onclick="event.stopPropagation(); showAddToPlaylistModal(' + JSON.stringify(track).replace(/'/g, "\\'") + ')" style="background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 8px; opacity: 0; transition: opacity 0.2s;" title="В плейлист">' +
                 '<i class="fas fa-list-plus"></i>' +
                 '</button>' +
@@ -387,6 +390,7 @@ document.getElementById('createPlaylistForm')?.addEventListener('submit', async 
             closeModal('createPlaylistModal');
             this.reset();
             loadPlaylists();
+            document.getElementById('playlistsTabBtn')?.click();
         } else {
             showNotification(result?.message || 'Ошибка создания', 'error');
         }
