@@ -30,12 +30,9 @@ if [ "$MODE" = "screen" ]; then
         exit 0
     fi
     
-    # Update code
-    if [ -d ".git" ]; then
-        echo -e "${YELLOW}Updating code...${NC}"
-        git fetch origin
-        git reset --hard origin/main
-    fi
+    # Clear pip cache and install
+    echo -e "${YELLOW}Installing packages...${NC}"
+    pip install --no-cache-dir -r requirements.txt
     
     # Create screen session and run
     echo -e "${YELLOW}Starting in screen session 'itired'...${NC}"
