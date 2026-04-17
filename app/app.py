@@ -563,17 +563,8 @@ def profile_page():
             user.yandex_token = data['yandex_token']
             db.session.commit()
             
-            # Test if token works
-            try:
-                client = get_yandex_client(user.yandex_token)
-                if client:
-                    print(f"[PROFILE] Yandex token WORKS!")
-                    return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
-                else:
-                    print(f"[PROFILE] Yandex token invalid - client is None")
-            except Exception as e:
-                print(f"[PROFILE] Yandex token error: {e}")
-            
+            # Don't test token - just save
+            print(f"[PROFILE] Token saved (no validation)")
             return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
         
         if 'vk_token' in data and data['vk_token']:
