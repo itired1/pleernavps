@@ -58,7 +58,7 @@ const SETUP_HTML: &str = r##"<!DOCTYPE html>
         </div>
         <form id="form" onsubmit="connect(event)">
             <p>Введите адрес сервера друга</p>
-            <input type="url" id="url" placeholder="https://xxx.ngrok-free.app" required>
+            <input type="url" id="url" placeholder="http://111.88.155.103:5001" required>
             <button type="submit" class="btn" id="connectBtn">Подключиться</button>
         </form>
         <div class="info">
@@ -96,7 +96,7 @@ const SETUP_HTML: &str = r##"<!DOCTYPE html>
         if (saved) {
             window.location.href = saved;
         } else {
-            window.location.href = 'http://217.28.226.27:5001';
+            window.location.href = 'http://111.88.155.103:5001';
         }
     </script>
 </body>
@@ -112,7 +112,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            server_url: "http://217.28.226.27:5001".to_string(),
+            server_url: "http://111.88.155.103:5001".to_string(),
             username: None,
             token: None,
         }
@@ -281,7 +281,7 @@ fn main() {
 
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_title("iTired Music");
-                let _ = window.eval("window.location.href = 'http://217.28.226.27:5001';");
+                let _ = window.eval("window.location.href = 'http://111.88.155.103:5001';");
             }
 
             Ok(())
