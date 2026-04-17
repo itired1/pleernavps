@@ -997,7 +997,11 @@ def search():
     user_id = session.get('user_id')
     user = db.session.get(User, user_id) if user_id else None
     
-    print(f"[SEARCH] user_id={user_id}, user_exists={user is not None}, yandex_token={user.yandex_token[:20] if user and user.yandex_token else 'None/Empty'}")
+    token_preview = 'None'
+    if user and user.yandex_token:
+        token_preview = user.yandex_token[:20] + '...'
+    
+    print(f"[SEARCH] user_id={user_id}, user_exists={user is not None}, yandex_token={token_preview}")
     
     if not user:
         print(f"[SEARCH] No user found for session!")
