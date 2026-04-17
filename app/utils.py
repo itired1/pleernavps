@@ -282,9 +282,8 @@ def get_yandex_client(token):
     try:
         print(f"[YANDEX] Creating client with token: {token[:30]}...")
         client = Client(token)
-        print(f"[YANDEX] Client created, initializing...")
-        client.init()
-        print(f"[YANDEX] Client initialized successfully!")
+        # Skip init() to avoid Product class error
+        print(f"[YANDEX] Client created (no init)")
         return client
     except Exception as e:
         print(f"[YANDEX] Client creation FAILED: {type(e).__name__}: {e}")
