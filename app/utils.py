@@ -280,10 +280,16 @@ def get_yandex_client(token):
     if not token:
         return None
     try:
+        print(f"[YANDEX] Creating client with token: {token[:30]}...")
         client = Client(token)
+        print(f"[YANDEX] Client created, initializing...")
         client.init()
+        print(f"[YANDEX] Client initialized successfully!")
         return client
-    except Exception:
+    except Exception as e:
+        print(f"[YANDEX] Client creation FAILED: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def get_vk_api(token):
