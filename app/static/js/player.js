@@ -275,10 +275,12 @@ function handleTrackEnd() {
         audioPlayer.play().catch(console.error);
     } else if (repeatMode === 'all') {
         nextTrack();
-    } else {
-        if (currentTrackIndex < queue.length - 1) {
-            nextTrack();
+    } else if (currentTrackIndex >= queue.length - 1) {
+        if (window.autoRefreshWave || window.currentSource === 'wave') {
+            window.refreshWave();
         }
+    } else {
+        nextTrack();
     }
 }
 

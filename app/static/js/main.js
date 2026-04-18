@@ -233,6 +233,11 @@ function displayLikedTracks(tracks) {
     container.innerHTML = html;
 }
 
+window.refreshWave = async function() {
+    const source = document.querySelector('#waveSourceSelector .source-btn.active')?.dataset.source || 'all';
+    await window.changeWaveSource(source);
+};
+
 function displayWaveTracks(tracks) {
     const container = document.getElementById('waveTracksContainer');
     if (!container) return;
