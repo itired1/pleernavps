@@ -315,7 +315,14 @@ function getRoomJoinedHTML() {
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:white;font-size:12px;"></i></div><div style="flex:1;font-size:13px;">' + name + '</div>' + (isRoomHost ? '<i class="fas fa-crown" style="color:gold;font-size:12px;"></i>' : '') + '</div>';
     }).join('');
     
-    return '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Код комнаты</div><div style="font-size:2rem;font-weight:bold;letter-spacing:0.2em;color:var(--accent);">' + window.currentRoom + '</div><button onclick="shareRoom()" class="btn-primary" style="margin-top:12px;padding:8px 16px;"><i class="fas fa-share"></i> Поделиться</button></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Участники (' + window.roomUsers.length + ')' + (window.isHost ? '<span style="color:var(--accent);">(Вы ведущий)</span>' : '<span style="color:var(--text-muted);">(Слушатель)</span>') + '</div><div style="max-height:150px;overflow-y:auto;">' + (usersList || '<p style="color:var(--text-muted);padding:10px;">Загрузка...</p>') + '</div></div><button onclick="leaveRoom()" class="glass-btn" style="width:100%;padding:12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-sign-out-alt"></i> Покинуть комнату</button>';
+    const playlistHTML = window.roomPlaylist && window.roomPlaylist.length > 0 
+        ? window.roomPlaylist.slice(0, 10).map((t, i) => {
+            const artists = t.artists ? t.artists.join(', ') : (t.artist || '');
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="playRoomPlaylistItem(' + i + ')"><div style="width:36px;height:36px;border-radius:4px;background:var(--bg-secondary);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><i class="fas fa-music" style="color:var(--text-muted);font-size:12px;"></i></div><div style="flex:1;min-width:0;font-size:12px;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.title || 'Неизвестно') + '</div><div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(artists) + '</div></div></div>';
+          }).join('')
+        : '<p style="color:var(--text-muted);padding:10px;font-size:12px;">Плейлист пуст</p>';
+    
+    return '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Код комнаты</div><div style="font-size:2rem;font-weight:bold;letter-spacing:0.2em;color:var(--accent);">' + window.currentRoom + '</div><button onclick="shareRoom()" class="btn-primary" style="margin-top:12px;padding:8px 16px;"><i class="fas fa-share"></i> Поделиться</button></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Участники (' + window.roomUsers.length + ')' + (window.isHost ? '<span style="color:var(--accent);">(Вы ведущий)</span>' : '<span style="color:var(--text-muted);">(Слушатель)</span>') + '</div><div style="max-height:150px;overflow-y:auto;">' + (usersList || '<p style="color:var(--text-muted);padding:10px;">Загрузка...</p>') + '</div></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Плейлист</div><div style="max-height:200px;overflow-y:auto;">' + playlistHTML + '</div></div>' + (window.isHost ? '<div style="margin-bottom:16px;"><input type="text" id="roomSearchInput" placeholder="Поиск трека..." style="width:100%;padding:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px;" onkeyup="if(event.key==\'Enter\')roomSearch()"><button onclick="roomSearch()" class="btn-primary" style="width:100%;margin-top:8px;padding:10px;"><i class="fas fa-plus"></i> Добавить трек</button></div>' : '') + '<button onclick="leaveRoom()" class="glass-btn" style="width:100%;padding:12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-sign-out-alt"></i> Покинуть комнату</button>';
 }
 
 function updateRoomPlaylistUI() {
@@ -509,6 +516,34 @@ setInterval(() => {
         socket.emit('sync_time', { current_time: audioPlayer.currentTime });
     }
 }, 2000);
+
+window.roomSearch = async function() {
+    const query = document.getElementById('roomSearchInput')?.value;
+    if (!query) return;
+    
+    try {
+        const response = await fetch('/api/search?q=' + encodeURIComponent(query));
+        const data = await response.json();
+        
+        if (data.tracks && data.tracks.length > 0) {
+            const track = data.tracks[0];
+            socket.emit('add_to_playlist', { track: track });
+            showNotification('Добавлено в плейлист комнаты', 'success');
+        } else {
+            showNotification('Трек не найден', 'error');
+        }
+    } catch (e) {
+        console.error('Room search error:', e);
+        showNotification('Ошибка поиска', 'error');
+    }
+};
+
+window.playRoomPlaylistItem = function(index) {
+    if (!window.roomPlaylist || !window.roomPlaylist[index]) return;
+    
+    const track = window.roomPlaylist[index];
+    playRoomTrack(track, 0);
+};
 
 if (typeof io === 'undefined') {
     const script = document.createElement('script');
