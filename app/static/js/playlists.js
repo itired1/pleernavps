@@ -367,6 +367,16 @@ window.showAddToPlaylistFromPlayer = function() {
     showAddToPlaylistModal(track);
 };
 
+window.addCurrentToQueue = function() {
+    const track = window.currentTrack;
+    if (!track) {
+        showNotification('Включите трек', 'warning');
+        return;
+    }
+    window.addToQueue(track);
+    showNotification('Добавлено в очередь', 'success');
+};
+
 document.getElementById('createPlaylistForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
