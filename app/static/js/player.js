@@ -287,6 +287,12 @@ function handleTrackEnd() {
 window.togglePlay = function() {
     console.log('=== togglePlay ===');
     console.log('socket:', !!window.socket, 'currentRoom:', window.currentRoom, 'isHost:', window.isHost);
+    
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может управлять воспроизведением', 'info');
+        return;
+    }
+    
     if (!audioPlayer.src || audioPlayer.src === window.location.href) {
         if (queue.length > 0) {
             playQueueItem(0);
@@ -318,6 +324,10 @@ window.togglePlay = function() {
 };
 
 window.pauseTrack = function() {
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может управлять', 'info');
+        return;
+    }
     if (audioPlayer) {
         audioPlayer.pause();
     }
@@ -330,6 +340,10 @@ window.testPause = function() {
 };
 
 window.seekTrack = function(event) {
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может перематывать', 'info');
+        return;
+    }
     const bar = event.currentTarget;
     const rect = bar.getBoundingClientRect();
     const percent = (event.clientX - rect.left) / rect.width;
@@ -345,6 +359,10 @@ window.changeVolume = function(value) {
 };
 
 window.nextTrack = function() {
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может управлять', 'info');
+        return;
+    }
     if (queue.length === 0 || queue.length === 1) return;
     
     if (isShuffle) {
@@ -362,6 +380,10 @@ window.nextTrack = function() {
 };
 
 window.previousTrack = function() {
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может управлять', 'info');
+        return;
+    }
     if (queue.length === 0) return;
     if (audioPlayer.currentTime > 3) {
         audioPlayer.currentTime = 0;
@@ -444,7 +466,12 @@ window.playNext = function(track) {
     }
     saveQueueState();
     updateQueueUI();
-showNotification('Будет воспроизведено следующим', 'success');
+    showNotification('Будет воспроизведено следующим', 'success');
+    
+    if (window.socket && window.currentRoom && !window.isHost) {
+        showNotification('Только ведущий может управлять', 'info');
+    }
+};
 };
 
 window.removeFromQueue = function(index) {
