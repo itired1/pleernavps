@@ -261,6 +261,55 @@ fn main() {
     discord_rpc_loop();
 
     tauri::Builder::default()
+        .setup(move |app| {
+            use tauri::menu::{Menu, MenuItem};
+            use tauri::tray::TrayIconBuilder;
+
+            let show_i = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
+            let playing_i = MenuItem::with_id(app, "playing", "▶ Сейчас играет", false, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+
+            let menu = Menu::with_items(app, &[&show_i, &playing_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .menu_on_left_click(false)
+                .tooltip("iTired Music")
+                .on_menu_event(|app, event| {
+                    match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            info!("System tray created");
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_title("iTired Music");
+                let _ = window.eval("window.location.href = 'http://111.88.155.103:5001';");
+            }
+
+            Ok(())
+        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
@@ -277,16 +326,6 @@ fn main() {
             get_setup_html,
             show_notification
         ])
-        .setup(move |app| {
-            info!("Tauri app setup complete");
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_title("iTired Music");
-                let _ = window.eval("window.location.href = 'http://111.88.155.103:5001';");
-            }
-
-            Ok(())
-        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
