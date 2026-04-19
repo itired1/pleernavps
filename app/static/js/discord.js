@@ -14,7 +14,10 @@ class DiscordRPC {
         // Check if running in Tauri
         if (window.__TAURI__) {
             this.enabled = true;
+            const saved = localStorage.getItem('desktopNotifications');
+            window.desktopNotificationsEnabled = saved === null ? true : saved !== 'false';
             console.log('Discord RPC: Tauri detected, enabling RPC');
+            console.log('Desktop notifications:', window.desktopNotificationsEnabled);
             
             // Initial update
             await this.updateTrack('iTired Music', 'Ready to play', true);
@@ -26,6 +29,17 @@ class DiscordRPC {
         } else {
             console.log('Discord RPC: Not in Tauri, RPC disabled');
         }
+    }
+    
+    toggleDesktopNotifications() {
+        window.desktopNotificationsEnabled = !window.desktopNotificationsEnabled;
+        localStorage.setItem('desktopNotifications', window.desktopNotificationsEnabled);
+        console.log('Desktop notifications:', window.desktopNotificationsEnabled);
+    }
+
+    setDesktopNotifications(enabled) {
+        window.desktopNotificationsEnabled = enabled;
+        localStorage.setItem('desktopNotifications', enabled);
     }
 
     async updateTrack(title, artist, playing = true, albumArt = null) {
@@ -100,5 +114,23 @@ document.addEventListener('player-pause', () => {
             false,
             track.cover_uri
         );
+    }
+});
+
+async function showDesktopNotification(title, body) {
+    if (window.__TAURI__) {
+        try {
+            const { invoke } = window.__TAURI__;
+            await invoke('show_notification', { title, body });
+        } catch (e) {
+            console.log('Notification error:', e);
+        }
+    }
+}
+
+document.addEventListener('player-track-changed', (e) => {
+    const { title, artist } = e.detail;
+    if (window.desktopNotificationsEnabled) {
+        showDesktopNotification('Now Playing', `${artist} - ${title}`);
     }
 });

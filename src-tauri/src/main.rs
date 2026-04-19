@@ -274,7 +274,8 @@ fn main() {
             update_discord_status,
             navigate_to,
             force_close_app,
-            get_setup_html
+            get_setup_html,
+            show_notification
         ])
         .setup(move |app| {
             info!("Tauri app setup complete");
@@ -361,4 +362,15 @@ fn navigate_to(window: tauri::WebviewWindow, url: String) -> Result<(), String> 
 fn force_close_app(window: tauri::WebviewWindow) -> Result<(), String> {
     info!("Force closing application");
     window.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn show_notification(title: String, body: String, app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| e.to_string())
 }
