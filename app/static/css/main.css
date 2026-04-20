@@ -1370,30 +1370,60 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px;
+    padding: 10px 12px;
     border-radius: var(--radius);
     cursor: pointer;
     transition: var(--transition);
+    background: transparent;
+    margin: 2px 8px;
+    border-radius: 8px;
 }
 
 .queue-item:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .queue-item.active {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(99, 102, 241, 0.15);
+    border-left: 3px solid var(--accent);
+}
+
+.queue-item.active .queue-item-title {
+    color: var(--accent);
+}
+
+.queue-item.active .queue-playing-icon {
+    display: block;
+}
+
+.queue-item.active .queue-item-cover {
+    border: 2px solid var(--accent);
+}
+
+.queue-playing-icon {
+    display: none;
+    color: var(--accent);
+    font-size: 12px;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .queue-item-cover {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
     background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
 }
 
 .queue-item-cover img {
@@ -1404,12 +1434,13 @@ body {
 
 .queue-item-cover i {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 16px;
 }
 
 .queue-item-info {
     flex: 1;
     min-width: 0;
+    padding-right: 8px;
 }
 
 .queue-item-title {
@@ -1418,14 +1449,16 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text);
 }
 
 .queue-item-artist {
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 2px;
 }
 
 .queue-item-remove {
@@ -1435,6 +1468,7 @@ body {
     font-size: 14px;
     cursor: pointer;
     padding: 8px;
+    border-radius: 6px;
     opacity: 0;
     transition: var(--transition);
 }
@@ -1444,7 +1478,17 @@ body {
 }
 
 .queue-item-remove:hover {
-    color: var(--error);
+    color: #fff;
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.queue-drag-handle {
+    color: var(--text-muted) !important;
+    opacity: 0.5;
+}
+
+.queue-item:hover .queue-drag-handle {
+    opacity: 1;
 }
 
 .wave-track-card {

@@ -356,6 +356,13 @@ window.changeVolume = function(value) {
     if (audioPlayer) {
         audioPlayer.volume = value / 100;
     }
+    localStorage.setItem('volume', value);
+};
+
+window.loadVolume = function() {
+    const saved = localStorage.getItem('volume') || 70;
+    if (volumeSlider) volumeSlider.value = saved;
+    if (audioPlayer) audioPlayer.volume = saved / 100;
 };
 
 window.nextTrack = function() {
@@ -495,6 +502,17 @@ window.clearQueue = function() {
     showNotification('Очередь очищена', 'info');
 };
 
+window.shuffleQueue = function() {
+    if (queue.length <= 1) return;
+    for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+    }
+    saveQueueState();
+    updateQueueUI();
+    showNotification('Очередь перемешана', 'success');
+};
+
 window.saveCurrentQueue = async function() {
     if (!queue.length) {
         showNotification('Очередь пуста', 'error');
@@ -567,17 +585,18 @@ function updateQueueUI() {
         return;
     }
     
-    let html = '<div style="padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border);">' +
-        '<button onclick="saveCurrentQueue()" style="flex:1; padding: 8px; background: var(--accent); border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;"><i class="fas fa-save"></i> Сохранить</button>' +
-        '<button onclick="clearQueue(); showNotification(\'Очищено\', \'info\')" style="padding: 8px; background: var(--bg-elevated); border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;cursor:pointer;font-size:12px;"><i class="fas fa-trash"></i></button>' +
+    let html = '<div style="padding: 16px; display: flex; gap: 10px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, var(--bg-elevated), transparent);">' +
+        '<button onclick="saveCurrentQueue()" style="flex:1; padding: 10px; background: var(--accent); border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;"><i class="fas fa-save"></i> Сохранить</button>' +
+        '<button onclick="clearQueue(); showNotification(\'Очередь очищена\', \'info\')" style="padding: 10px 14px; background: rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;cursor:pointer;font-size:13px;"><i class="fas fa-trash"></i></button>' +
+        '<button onclick="shuffleQueue()" style="padding: 10px; background: rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3);color:var(--accent);border-radius:8px;cursor:pointer;font-size:13px;" title="Перемешать"><i class="fas fa-shuffle"></i></button>' +
         '</div>' +
-        '<div style="padding: 8px 12px; font-size: 11px; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border); margin-top: 8px;">В очереди (' + queue.length + ')</div>';
+        '<div style="max-height: 400px; overflow-y: auto; padding: 8px;">';
     queue.forEach(function(track, index) {
         const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
         const cover = track.cover_uri || track.coverUrl || '';
         const isActive = index === currentTrackIndex && audioPlayer.src;
         
-        html += '<div class="queue-item ' + (isActive ? 'active' : '') + '" draggable="true" data-index="' + index + '">' +
+        html += '<div class="queue-item ' + (isActive ? 'active' : '') + '" draggable="true" data-index="' + index + '" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;margin-bottom:4px;background:rgba(255,255,255,0.02);">' +
             '<div class="queue-drag-handle" style="cursor: grab; padding: 4px; color: var(--text-muted);"><i class="fas fa-grip-lines"></i></div>' +
             '<div class="queue-item-cover" onclick="playQueueItem(' + index + ')">' + 
             (cover ? '<img src="' + cover + '" alt="">' : '<i class="fas fa-music"></i>') +
@@ -586,12 +605,13 @@ function updateQueueUI() {
             '<div class="queue-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
             '<div class="queue-item-artist">' + escapeHtml(artistsText) + '</div>' +
             '</div>' +
-            '<button class="queue-item-remove" onclick="event.stopPropagation(); removeFromQueue(' + index + ')" style="padding: 6px; background: none; border: none; color: var(--text-secondary); cursor: pointer;">' +
-            '<i class="fas fa-times"></i>' +
+            '<div class="queue-playing-icon" style="padding:4px;"><i class="fas fa-volume-high"></i></div>' +
+            '<button class="queue-item-remove" onclick="event.stopPropagation(); removeFromQueue(' + index + ')" style="padding: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; border-radius: 6px;">' +
+            '<i class="fas fatimes"></i>' +
             '</button>' +
             '</div>';
     });
-    container.innerHTML = html;
+    container.innerHTML = html + '</div>';
     
     initQueueDragDrop();
 }
@@ -900,7 +920,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (nextBtn) nextBtn.addEventListener('click', nextTrack);
     
     const volumeSlider = document.getElementById('volumeSlider');
-    if (volumeSlider) volumeSlider.addEventListener('input', function(e) { changeVolume(e.target.value); });
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', function(e) { changeVolume(e.target.value); });
+        loadVolume();
+    }
     
     const progressBar = document.getElementById('progressBar');
     if (progressBar) progressBar.addEventListener('click', seekTrack);
