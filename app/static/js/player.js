@@ -578,7 +578,7 @@ window.reorderQueue = function(fromIndex, toIndex) {
     updateQueueUI();
 };
 
-function updateQueueUI() {
+window.updateQueueUI = function() {
     const container = document.getElementById('queueContainer');
     if (!container) return;
     
