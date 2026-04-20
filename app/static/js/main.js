@@ -26,7 +26,9 @@ function updateBalanceDisplay() {
 async function initApp() {
     console.log('initApp started');
     applySavedTheme();
-    initAudioPlayer();
+    if (typeof initAudioPlayer === 'function') {
+        setTimeout(initAudioPlayer, 100);
+    }
     
     // Load balance on start
     try {

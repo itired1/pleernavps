@@ -360,9 +360,11 @@ window.changeVolume = function(value) {
 };
 
 window.loadVolume = function() {
-    const saved = localStorage.getItem('volume') || 70;
-    if (volumeSlider) volumeSlider.value = saved;
-    if (audioPlayer) audioPlayer.volume = saved / 100;
+    const vol = localStorage.getItem('volume') || 70;
+    const slider = document.getElementById('volumeSlider');
+    if (slider) slider.value = vol;
+    const player = document.getElementById('audioPlayer');
+    if (player) player.volume = vol / 100;
 };
 
 window.nextTrack = function() {
@@ -902,7 +904,7 @@ window.togglePlayerLike = function() {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== player.js DOMContentLoaded ===');
-    initAudioPlayer();
+    setTimeout(initAudioPlayer, 100);
     
     loadQueueState();
     
