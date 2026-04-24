@@ -183,6 +183,14 @@ def init_db():
 
 init_db()
 
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/api/profile/share')
 @login_required
 def share_profile():
@@ -222,14 +230,6 @@ def health_check():
         'version': '1.0.0',
         'features': ['yandex', 'vk', 'friends', 'rooms', 'shop']
     })
-
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Unauthorized'}), 401
-        return f(*args, **kwargs)
-    return decorated
 
 @app.route('/api/discord-rpc', methods=['POST'])
 @login_required
