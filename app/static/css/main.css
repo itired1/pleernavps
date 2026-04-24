@@ -353,19 +353,47 @@ body {
     transition: var(--transition);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .glass-card::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03), transparent 60%);
+    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 60%);
     pointer-events: none;
 }
 
 .glass-card:hover {
-    border-color: var(--border-hover);
-    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+.glass-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.glass-card .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.glass-card .card-action {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.glass-card .card-action:hover {
+    color: var(--accent-hover);
 }
 
 .card-icon {

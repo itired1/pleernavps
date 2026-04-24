@@ -244,6 +244,20 @@ if (profileForm) {
 window.saveProfile = saveProfile;
 window.loadProfileData = loadProfileData;
 
+window.shareProfile = async function() {
+    try {
+        const response = await fetch('/api/profile/share');
+        const data = await response.json();
+        if (data.share_url) {
+            await navigator.clipboard.writeText(data.share_url);
+            showNotification('Ссылка скопирована!', 'success');
+        }
+    } catch (e) {
+        console.error('Share error:', e);
+        showNotification('Ошибка копирования', 'error');
+    }
+};
+
 if (document.getElementById('profileDisplayName')) {
     loadProfileData();
 }

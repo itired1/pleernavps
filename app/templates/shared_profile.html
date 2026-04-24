@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user.display_name or user.username }} - iTired Music</title>
+    <link rel="stylesheet" href="{{ server_url }}/static/css/main.css">
+    <link rel="stylesheet" href="{{ server_url }}/static/css/base/variables.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            border: 3px solid rgba(99, 102, 241, 0.5);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+        }
+        .profile-info h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .profile-info .username {
+            color: #888;
+            font-size: 14px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 16px;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6366f1;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+        }
+        .playlists-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .playlist-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+        .playlist-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+        }
+        .playlist-cover {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2a2a3e, #1a1a2e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .playlist-cover i {
+            font-size: 40px;
+            color: #6366f1;
+        }
+        .playlist-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .playlist-count {
+            font-size: 12px;
+            color: #888;
+        }
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+        .share-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+        .footer a {
+            color: #6366f1;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="share-btn" onclick="copyLink()">
+            <i class="fas fa-link"></i> Скопировать ссылку
+        </button>
+        
+        <div class="profile-header">
+            <div class="avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-info">
+                <h1>{{ user.display_name or user.username }}</h1>
+                <p class="username">@{{ user.username }}</p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">{{ liked_count }}</div>
+                        <div class="stat-label">Лайкнуто</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ playlists|length }}</div>
+                        <div class="stat-label">Плейлистов</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="section-title"><i class="fas fa-list"></i> Публичные плейлисты</h2>
+        
+        {% if playlists %}
+        <div class="playlists-grid">
+            {% for p in playlists %}
+            <div class="playlist-card">
+                <div class="playlist-cover">
+                    <i class="fas fa-music"></i>
+                </div>
+                <div class="playlist-title">{{ p.title }}</div>
+                <div class="playlist-count">{{ p.track_count }} треков</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <i class="fas fa-music" style="font-size: 48px; margin-bottom: 16px;"></i>
+            <p>Нет публичных плейлистов</p>
+        </div>
+        {% endif %}
+        
+        <div class="footer">
+            <p>Слушает музыку с <a href="{{ server_url }}">iTired Music</a></p>
+        </div>
+    </div>
+    
+    <script>
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Ссылка скопирована!');
+        }
+    </script>
+</body>
+</html>

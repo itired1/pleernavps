@@ -183,6 +183,38 @@ def init_db():
 
 init_db()
 
+@app.route('/api/profile/share')
+@login_required
+def share_profile():
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    share_url = f"http://111.88.155.103:5001/profile-share/{user.id}"
+    return jsonify({
+        'share_url': share_url,
+        'username': user.username,
+        'display_name': user.display_name
+    })
+
+@app.route('/profile-share/<int:user_id>')
+def shared_profile(user_id):
+    from models import Playlist, LikedTrack
+    
+    user = db.session.get(User, user_id)
+    if not user:
+        return render_template('error.html', code=404, title='404', message='Пользователь не найден', desc='Запрошенный пользователь не существует.'), 404
+    
+    playlists = db.session.query(Playlist).filter_by(user_id=user_id, is_public=True).all()
+    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
+    
+    return render_template('shared_profile.html', 
+        user=user, 
+        playlists=playlists, 
+        liked_count=liked_count,
+        server_url=request.host_url.rstrip('/')
+    )
+
 @app.route('/api/health')
 def health_check():
     return jsonify({
