@@ -948,6 +948,73 @@ def get_lyrics():
     title = request.args.get('title', '')
     
     if not artist or not title:
+        return jsonify({'lyrics': None, 'synced': False})
+    
+    # Try LRCLIB (English + popular)
+    try:
+        response = requests.get(
+            'https://lrclib.net/api/get',
+            params={'artist_name': artist, 'track_name': title},
+            timeout=10
+        )
+        
+        if response.ok:
+            data = response.json()
+            synced = data.get('syncedLyrics') or ''
+            plain = data.get('plainLyrics') or ''
+            
+            if synced or plain:
+                return jsonify({
+                    'lyrics': synced or plain,
+                    'synced': bool(synced),
+                    'plain': plain
+                })
+    except Exception as e:
+        print(f"LRCLIB error: {e}")
+    
+    # Try Genius (Russian tracks)
+    try:
+        search_response = requests.get(
+            'https://api.genius.com/search',
+            params={'q': f'{artist} {title}'},
+            headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
+            timeout=10
+        )
+        
+        if search_response.ok:
+            hits = search_response.json().get('response', {}).get('hits', [])
+            if hits:
+                song_id = hits[0].get('result', {}).get('id')
+                if song_id:
+                    song_response = requests.get(
+                        f'https://api.genius.com/songs/{song_id}',
+                        headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
+                        timeout=10
+                    )
+                    if song_response.ok:
+                        path = song_response.json().get('response', {}).get('song', {}).get('path')
+                        if path:
+                            lyrics_response = requests.get(
+                                'https://genius.com' + path,
+                                headers={'User-Agent': 'Mozilla/5.0'},
+                                timeout=10
+                            )
+                            if lyrics_response.ok:
+                                import re
+                                lyrics_text = lyrics_response.text
+                                lyrics_match = re.search(r'<div[^>]*data-lyrics-container[^>]*>(.*?)</div>', lyrics_text, re.DOTALL)
+                                if lyrics_match:
+                                    lyrics_html = lyrics_match.group(1)
+                                    lyrics_clean = re.sub(r'<[^>]+>', '\n', lyrics_html)
+                                    lyrics_clean = re.sub(r'\n+', '\n', lyrics_clean).strip()
+                                    return jsonify({
+                                        'lyrics': lyrics_clean,
+                                        'synced': False,
+                                        'plain': lyrics_clean
+                                    })
+    except Exception as e:
+        print(f"Genius error: {e}")
+    
     return jsonify({'lyrics': None, 'synced': False})
 
 @app.route('/api/search_lyrics')
@@ -2967,3 +3034,36 @@ def add_playlist_by_link():
 if __name__ == '__main__':
     print("Starting iTired server...")
     socketio.run(app, debug=True, host='0.0.0.0', port=5001)
+
+@app.route('/api/search_lyrics')
+@login_required
+def search_lyrics():
+    """Search tracks by lyrics text using LRCLIB"""
+    query = request.args.get('q', '').strip()
+    if not query or len(query) < 3:
+        return jsonify({'results': []})
+    
+    try:
+        response = requests.get(
+            'https://lrclib.net/api/search',
+            params={'q': query},
+            timeout=10
+        )
+        
+        if response.ok:
+            data = response.json()
+            results = []
+            for item in data[:20]:
+                results.append({
+                    'id': f"yt_{item.get('trackName', '')}",
+                    'title': item.get('trackName', ''),
+                    'artist': item.get('artistName', ''),
+                    'album': item.get('albumName', ''),
+                    'duration': item.get('duration', 0) * 1000,
+                    'service': 'lyrics_search'
+                })
+            return jsonify({'results': results})
+    except Exception as e:
+        print(f"LRCLIB search error: {e}")
+    
+    return jsonify({'results': []})
