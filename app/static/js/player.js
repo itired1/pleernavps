@@ -940,3 +940,20 @@ document.addEventListener('DOMContentLoaded', function() {
         saveQueueState();
     });
 });
+
+// Volume normalization via Web Audio API
+window.setGain = function(gain) {
+    if (window.gainNode) {
+        window.gainNode.gain.value = gain;
+        localStorage.setItem('itired_gain', gain);
+        console.log('Gain set to:', gain);
+    }
+};
+
+// Apply saved gain on load
+(function() {
+    const savedGain = localStorage.getItem('itired_gain');
+    if (savedGain && window.gainNode) {
+        window.gainNode.gain.value = parseFloat(savedGain);
+    }
+})();

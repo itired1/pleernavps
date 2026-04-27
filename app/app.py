@@ -422,6 +422,8 @@ def api_profile():
     user = db.session.get(User, session['user_id'])
     yandex_info = None
     vk_info = None
+    yandex_token_valid = None
+    yandex_token_error = None
     
     if user and user.yandex_token:
         try:
@@ -430,10 +432,16 @@ def api_profile():
                 try:
                     acc = client.account_status()
                     yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
-                except Exception:
-                    pass
+                    yandex_token_valid = True
+                except Exception as e:
+                    yandex_token_valid = False
+                    if 'Unauthorized' in str(e) or '401' in str(e):
+                        yandex_token_error = 'Токен недействителен. Получите новый на https://music.yandex.ru/settings'
+                    else:
+                        yandex_token_error = f'Ошибка: {str(e)[:50]}'
         except Exception:
-            pass
+            yandex_token_valid = False
+            yandex_token_error = 'Ошибка проверки токена'
     
     if user and user.vk_token:
         vk = get_vk_api(user.vk_token)
@@ -464,7 +472,9 @@ def api_profile():
                 'equipped_theme': user.equipped_theme
             },
             'yandex': yandex_info,
-            'vk': vk_info
+            'vk': vk_info,
+            'yandex_token_valid': yandex_token_valid,
+            'yandex_token_error': yandex_token_error
         })
     return jsonify({'error': 'User not found'}), 404
 
@@ -938,7 +948,41 @@ def get_lyrics():
     title = request.args.get('title', '')
     
     if not artist or not title:
-        return jsonify({'lyrics': None, 'synced': False})
+    return jsonify({'lyrics': None, 'synced': False})
+
+@app.route('/api/search_lyrics')
+@login_required
+def search_lyrics():
+    """Search tracks by lyrics text using LRCLIB"""
+    query = request.args.get('q', '').strip()
+    if not query or len(query) < 3:
+        return jsonify({'results': []})
+    
+    try:
+        # Search in LRCLIB by lyrics snippet
+        response = requests.get(
+            'https://lrclib.net/api/search',
+            params={'q': query},
+            timeout=10
+        )
+        
+        if response.ok:
+            data = response.json()
+            results = []
+            for item in data[:20]:  # Limit to 20 results
+                results.append({
+                    'id': f"yt_{item.get('trackName', '')}",  # Placeholder ID
+                    'title': item.get('trackName', ''),
+                    'artist': item.get('artistName', ''),
+                    'album': item.get('albumName', ''),
+                    'duration': item.get('duration', 0) * 1000,
+                    'service': 'lyrics_search'
+                })
+            return jsonify({'results': results})
+    except Exception as e:
+        print(f"LRCLIB search error: {e}")
+    
+    return jsonify({'results': []})
     
     # Пробуем LRCLIB (английские + популярные)
     try:
