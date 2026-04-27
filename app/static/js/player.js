@@ -255,14 +255,7 @@ function updatePlayButton() {
     }
 }
 
-let crossfadeEnabled = localStorage.getItem('crossfade') !== 'false';
-let crossfadeDuration = parseInt(localStorage.getItem('crossfadeDuration') || '3');
-let nextTrackPreloaded = null;
-let isCrossfading = false;
-
 function handleTrackEnd() {
-    if (isCrossfading) return;
-    
     const listenedSeconds = audioPlayer.duration ? Math.floor(audioPlayer.duration) : 0;
     if (listenedSeconds > 0 && currentTrack && currentTrack.id) {
         fetch('/api/listen', {
@@ -287,76 +280,9 @@ function handleTrackEnd() {
             window.refreshWave();
         }
     } else {
-        if (crossfadeEnabled) {
-            preloadNextTrackAndCrossfade();
-        } else {
-            nextTrack();
-        }
-    }
-}
-
-async function preloadNextTrackAndCrossfade() {
-    const nextIdx = currentTrackIndex + 1;
-    if (nextIdx >= queue.length) return;
-    
-    isCrossfading = true;
-    const nextTrackData = queue[nextIdx];
-    
-    try {
-        const response = await fetch('/api/play_track/' + nextTrackData.id);
-        const trackInfo = await response.json();
-        
-        if (trackInfo && trackInfo.url) {
-            const nextPlayer = new Audio();
-            nextPlayer.src = trackInfo.url;
-            nextPlayer.volume = 0;
-            
-            nextTrackPreloaded = { player: nextPlayer, track: trackInfo };
-            
-            const fadeOutInterval = setInterval(() => {
-                if (audioPlayer.volume > 0.1) {
-                    audioPlayer.volume -= 0.1 / (crossfadeDuration * 10);
-                } else {
-                    clearInterval(fadeOutInterval);
-                }
-            }, 100);
-            
-            await nextPlayer.play();
-            
-            const fadeInInterval = setInterval(() => {
-                if (nextPlayer.volume < 1) {
-                    nextPlayer.volume += 0.1 / (crossfadeDuration * 10);
-                } else {
-                    clearInterval(fadeInInterval);
-                    audioPlayer.pause();
-                    audioPlayer = nextPlayer;
-                    window.audioPlayer = nextPlayer;
-                    currentTrack = nextTrackPreloaded.track;
-                    currentTrackIndex = nextIdx;
-                    window.currentTrack = currentTrack;
-                    window.currentRoomTrackIndex = nextIdx;
-                    updatePlayerUI(currentTrack);
-                    updateQueueUI();
-                    isCrossfading = false;
-                    nextTrackPreloaded = null;
-                }
-            }, 100);
-        } else {
-            isCrossfading = false;
-            nextTrack();
-        }
-    } catch (e) {
-        console.error('Crossfade error:', e);
-        isCrossfading = false;
         nextTrack();
     }
 }
-
-window.toggleCrossfade = function() {
-    crossfadeEnabled = !crossfadeEnabled;
-    localStorage.setItem('crossfade', crossfadeEnabled);
-    showNotification(crossfadeEnabled ? 'Кроссфейд включен' : 'Кроссфейд выключен', 'info');
-};
 
 window.togglePlay = function() {
     console.log('=== togglePlay ===');
