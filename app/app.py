@@ -49,7 +49,12 @@ def get_cached_track(track_id, token, max_retries=3):
                 track_num = track_id.replace('yandex_', '')
                 client = get_yandex_client(token)
                 if client:
-                    track = client.tracks(track_num)[0]
+                    try:
+                        track = client.tracks(track_num)[0]
+                    except Exception as e:
+                        if 'Unauthorized' in str(e) or '401' in str(e):
+                            return {'error': 'Токен Яндекс.Музыки недействителен. Обновите токен в профиле.', 'code': 'INVALID_TOKEN'}
+                        raise
                     cover = None
                     if hasattr(track, 'cover_uri') and track.cover_uri:
                         cover = f"https://{track.cover_uri.replace('%%', '200x200')}"
@@ -1621,14 +1626,14 @@ def play_track(track_id):
         
         if resp.status_code == 200:
             track = resp.json()
-        return jsonify({
-            'url': track.get('preview', ''),
-            'title': track.get('title', ''),
-            'artist': track.get('artist', {}).get('name', ''),
-            'cover': track.get('album', {}).get('cover_medium', ''),
-            'service': 'deezer',
-            'duration': track.get('duration', 0) * 1000
-        })
+            return jsonify({
+                'url': track.get('preview', ''),
+                'title': track.get('title', ''),
+                'artist': track.get('artist', {}).get('name', ''),
+                'cover': track.get('album', {}).get('cover_medium', ''),
+                'service': 'deezer',
+                'duration': track.get('duration', 0) * 1000
+            })
         return jsonify({'error': 'Трек не найден'}), 404
     
     elif track_id.startswith('yt_'):

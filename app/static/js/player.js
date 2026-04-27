@@ -481,7 +481,6 @@ window.playNext = function(track) {
         showNotification('Только ведущий может управлять', 'info');
     }
 };
-};
 
 window.removeFromQueue = function(index) {
     if (index < currentTrackIndex) {
