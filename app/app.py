@@ -49,12 +49,7 @@ def get_cached_track(track_id, token, max_retries=3):
                 track_num = track_id.replace('yandex_', '')
                 client = get_yandex_client(token)
                 if client:
-                    try:
-                        track = client.tracks(track_num)[0]
-                    except Exception as e:
-                        if 'Unauthorized' in str(e) or '401' in str(e):
-                            return {'error': 'Токен Яндекс.Музыки недействителен. Обновите токен в профиле.', 'code': 'INVALID_TOKEN'}
-                        raise
+                    track = client.tracks(track_num)[0]
                     cover = None
                     if hasattr(track, 'cover_uri') and track.cover_uri:
                         cover = f"https://{track.cover_uri.replace('%%', '200x200')}"
@@ -188,46 +183,6 @@ def init_db():
 
 init_db()
 
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Unauthorized'}), 401
-        return f(*args, **kwargs)
-    return decorated
-
-@app.route('/api/profile/share')
-@login_required
-def share_profile():
-    user = db.session.get(User, session['user_id'])
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    share_url = f"http://111.88.155.103:5001/profile-share/{user.id}"
-    return jsonify({
-        'share_url': share_url,
-        'username': user.username,
-        'display_name': user.display_name
-    })
-
-@app.route('/profile-share/<int:user_id>')
-def shared_profile(user_id):
-    from models import Playlist, LikedTrack
-    
-    user = db.session.get(User, user_id)
-    if not user:
-        return render_template('error.html', code=404, title='404', message='Пользователь не найден', desc='Запрошенный пользователь не существует.'), 404
-    
-    playlists = db.session.query(Playlist).filter_by(user_id=user_id, is_public=True).all()
-    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
-    
-    return render_template('shared_profile.html', 
-        user=user, 
-        playlists=playlists, 
-        liked_count=liked_count,
-        server_url=request.host_url.rstrip('/')
-    )
-
 @app.route('/api/health')
 def health_check():
     return jsonify({
@@ -235,6 +190,14 @@ def health_check():
         'version': '1.0.0',
         'features': ['yandex', 'vk', 'friends', 'rooms', 'shop']
     })
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 @app.route('/api/discord-rpc', methods=['POST'])
 @login_required
@@ -950,107 +913,6 @@ def get_lyrics():
     if not artist or not title:
         return jsonify({'lyrics': None, 'synced': False})
     
-    # Try LRCLIB (English + popular)
-    try:
-        response = requests.get(
-            'https://lrclib.net/api/get',
-            params={'artist_name': artist, 'track_name': title},
-            timeout=10
-        )
-        
-        if response.ok:
-            data = response.json()
-            synced = data.get('syncedLyrics') or ''
-            plain = data.get('plainLyrics') or ''
-            
-            if synced or plain:
-                return jsonify({
-                    'lyrics': synced or plain,
-                    'synced': bool(synced),
-                    'plain': plain
-                })
-    except Exception as e:
-        print(f"LRCLIB error: {e}")
-    
-    # Try Genius (Russian tracks)
-    try:
-        search_response = requests.get(
-            'https://api.genius.com/search',
-            params={'q': f'{artist} {title}'},
-            headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
-            timeout=10
-        )
-        
-        if search_response.ok:
-            hits = search_response.json().get('response', {}).get('hits', [])
-            if hits:
-                song_id = hits[0].get('result', {}).get('id')
-                if song_id:
-                    song_response = requests.get(
-                        f'https://api.genius.com/songs/{song_id}',
-                        headers={'Authorization': 'Bearer ' + os.environ.get('GENIUS_ACCESS_TOKEN', '')},
-                        timeout=10
-                    )
-                    if song_response.ok:
-                        path = song_response.json().get('response', {}).get('song', {}).get('path')
-                        if path:
-                            lyrics_response = requests.get(
-                                'https://genius.com' + path,
-                                headers={'User-Agent': 'Mozilla/5.0'},
-                                timeout=10
-                            )
-                            if lyrics_response.ok:
-                                import re
-                                lyrics_text = lyrics_response.text
-                                lyrics_match = re.search(r'<div[^>]*data-lyrics-container[^>]*>(.*?)</div>', lyrics_text, re.DOTALL)
-                                if lyrics_match:
-                                    lyrics_html = lyrics_match.group(1)
-                                    lyrics_clean = re.sub(r'<[^>]+>', '\n', lyrics_html)
-                                    lyrics_clean = re.sub(r'\n+', '\n', lyrics_clean).strip()
-                                    return jsonify({
-                                        'lyrics': lyrics_clean,
-                                        'synced': False,
-                                        'plain': lyrics_clean
-                                    })
-    except Exception as e:
-        print(f"Genius error: {e}")
-    
-    return jsonify({'lyrics': None, 'synced': False})
-
-@app.route('/api/search_lyrics')
-@login_required
-def search_lyrics():
-    """Search tracks by lyrics text using LRCLIB"""
-    query = request.args.get('q', '').strip()
-    if not query or len(query) < 3:
-        return jsonify({'results': []})
-    
-    try:
-        # Search in LRCLIB by lyrics snippet
-        response = requests.get(
-            'https://lrclib.net/api/search',
-            params={'q': query},
-            timeout=10
-        )
-        
-        if response.ok:
-            data = response.json()
-            results = []
-            for item in data[:20]:  # Limit to 20 results
-                results.append({
-                    'id': f"yt_{item.get('trackName', '')}",  # Placeholder ID
-                    'title': item.get('trackName', ''),
-                    'artist': item.get('artistName', ''),
-                    'album': item.get('albumName', ''),
-                    'duration': item.get('duration', 0) * 1000,
-                    'service': 'lyrics_search'
-                })
-            return jsonify({'results': results})
-    except Exception as e:
-        print(f"LRCLIB search error: {e}")
-    
-    return jsonify({'results': []})
-    
     # Пробуем LRCLIB (английские + популярные)
     try:
         response = requests.get(
@@ -1737,14 +1599,14 @@ def play_track(track_id):
         
         if resp.status_code == 200:
             track = resp.json()
-            return jsonify({
-                'url': track.get('preview', ''),
-                'title': track.get('title', ''),
-                'artist': track.get('artist', {}).get('name', ''),
-                'cover': track.get('album', {}).get('cover_medium', ''),
-                'service': 'deezer',
-                'duration': track.get('duration', 0) * 1000
-            })
+        return jsonify({
+            'url': track.get('preview', ''),
+            'title': track.get('title', ''),
+            'artist': track.get('artist', {}).get('name', ''),
+            'cover': track.get('album', {}).get('cover_medium', ''),
+            'service': 'deezer',
+            'duration': track.get('duration', 0) * 1000
+        })
         return jsonify({'error': 'Трек не найден'}), 404
     
     elif track_id.startswith('yt_'):

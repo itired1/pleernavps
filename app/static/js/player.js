@@ -941,19 +941,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Volume normalization via Web Audio API
-window.setGain = function(gain) {
-    if (window.gainNode) {
-        window.gainNode.gain.value = gain;
-        localStorage.setItem('itired_gain', gain);
-        console.log('Gain set to:', gain);
-    }
-};
-
-// Apply saved gain on load
+// Web Audio API for volume normalization (ReplayGain)
 (function() {
-    const savedGain = localStorage.getItem('itired_gain');
-    if (savedGain && window.gainNode) {
-        window.gainNode.gain.value = parseFloat(savedGain);
+    if (window.AudioContext || window.webkitAudioContext) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            window.audioContext = new AudioContext();
+            window.gainNode = window.audioContext.createGain();
+            window.sourceNode = window.audioContext.createMediaElementSource(audioPlayer);
+            window.sourceNode.connect(window.gainNode);
+            window.gainNode.connect(window.audioContext.destination);
+            
+            // Restore saved gain value
+            const savedGain = localStorage.getItem('itired_gain');
+            if (savedGain) {
+                window.gainNode.gain.value = parseFloat(savedGain);
+            }
+            
+            console.log('Web Audio API initialized for volume normalization');
+        } catch (e) {
+            console.warn('Web Audio API not supported:', e);
+        }
     }
+    
+    // Function to set gain (volume normalization)
+    window.setGain = function(gain) {
+        if (window.gainNode) {
+            window.gainNode.gain.value = gain;
+            localStorage.setItem('itired_gain', gain);
+            console.log('Gain set to:', gain);
+        }
+    };
 })();
