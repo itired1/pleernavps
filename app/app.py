@@ -21,12 +21,30 @@ import logging
 from logging.handlers import RotatingFileHandler
 import time
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# File handler with rotation
+if not logger.handlers:
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10*1024*1024, backupCount=5)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s'
+    ))
+    logger.addHandler(file_handler)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    logger.addHandler(console_handler)
+
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config['SECRET_KEY'] = Config.SECRET_KEY if hasattr(Config, 'SECRET_KEY') else 'your-secret-key-change-me'
 db.init_app(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
@@ -497,7 +515,6 @@ def record_listen():
     title = data.get('title', '')
     
     import json
-    print(f"[LISTEN] track_id={track_id}, duration={duration}, title={title}, artist={artist}")
     
     if duration and duration > 0:
         if duration > 3600:
@@ -569,16 +586,13 @@ def profile_page():
             session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk']
         
         if 'yandex_token' in data and data['yandex_token']:
-            print(f"[PROFILE] Saving yandex_token: {data['yandex_token'][:20]}...")
             user.yandex_token = data['yandex_token']
             db.session.commit()
             
             # Don't test token - just save
-            print(f"[PROFILE] Token saved (no validation)")
             return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
         
         if 'vk_token' in data and data['vk_token']:
-            print(f"[PROFILE] Saving vk_token: {data['vk_token'][:20]}...")
             user.vk_token = data['vk_token']
             db.session.commit()
             
@@ -586,12 +600,9 @@ def profile_page():
             try:
                 vk = get_vk_api(user.vk_token)
                 if vk:
-                    print(f"[PROFILE] VK token WORKS!")
                     return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
                 else:
-                    print(f"[PROFILE] VK token invalid - vk is None")
             except Exception as e:
-                print(f"[PROFILE] VK token error: {e}")
             
             return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
@@ -1002,10 +1013,7 @@ def search():
     if user and user.yandex_token:
         token_preview = user.yandex_token[:20] + '...'
     
-    print(f"[SEARCH] user_id={user_id}, user_exists={user is not None}, yandex_token={token_preview}")
-    
     if not user:
-        print(f"[SEARCH] No user found for session!")
         return jsonify({'tracks': [], 'error': 'Not logged in'})
     
     if 'soundcloud' in services:
@@ -1014,7 +1022,6 @@ def search():
             sc_tracks = soundcloud_search(q, limit=15)
             result['tracks'].extend(sc_tracks)
         except Exception as e:
-            print(f"SoundCloud search error: {e}")
     
     if 'yandex' in services and user and user.yandex_token:
         client = get_yandex_client(user.yandex_token)
@@ -1033,7 +1040,6 @@ def search():
                             'service': 'yandex'
                         })
             except Exception as e:
-                print(f"Yandex search error: {e}")
     
     if 'vk' in services and user and user.vk_token:
         vk = get_vk_api(user.vk_token)
@@ -1051,7 +1057,6 @@ def search():
                             'service': 'vk'
                         })
             except Exception as e:
-                print(f"VK search error: {e}")
     
     return jsonify(result)
 
@@ -1081,7 +1086,6 @@ def playlists():
                         'service': 'yandex'
                     })
         except Exception as e:
-            print(f"Yandex playlists error: {e}")
     
     if 'vk' in services and user and user.vk_token:
         vk = get_vk_api(user.vk_token)
@@ -1098,7 +1102,6 @@ def playlists():
                             'service': 'vk'
                         })
             except Exception as e:
-                print(f"VK playlists error: {e}")
     
     user_playlists = db.session.query(Playlist).filter_by(user_id=session['user_id']).order_by(Playlist.created_at.desc()).all()
     print(f"DEBUG: Found {len(user_playlists)} local playlists for user_id={session['user_id']}")
@@ -1199,12 +1202,10 @@ def liked_tracks():
                                 'service': 'yandex'
                             })
                     except Exception as te:
-                        print(f"Batch error: {te}")
                         continue
             else:
                 return jsonify({'tracks': [], 'message': 'Лайкнутые треки пусты'})
         except Exception as e:
-            print(f"Liked tracks error: {e}")
             return jsonify({'error': str(e), 'tracks': []})
     
     elif source == 'vk' and user and user.vk_token:
@@ -1422,7 +1423,6 @@ def playlist_tracks(playlist_id):
                                     'service': 'yandex'
                                 })
                         except Exception as te:
-                            print(f"Batch error: {te}")
                             continue
                     
                     return jsonify(tracks)
@@ -1434,7 +1434,6 @@ def playlist_tracks(playlist_id):
                     return jsonify([])
                 
             except Exception as e:
-                print(f"Playlist error: {e}")
                 return jsonify([])
     
     elif playlist_id.startswith('vk_'):
@@ -1463,7 +1462,6 @@ def playlist_tracks(playlist_id):
                                 'service': 'vk'
                             })
                 except Exception as e:
-                    print(f"VK playlist error: {e}")
     
     elif playlist_id.startswith('local_'):
         local_id = int(playlist_id.replace('local_', ''))
@@ -1626,7 +1624,6 @@ def play_track(track_id):
                     'service': 'youtube'
                 })
         except Exception as e:
-            print(f"YouTube error: {e}")
         
         return jsonify({'error': 'YouTube недоступен'}), 500
     
@@ -1658,7 +1655,6 @@ def stream_soundcloud(track_id):
                     if chunk:
                         yield chunk
             except Exception as e:
-                print(f"Stream generate error: {e}")
         
         return Response(
             stream_with_context(generate()),
@@ -1671,7 +1667,6 @@ def stream_soundcloud(track_id):
             }
         )
     except Exception as e:
-        print(f"Stream error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/friends')
