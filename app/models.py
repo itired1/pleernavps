@@ -24,6 +24,7 @@ class User(db.Model):
     discord_enabled = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     email_verified = db.Column(db.Boolean, default=False)
+    verify_token = db.Column(db.String(100))
     verification_code = db.Column(db.String(6))
     verification_code_expires = db.Column(db.DateTime)
     equipped_badge = db.Column(db.String(50))

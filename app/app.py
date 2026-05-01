@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import json
 import random
 import string
+import secrets
 from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -184,6 +185,12 @@ def init_db():
         try:
             from sqlalchemy import text
             db.session.execute(text('ALTER TABLE users ADD COLUMN yandex_uid VARCHAR(50)'))
+            db.session.commit()
+        except:
+            pass
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('ALTER TABLE users ADD COLUMN verify_token VARCHAR(100)'))
             db.session.commit()
         except:
             pass
@@ -368,7 +375,7 @@ def register():
                 error='Пользователь уже существует',
                 captcha_num1=num1, captcha_num2=num2, captcha_op=op)
         
-        user = User(username=username, email=email, display_name=display_name or username, email_verified=True)
+        user = User(username=username, email=email, display_name=display_name or username, email_verified=False)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -377,501 +384,32 @@ def register():
         db.session.commit()
         add_currency(user.id, 0, f'Бонус за регистрацию: 1500 монет')
         
+        # Generate verification token
+        token = secrets.token_urlsafe(32)
+        user.verify_token = token
+        db.session.commit()
+        
+        # Send verification email
+        if send_verification_email(email, username, token):
+            show_notification = 'Письмо с подтверждением отправлено на ' + email
+        else:
+            show_notification = 'Ошибка отправки письма, но аккаунт создан'
+        
         session.pop('captcha_num1', None)
         session.pop('captcha_num2', None)
         session.pop('captcha_answer', None)
         
-        session['user_id'] = user.id
-        return redirect(url_for('index'))
+        return redirect(url_for('login', notification=show_notification))
     
-    num1, op, num2 = generate_captcha()
-    return render_template('auth.html', mode='register',
-        captcha_num1=num1, captcha_num2=num2, captcha_op=op)
-
-@app.route('/api/captcha/refresh')
-def refresh_captcha():
-    generate_captcha()
-    return jsonify({
-        'num1': session.get('captcha_num1'),
-        'num2': session.get('captcha_num2'),
-        'operator': session.get('captcha_operator')
-    })
-
-@app.route('/api/profile')
-@login_required
-def api_profile():
-    user = db.session.get(User, session['user_id'])
-    yandex_info = None
-    vk_info = None
-    yandex_token_valid = None
-    yandex_token_error = None
-    
-    if user and user.yandex_token:
-        try:
-            client = get_yandex_client(user.yandex_token)
-            if client:
-                try:
-                    acc = client.account_status()
-                    yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
-                    yandex_token_valid = True
-                except Exception as e:
-                    yandex_token_valid = False
-                    if 'Unauthorized' in str(e) or '401' in str(e):
-                        yandex_token_error = 'Токен недействителен. Получите новый на https://music.yandex.ru/settings'
-                    else:
-                        yandex_token_error = f'Ошибка: {str(e)[:50]}'
-        except Exception:
-            yandex_token_valid = False
-            yandex_token_error = 'Ошибка проверки токена'
-    
-    if user and user.vk_token:
-        vk = get_vk_api(user.vk_token)
-        if vk:
-            try:
-                vk_user = vk.users.get()[0]
-                vk_info = {'name': f"{vk_user['first_name']} {vk_user['last_name']}"}
-            except: pass
-    
-    if user:
-        return jsonify({
-            'local': {
-                'id': user.id,
-                'username': user.username,
-                'display_name': user.display_name,
-                'email': user.email,
-                'bio': user.bio,
-                'avatar_url': user.avatar_url,
-                'yandex_token_set': bool(user.yandex_token),
-                'vk_token_set': bool(user.vk_token),
-                'soundcloud_client_id_set': bool(user.soundcloud_client_id),
-                'soundcloud_proxy': user.soundcloud_proxy or '',
-                'current_source': user.current_source or 'yandex',
-                'created_at': user.created_at.isoformat(),
-                'is_admin': user.is_admin,
-                'equipped_badge': user.equipped_badge,
-                'equipped_frame': user.equipped_frame,
-                'equipped_theme': user.equipped_theme
-            },
-            'yandex': yandex_info,
-            'vk': vk_info,
-            'yandex_token_valid': yandex_token_valid,
-            'yandex_token_error': yandex_token_error
-        })
-    return jsonify({'error': 'User not found'}), 404
-
-@app.route('/api/stats')
-@login_required
-def get_user_stats():
-    user_id = session['user_id']
-    from models import ListeningHistory, LikedTrack, Playlist
-    
-    total_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).count()
-    
-    total_seconds = db.session.query(db.func.sum(ListeningHistory.duration_seconds)).filter_by(user_id=user_id).filter(ListeningHistory.duration_seconds > 0).scalar() or 0
-    total_hours = round(total_seconds / 3600, 1)
-    
-    top_artists = db.session.query(
-        ListeningHistory.artist_name,
-        db.func.count(ListeningHistory.id).label('count')
-    ).filter(
-        ListeningHistory.user_id == user_id,
-        ListeningHistory.artist_name.isnot(None)
-    ).group_by(ListeningHistory.artist_name).order_by(db.desc('count')).limit(10).all()
-    
-    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
-    playlist_count = db.session.query(Playlist).filter_by(user_id=user_id).count()
-    
-    recent_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).order_by(ListeningHistory.played_at.desc()).limit(20).all()
-    recent = []
-    import json
-    for t in recent_tracks:
-        track_info = json.loads(t.track_data) if t.track_data else {}
-        recent.append({
-            'track_id': t.track_id,
-            'title': track_info.get('title', ''),
-            'artist': t.artist_name,
-            'played_at': t.played_at.isoformat() if t.played_at else None
-        })
-    
-    return jsonify({
-        'total_tracks': total_tracks,
-        'total_hours': total_hours,
-        'liked_count': liked_count,
-        'playlist_count': playlist_count,
-        'top_artists': [{'name': a[0], 'count': a[1]} for a in top_artists],
-        'recent_tracks': recent
-    })
-
-@app.route('/api/listen', methods=['POST'])
-@login_required
-def record_listen():
-    data = request.get_json()
-    user_id = session['user_id']
-    from models import ListeningHistory
-    
-    track_id = data.get('track_id')
-    artist = data.get('artist', '')
-    duration = data.get('duration', 0)
-    title = data.get('title', '')
-    
-    import json
-    
-    if duration and duration > 0:
-        if duration > 3600:
-            duration = 180
-        if duration < 10:
-            duration = 10
-    else:
-        duration = 0
-    
-    track_data = json.dumps({'title': title, 'artist': artist}) if title else None
-    
-    entry = ListeningHistory(
-        user_id=user_id,
-        track_id=track_id,
-        track_data=track_data,
-        artist_name=artist,
-        duration_seconds=duration or 0
-    )
-    db.session.add(entry)
-    db.session.commit()
-    
-    return jsonify({'success': True})
-
-@app.route('/user/<int:user_id>')
-@login_required
-def public_profile(user_id):
-    from models import Playlist, LikedTrack
-    
-    user = db.session.get(User, user_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    playlists = db.session.query(Playlist).filter_by(user_id=user_id, is_public=True).all()
-    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
-    
-    return jsonify({
-        'id': user.id,
-        'username': user.username,
-        'display_name': user.display_name,
-        'bio': user.bio,
-        'avatar_url': user.avatar_url,
-        'created_at': user.created_at.isoformat(),
-        'equipped_badge': user.equipped_badge,
-        'playlists': [
-            {'id': p.id, 'title': p.title, 'track_count': db.session.query(func.count(PlaylistTrack.id)).filter(PlaylistTrack.playlist_id == p.id).scalar() or 0}
-            for p in playlists
-        ],
-        'liked_count': liked_count
-    })
-
-@app.route('/profile', methods=['GET', 'POST'])
-@login_required
-def profile_page():
-    if request.method == 'POST':
-        data = request.get_json()
-        user = db.session.get(User, session['user_id'])
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'Пользователь не найден'}), 404
-        
-        if 'display_name' in data:
-            user.display_name = data['display_name']
-        if 'bio' in data:
-            user.bio = data['bio']
-        if 'avatar_url' in data:
-            user.avatar_url = data['avatar_url']
-        if 'current_source' in data:
-            user.current_source = data['current_source']
-            session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk']
-        
-        if 'yandex_token' in data and data['yandex_token']:
-            user.yandex_token = data['yandex_token']
-            db.session.commit()
-            
-            # Don't test token - just save
-            return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
-        
-        if 'vk_token' in data and data['vk_token']:
-            user.vk_token = data['vk_token']
-            db.session.commit()
-            
-            # Test if token works
-            try:
-                vk = get_vk_api(user.vk_token)
-                if vk:
-                    return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
-            except Exception as e:
-                print(f"[PROFILE] VK token error: {e}")
-            return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
-        if 'soundcloud_client_id' in data:
-            user.soundcloud_client_id = data['soundcloud_client_id'] or None
-        if 'soundcloud_proxy' in data:
-            user.soundcloud_proxy = data['soundcloud_proxy'] or None
-            if user.soundcloud_proxy:
-                session['soundcloud_proxy'] = user.soundcloud_proxy
-        
+@app.route('/verify/<token>')
+def verify_email(token):
+    user = User.query.filter_by(verify_token=token).first()
+    if user and not user.email_verified:
+        user.email_verified = True
+        user.verify_token = None
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Профиль обновлён'})
-    return redirect(url_for('index'))
-
-@app.route('/api/home')
-@login_required
-@limiter.limit("30 per minute")
-def home():
-    user = db.session.get(User, session['user_id'])
-    services = session.get('active_sources', ['yandex'])
-    result = {
-        'recommendations': [],
-        'playlists': [],
-        'stats': {'total_playlists': 0, 'total_liked_tracks': 0},
-        'history': [],
-        'favorites': []
-    }
-    
-    result['recommendations'] = Recommender.get_recommendations(user.id if user else None, services)
-    
-    total_playlists = 0
-    total_liked = 0
-    
-    if 'yandex' in services and user and user.yandex_token:
-        client = get_yandex_client(user.yandex_token)
-        if client:
-            try:
-                plists = client.users_playlists_list()
-                total_playlists = len(plists)
-                for p in plists[:10]:
-                    if p.collective:
-                        continue
-                    cover = None
-                    if p.cover and p.cover.uri:
-                        cover = f"https://{p.cover.uri.replace('%%', '300x300')}"
-                    result['playlists'].append({
-                        'id': f"yandex_{p.kind}",
-                        'title': p.title,
-                        'track_count': p.track_count,
-                        'cover_uri': cover,
-                        'service': 'yandex'
-                    })
-                liked = client.users_likes_tracks()
-                total_liked = len(liked.tracks) if liked and liked.tracks else 0
-            except: pass
-    
-    if 'vk' in services and user and user.vk_token:
-        vk = get_vk_api(user.vk_token)
-        if vk:
-            try:
-                plists = vk.audio.getPlaylists(count=50)
-                if 'items' in plists:
-                    total_playlists += len(plists['items'])
-                    for p in plists['items'][:5]:
-                        result['playlists'].append({
-                            'id': f"vk_{p['id']}",
-                            'title': p['title'],
-                            'track_count': p['count'],
-                            'cover_uri': p.get('photo', {}).get('photo_300'),
-                            'service': 'vk'
-                        })
-            except: pass
-    
-    user_playlists = db.session.query(Playlist).filter_by(user_id=session['user_id']).order_by(Playlist.created_at.desc()).limit(10).all()
-    for p in user_playlists:
-        track_count = db.session.query(PlaylistTrack).filter_by(playlist_id=p.id).count()
-        result['playlists'].insert(0, {
-            'id': f"local_{p.id}",
-            'title': p.title,
-            'track_count': track_count,
-            'cover_uri': None,
-            'service': 'local'
-        })
-    
-    result['stats'] = {'total_playlists': total_playlists, 'total_liked_tracks': total_liked}
-    
-    history = db.session.query(ListeningHistory).filter_by(user_id=session['user_id']).order_by(ListeningHistory.played_at.desc()).limit(10).all()
-    for h in history:
-        data = json.loads(h.track_data) if h.track_data else {}
-        data['id'] = h.track_id
-        data['played_at'] = h.played_at.isoformat()
-        result['history'].append(data)
-    
-    favorites = db.session.query(LikedTrack).filter_by(user_id=session['user_id']).order_by(LikedTrack.liked_at.desc()).limit(10).all()
-    for f in favorites:
-        data = json.loads(f.track_data) if f.track_data else {}
-        data['id'] = f.track_id
-        data['liked'] = True
-        result['favorites'].append(data)
-    
-    return jsonify(result)
-
-@app.route('/api/recommendations')
-@login_required
-@limiter.limit("30 per minute")
-def recommendations():
-    user = db.session.get(User, session['user_id'])
-    services = session.get('active_sources', ['yandex'])
-    recs = Recommender.get_recommendations(user.id if user else None, services)
-    return jsonify(recs)
-
-@app.route('/api/radio/stations')
-@login_required
-def radio_stations():
-    user = db.session.get(User, session['user_id'])
-    service = request.args.get('service', 'yandex')
-    
-    if service == 'yandex':
-        if not user or not user.yandex_token:
-            return jsonify({'error': 'Токен Яндекса не настроен'}), 400
-        
-        client = get_yandex_client(user.yandex_token)
-        if not client:
-            return jsonify({'error': 'Ошибка подключения к Яндексу'}), 500
-        
-        try:
-            stations = client.rotor_stations_list()
-            result = []
-            
-            categories = {}
-            for item in stations:
-                s = getattr(item, 'station', None) or item
-                name = getattr(s, 'name', str(s)) or 'Радио'
-                station_id = getattr(s, 'id', None)
-                
-                if station_id is None:
-                    continue
-                
-                cat = 'Радио'
-                
-                if cat not in categories:
-                    categories[cat] = {
-                        'name': cat,
-                        'icon': 'fa-radio',
-                        'stations': []
-                    }
-                
-                station_id_str = f"yandex:{station_id}" if isinstance(station_id, str) else str(station_id)
-                
-                cover_uri = None
-                if hasattr(s, 'cover') and s.cover:
-                    cover = getattr(s.cover, 'uri', None)
-                    if cover:
-                        cover_uri = f"https://{cover.replace('%%', '300x300')}"
-                
-                categories[cat]['stations'].append({
-                    'id': station_id_str,
-                    'station_id': station_id_str,
-                    'name': name,
-                    'description': getattr(s, 'description', '') or '',
-                    'cover_uri': cover_uri,
-                    'service': 'yandex'
-                })
-            
-            for cat in categories:
-                result.append(categories[cat])
-            
-            return jsonify({
-                'service': 'yandex',
-                'categories': result
-            })
-        except Exception as e:
-            print(f"Radio stations error: {e}")
-            import traceback
-            traceback.print_exc()
-            return jsonify({'error': str(e)}), 500
-    
-    return jsonify({'error': 'Сервис не поддерживается'}), 400
-
-@app.route('/api/radio/tracks')
-@login_required
-def radio_tracks():
-    user = db.session.get(User, session['user_id'])
-    service = request.args.get('service', 'yandex')
-    station_id = request.args.get('station_id', '')
-    
-    if service == 'yandex':
-        if not user or not user.yandex_token:
-            return jsonify({'error': 'Токен Яндекса не настроен'}), 400
-        
-        client = get_yandex_client(user.yandex_token)
-        if not client:
-            return jsonify({'error': 'Ошибка подключения к Яндексу'}), 500
-        
-        try:
-            if station_id.startswith('yandex:'):
-                station_id = station_id.replace('yandex:', '')
-            
-            tracks_data = client.rotor_station_track_list(station_id, queue=[])
-            
-            tracks = []
-            if tracks_data and hasattr(tracks_data, 'tracks'):
-                for item in tracks_data.tracks:
-                    track = item.track if hasattr(item, 'track') else item
-                    if track:
-                        artists = []
-                        if hasattr(track, 'artists') and track.artists:
-                            artists = [a.name for a in track.artists]
-                        elif hasattr(track, 'artist') and track.artist:
-                            artists = [track.artist]
-                        
-                        tracks.append({
-                            'id': f"yandex_{track.id}",
-                            'title': track.title,
-                            'artists': artists,
-                            'artist': ', '.join(artists) if artists else 'Неизвестный',
-                            'cover_uri': f"https://{track.cover_uri.replace('%%', '300x300')}" if hasattr(track, 'cover_uri') and track.cover_uri else None,
-                            'duration': track.duration_ms if hasattr(track, 'duration_ms') else 0,
-                            'service': 'yandex'
-                        })
-            
-            return jsonify({
-                'tracks': tracks,
-                'station_id': station_id,
-                'service': 'yandex'
-            })
-        except Exception as e:
-            print(f"Radio tracks error: {e}")
-            return jsonify({'error': str(e)}), 500
-    
-    return jsonify({'error': 'Сервис не поддерживается'}), 400
-
-@app.route('/api/stats')
-@login_required
-def stats():
-    user = db.session.get(User, session['user_id'])
-    services = session.get('active_sources', ['yandex'])
-    total_playlists = 0
-    total_liked = 0
-    total_listening_seconds = 0
-    
-    # Get listening history stats
-    history = db.session.query(ListeningHistory).filter_by(user_id=user.id).all()
-    for h in history:
-        if h.duration_seconds:
-            total_listening_seconds += h.duration_seconds
-    
-    # Convert to readable format
-    hours = total_listening_seconds // 3600
-    minutes = (total_listening_seconds % 3600) // 60
-    
-    if 'yandex' in services and user and user.yandex_token:
-        client = get_yandex_client(user.yandex_token)
-        if client:
-            try:
-                total_playlists = len(client.users_playlists_list())
-                total_liked = len(client.users_likes_tracks())
-            except: pass
-    
-    return jsonify({
-        'total_playlists': total_playlists,
-        'total_liked_tracks': total_liked,
-        'total_listening_hours': hours,
-        'total_listening_minutes': minutes,
-        'total_listening_formatted': f'{hours}ч {minutes}м'
-    })
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
+        return render_template('auth.html', mode='verify_success')
+    return render_template('auth.html', mode='verify_failed')
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
