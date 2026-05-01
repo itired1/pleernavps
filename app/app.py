@@ -601,9 +601,8 @@ def profile_page():
                 vk = get_vk_api(user.vk_token)
                 if vk:
                     return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
-                else:
             except Exception as e:
-            
+                print(f"[PROFILE] VK token error: {e}")
             return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
             user.soundcloud_client_id = data['soundcloud_client_id'] or None
@@ -1022,7 +1021,8 @@ def search():
             sc_tracks = soundcloud_search(q, limit=15)
             result['tracks'].extend(sc_tracks)
         except Exception as e:
-    
+            print(f"SoundCloud search error: {e}")
+            
     if 'yandex' in services and user and user.yandex_token:
         client = get_yandex_client(user.yandex_token)
         if client:
@@ -1040,7 +1040,8 @@ def search():
                             'service': 'yandex'
                         })
             except Exception as e:
-    
+                print(f"Yandex search error: {e}")
+                
     if 'vk' in services and user and user.vk_token:
         vk = get_vk_api(user.vk_token)
         if vk:
@@ -1057,9 +1058,10 @@ def search():
                             'service': 'vk'
                         })
             except Exception as e:
-    
-    return jsonify(result)
-
+                print(f"Yandex playlists error: {e}")
+        
+        return jsonify(result)
+        
 @app.route('/api/playlists')
 @login_required
 def playlists():
@@ -1084,10 +1086,11 @@ def playlists():
                         'track_count': p.track_count,
                         'cover_uri': cover,
                         'service': 'yandex'
-                    })
-        except Exception as e:
-    
-    if 'vk' in services and user and user.vk_token:
+                        })
+            except Exception as e:
+                print(f"Yandex playlists error: {e}")
+                
+        if 'vk' in services and user and user.vk_token:
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
@@ -1624,7 +1627,7 @@ def play_track(track_id):
                     'service': 'youtube'
                 })
         except Exception as e:
-        
+            print(f"YouTube error: {e}")
         return jsonify({'error': 'YouTube недоступен'}), 500
     
     return jsonify({'error': 'Трек не найден', 'code': 'NOT_FOUND'}), 404
