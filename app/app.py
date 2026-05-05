@@ -385,6 +385,10 @@ def api_profile():
     user = db.session.get(User, session['user_id'])
     yandex_info = None
     vk_info = None
+    yandex_token_valid = None
+    yandex_token_error = None
+    vk_token_valid = None
+    vk_token_error = None
     
     if user and user.yandex_token:
         try:
@@ -393,10 +397,16 @@ def api_profile():
                 try:
                     acc = client.account_status()
                     yandex_info = {'login': acc.account.login, 'premium': getattr(acc.account, 'premium', False)}
-                except Exception:
-                    pass
+                    yandex_token_valid = True
+                except Exception as e:
+                    yandex_token_valid = False
+                    if 'Unauthorized' in str(e) or '401' in str(e):
+                        yandex_token_error = 'Токен недействителен. Получите новый на https://music.yandex.ru/settings'
+                    else:
+                        yandex_token_error = f'Ошибка: {str(e)[:50]}'
         except Exception:
-            pass
+            yandex_token_valid = False
+            yandex_token_error = 'Ошибка проверки токена'
     
     if user and user.vk_token:
         vk = get_vk_api(user.vk_token)
@@ -404,7 +414,13 @@ def api_profile():
             try:
                 vk_user = vk.users.get()[0]
                 vk_info = {'name': f"{vk_user['first_name']} {vk_user['last_name']}"}
-            except: pass
+                vk_token_valid = True
+            except Exception as e:
+                vk_token_valid = False
+                if 'Unauthorized' in str(e) or '401' in str(e) or 'access' in str(e).lower():
+                    vk_token_error = 'Токен VK недействителен. Получите новый на https://vk.com/dev'
+                else:
+                    vk_token_error = f'Ошибка VK: {str(e)[:50]}'
     
     if user:
         return jsonify({
@@ -427,7 +443,11 @@ def api_profile():
                 'equipped_theme': user.equipped_theme
             },
             'yandex': yandex_info,
-            'vk': vk_info
+            'vk': vk_info,
+            'yandex_token_valid': yandex_token_valid,
+            'yandex_token_error': yandex_token_error,
+            'vk_token_valid': vk_token_valid,
+            'vk_token_error': vk_token_error
         })
     return jsonify({'error': 'User not found'}), 404
 
