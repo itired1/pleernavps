@@ -26,7 +26,7 @@ app.config.from_object(Config)
 app.config['SECRET_KEY'] = Config.SECRET_KEY if hasattr(Config, 'SECRET_KEY') else 'your-secret-key-change-me'
 db.init_app(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
