@@ -177,6 +177,21 @@ def init_db():
             db.session.commit()
         except:
             pass
+        from models import BattlePassSeason
+        season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+        if not season:
+            now = datetime.utcnow()
+            season = BattlePassSeason(name='Сезон 1', start_date=now, end_date=now + timedelta(days=90), max_level=100, is_active=True)
+            db.session.add(season)
+            db.session.flush()
+            for lvl in range(1, 101):
+                from models import BattlePassLevel
+                bl = BattlePassLevel(season_id=season.id, level=lvl, xp_required=lvl * 100)
+                db.session.add(bl)
+            populate_battle_pass_rewards(season.id, 100)
+            populate_battle_pass_quests(season.id)
+            db.session.commit()
+            log_info(f"Battle Pass season auto-created: {season.name} (id={season.id})")
         if not db.session.query(User).filter_by(username='admin').first():
             admin = User(username='admin', email='admin@itired.com', is_admin=True, email_verified=True)
             admin.set_password('admin123')
@@ -188,8 +203,6 @@ def init_db():
     
     import atexit
     atexit.register(cleanup_old_history)
-
-init_db()
 
 @app.route('/api/health')
 def health_check():
@@ -600,15 +613,13 @@ def battle_pass_status():
             'level': ubp.level,
             'xp': ubp.xp,
             'xp_to_next': (db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=ubp.level).first().xp_required) if ubp.level < season.max_level else 0,
-            'has_premium': ubp.has_premium,
-            'claimed_free': json.loads(ubp.claimed_free or '[]'),
-            'claimed_premium': json.loads(ubp.claimed_premium or '[]')
+            'activated': ubp.has_premium,
+            'claimed_free': json.loads(ubp.claimed_free or '[]')
         },
         'levels': [{
             'level': l.level,
             'xp_required': l.xp_required,
-            'free_reward': json.loads(l.free_reward_json) if l.free_reward_json else None,
-            'premium_reward': json.loads(l.premium_reward_json) if l.premium_reward_json else None
+            'free_reward': json.loads(l.free_reward_json) if l.free_reward_json else None
         } for l in levels]
     })
 
@@ -618,7 +629,6 @@ def battle_pass_claim():
     user_id = session['user_id']
     data = request.get_json()
     level_num = data.get('level')
-    reward_tier = data.get('tier', 'free')
     import json
     season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
     if not season:
@@ -626,54 +636,39 @@ def battle_pass_claim():
     ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
     if not ubp:
         return jsonify({'success': False, 'message': 'Нет прогресса'})
+    if not ubp.has_premium:
+        return jsonify({'success': False, 'message': 'Пропуск не активирован'})
     if ubp.level < level_num:
         return jsonify({'success': False, 'message': 'Уровень ещё не достигнут'})
     lvl = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=level_num).first()
     if not lvl:
         return jsonify({'success': False, 'message': 'Уровень не найден'})
-    if reward_tier == 'free':
-        claimed = json.loads(ubp.claimed_free or '[]')
-        if level_num in claimed:
-            return jsonify({'success': False, 'message': 'Награда уже получена'})
-        if not lvl.free_reward_json:
-            return jsonify({'success': False, 'message': 'Нет награды на этом уровне'})
-        claimed.append(level_num)
-        ubp.claimed_free = json.dumps(claimed)
-        db.session.commit()
-        return jsonify({'success': True, 'reward': json.loads(lvl.free_reward_json)})
-    elif reward_tier == 'premium':
-        if not ubp.has_premium:
-            return jsonify({'success': False, 'message': 'Premium-пропуск не активирован'})
-        claimed = json.loads(ubp.claimed_premium or '[]')
-        if level_num in claimed:
-            return jsonify({'success': False, 'message': 'Награда уже получена'})
-        if not lvl.premium_reward_json:
-            return jsonify({'success': False, 'message': 'Нет premium-награды на этом уровне'})
-        claimed.append(level_num)
-        ubp.claimed_premium = json.dumps(claimed)
-        db.session.commit()
-        return jsonify({'success': True, 'reward': json.loads(lvl.premium_reward_json)})
-    return jsonify({'success': False, 'message': 'Неверный тип награды'})
+    claimed = json.loads(ubp.claimed_free or '[]')
+    if level_num in claimed:
+        return jsonify({'success': False, 'message': 'Награда уже получена'})
+    if not lvl.free_reward_json:
+        return jsonify({'success': False, 'message': 'Нет награды на этом уровне'})
+    claimed.append(level_num)
+    ubp.claimed_free = json.dumps(claimed)
+    db.session.commit()
+    return jsonify({'success': True, 'reward': json.loads(lvl.free_reward_json)})
 
-@app.route('/api/battle-pass/activate-premium', methods=['POST'])
+@app.route('/api/battle-pass/activate', methods=['POST'])
 @login_required
-def battle_pass_activate_premium():
+def battle_pass_activate():
     user_id = session['user_id']
-    data = request.get_json()
     season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
     if not season:
         return jsonify({'success': False, 'message': 'Нет активного сезона'})
     ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
     if not ubp:
-        return jsonify({'success': False, 'message': 'Нет прогресса'})
+        ubp = UserBattlePass(user_id=user_id, season_id=season.id)
+        db.session.add(ubp)
     if ubp.has_premium:
-        return jsonify({'success': False, 'message': 'Premium уже активирован'})
-    level = data.get('level')
-    if level and ubp.level < 50:
-        return jsonify({'success': False, 'message': 'Premium открывается на 50 уровне'})
+        return jsonify({'success': False, 'message': 'Пропуск уже активирован'})
     ubp.has_premium = True
     db.session.commit()
-    return jsonify({'success': True, 'message': 'Premium-пропуск активирован!'})
+    return jsonify({'success': True, 'message': 'Сезонный пасс активирован!'})
 
 @app.route('/api/battle-pass/quests')
 @login_required
@@ -802,22 +797,12 @@ def populate_battle_pass_rewards(season_id, max_level):
         idx = (lvl - 1) % len(images)
         filename, rtype = images[idx]
         img_path = f'/static/battlepass/{filename}'
-        free_reward = None
-        premium_reward = None
-        if rtype == 'banner':
-            free_reward = {'type': 'banner', 'image': img_path, 'name': f'Баннер {lvl}'}
-            premium_reward = {'type': 'badge', 'image': img_path, 'name': f'Значок {lvl}'}
-        elif rtype == 'badge':
-            free_reward = {'type': 'badge', 'image': img_path, 'name': f'Значок {lvl}'}
-            premium_reward = {'type': 'frame', 'image': img_path, 'name': f'Рамка {lvl}'}
-        elif rtype == 'frame':
-            free_reward = {'type': 'frame', 'image': img_path, 'name': f'Рамка {lvl}'}
-            premium_reward = {'type': 'banner', 'image': img_path, 'name': f'Баннер {lvl}'}
+        reward = {'type': rtype, 'image': img_path, 'name': f'{rtype.capitalize()} {lvl}'}
         import json
         bl = db.session.query(BattlePassLevel).filter_by(season_id=season_id, level=lvl).first()
         if bl:
-            bl.free_reward_json = json.dumps(free_reward)
-            bl.premium_reward_json = json.dumps(premium_reward)
+            bl.free_reward_json = json.dumps(reward)
+            bl.premium_reward_json = None
 
 def populate_battle_pass_quests(season_id):
     for qt in BP_QUEST_TEMPLATES:
@@ -2537,6 +2522,8 @@ BP_QUEST_TEMPLATES = [
     {'type': 'weekly', 'desc': 'Создайте 2 плейлиста', 'xp': 200, 'req_type': 'playlists_created', 'req_val': 2},
 ]
 
+init_db()
+
 def get_item_by_id(item_id):
     all_items = {}
     all_items.update(BANNERS)
@@ -2866,17 +2853,22 @@ def upload_avatar():
     if not file.filename:
         return jsonify({'success': False, 'message': 'Нет файла'}), 400
     
-    import os
-    from PIL import Image
-    from io import BytesIO
-    
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-    
-    if ext not in allowed_extensions:
-        return jsonify({'success': False, 'message': 'Неподдерживаемый формат'}), 400
-    
     try:
+        import os
+        from PIL import Image
+        from io import BytesIO
+        
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+        
+        if ext not in allowed_extensions:
+            return jsonify({'success': False, 'message': 'Неподдерживаемый формат'}), 400
+        
+        upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'avatars')
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"avatar_{session['user_id']}_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
+        filepath = os.path.join(upload_dir, filename)
+        
         img = Image.open(file)
         img = img.convert('RGBA')
         
@@ -2888,10 +2880,6 @@ def upload_avatar():
         y = (size[1] - img.size[1]) // 2
         new_img.paste(img, (x, y))
         
-        os.makedirs('static/uploads/avatars', exist_ok=True)
-        filename = f"avatar_{session['user_id']}_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-        filepath = os.path.join('static/uploads/avatars', filename)
-        
         buffer = BytesIO()
         new_img.save(buffer, format='PNG')
         buffer.seek(0)
@@ -2899,7 +2887,7 @@ def upload_avatar():
         with open(filepath, 'wb') as f:
             f.write(buffer.getvalue())
         
-        avatar_url = '/' + filepath
+        avatar_url = f'/static/uploads/avatars/{filename}'
         
         user = db.session.get(User, session['user_id'])
         user.avatar_url = avatar_url

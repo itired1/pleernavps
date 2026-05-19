@@ -1103,22 +1103,33 @@ window.loadBattlePass = async function() {
     try {
         var data = await apiCall('battle-pass/status');
         if (!data.active) {
-            if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Нет активного сезона боевого пропуска</div>';
+            if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Нет активного сезона</div>';
             return;
         }
         if (loading) loading.style.display = 'none';
         if (content) content.style.display = 'block';
-        
+
         document.getElementById('bpSeasonName').textContent = data.season.name;
         document.getElementById('bpDaysLeft').textContent = 'Осталось ' + data.season.days_left + ' дн.';
-        
+
         var bpBalance = document.getElementById('bpBalance');
         if (bpBalance) {
             apiCall('currency/balance').then(function(b) {
                 bpBalance.textContent = b.balance || 0;
             }).catch(function(){});
         }
-        
+
+        var activated = data.user.activated;
+        var activateSection = document.getElementById('bpActivateSection');
+        var passSection = document.getElementById('bpPassSection');
+        if (!activated) {
+            if (activateSection) activateSection.style.display = 'block';
+            if (passSection) passSection.style.display = 'none';
+            return;
+        }
+        if (activateSection) activateSection.style.display = 'none';
+        if (passSection) passSection.style.display = 'block';
+
         document.getElementById('bpLevel').textContent = data.user.level;
         var pct = 0;
         if (data.user.xp_to_next > 0) {
@@ -1127,54 +1138,39 @@ window.loadBattlePass = async function() {
         document.getElementById('bpProgressFill').style.width = pct + '%';
         document.getElementById('bpXpText').textContent = data.user.xp + ' XP';
         document.getElementById('bpXpNext').textContent = data.user.xp_to_next > 0 ? data.user.xp + ' / ' + data.user.xp_to_next + ' XP' : 'Максимальный уровень!';
-        
-        var premiumBtn = document.getElementById('bpPremiumBtn');
-        var premiumBadge = document.getElementById('bpPremiumBadge');
-        if (data.user.has_premium) {
-            if (premiumBtn) premiumBtn.style.display = 'none';
-            if (premiumBadge) premiumBadge.style.display = 'inline-block';
-        } else {
-            if (premiumBtn) {
-                premiumBtn.style.display = data.user.level >= 50 ? 'inline-block' : 'none';
-            }
-        }
-        
+
         var claimedFree = data.user.claimed_free || [];
-        var claimedPremium = data.user.claimed_premium || [];
         var userLevel = data.user.level;
-        var hasPremium = data.user.has_premium;
-        
+
         var container = document.getElementById('bpTimelineInner');
         if (!container) return;
         container.innerHTML = '';
-        
+
         (data.levels || []).forEach(function(lvl) {
             var cell = document.createElement('div');
             cell.className = 'bp-level-cell';
-            
+
             var isFreeClaimed = claimedFree.indexOf(lvl.level) !== -1;
-            var isPremClaimed = claimedPremium.indexOf(lvl.level) !== -1;
             var isFreeAvail = lvl.level <= userLevel;
-            var isPremAvail = isFreeAvail && hasPremium;
             var isCurrent = lvl.level === userLevel;
-            
+
             cell.setAttribute('data-level', lvl.level);
             if (isCurrent) cell.classList.add('current');
             if (lvl.level <= userLevel) cell.classList.add('unlocked');
-            
+
             var content = document.createElement('div');
             content.className = 'bp-level-content';
-            
+
             var num = document.createElement('div');
             num.className = 'bp-level-num';
             if (lvl.level % 10 === 0 || lvl.level === 1 || lvl.level === data.season.max_level) {
                 num.textContent = lvl.level;
             }
             content.appendChild(num);
-            
+
             var freeSlot = document.createElement('div');
             freeSlot.className = 'bp-reward-slot free' + (isFreeAvail ? ' avail' : ' locked') + (isFreeClaimed ? ' claimed' : '') + (lvl.free_reward ? ' has-reward' : '');
-            freeSlot.title = lvl.free_reward ? (lvl.free_reward.name || 'Награда Free') : 'Нет награды';
+            freeSlot.title = lvl.free_reward ? (lvl.free_reward.name || 'Награда') : 'Нет награды';
             if (lvl.free_reward && lvl.free_reward.image) {
                 var img = document.createElement('img');
                 img.src = lvl.free_reward.image;
@@ -1185,38 +1181,24 @@ window.loadBattlePass = async function() {
             }
             if (isFreeClaimed) freeSlot.innerHTML += '<div class="bp-check"><i class="fas fa-check"></i></div>';
             content.appendChild(freeSlot);
-            
-            var premSlot = document.createElement('div');
-            premSlot.className = 'bp-reward-slot premium' + (isPremAvail ? ' avail' : ' locked') + (isPremClaimed ? ' claimed' : '') + (lvl.premium_reward ? ' has-reward' : '');
-            premSlot.title = lvl.premium_reward ? (lvl.premium_reward.name || 'Награда NoverPass') : 'Нет награды';
-            if (lvl.premium_reward && lvl.premium_reward.image) {
-                var img2 = document.createElement('img');
-                img2.src = lvl.premium_reward.image;
-                img2.className = 'bp-reward-img';
-                premSlot.appendChild(img2);
-            } else if (lvl.premium_reward) {
-                premSlot.innerHTML = '<i class="fas fa-crown"></i>';
-            }
-            if (isPremClaimed) premSlot.innerHTML += '<div class="bp-check"><i class="fas fa-check"></i></div>';
-            content.appendChild(premSlot);
-            
+
             cell.appendChild(content);
-            
+
             cell.onclick = function() {
-                showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPremAvail);
+                showBpLevelDetail(lvl, isFreeClaimed, isFreeAvail);
             };
-            
+
             container.appendChild(cell);
         });
-        
+
         loadBattlePassQuests();
     } catch (e) {
         console.error('Battle pass load error:', e);
-        if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Ошибка загрузки боевого пропуска</div>';
+        if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Ошибка загрузки</div>';
     }
 };
 
-function showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPremAvail) {
+function showBpLevelDetail(lvl, isFreeClaimed, isFreeAvail) {
     var detail = document.getElementById('bpLevelDetail');
     if (!detail) return;
     detail.style.display = 'block';
@@ -1225,10 +1207,7 @@ function showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPre
     html += '<h4 style="margin:0;"><i class="fas fa-trophy" style="color:#ffd700;"></i> Уровень ' + lvl.level + '</h4>';
     html += '<span style="font-size:12px;color:var(--text-muted);">' + lvl.xp_required + ' XP</span>';
     html += '</div>';
-    html += '<div style="display:flex;gap:16px;">';
-    
-    html += '<div style="flex:1;text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);">';
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-star" style="color:#6366f1;"></i> Free</div>';
+    html += '<div style="text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);">';
     if (lvl.free_reward && lvl.free_reward.image) {
         html += '<img src="' + lvl.free_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
     } else {
@@ -1236,33 +1215,12 @@ function showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPre
     }
     html += '<div style="font-size:12px;">' + (lvl.free_reward ? lvl.free_reward.name || 'Награда' : '—') + '</div>';
     if (isFreeAvail && !isFreeClaimed && lvl.free_reward) {
-        html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ', \'free\')"><i class="fas fa-gift"></i> Забрать</button>';
+        html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ')"><i class="fas fa-gift"></i> Забрать</button>';
     } else if (isFreeClaimed) {
         html += '<div style="margin-top:8px;font-size:12px;color:#22c55e;"><i class="fas fa-check-circle"></i> Получено</div>';
     } else {
         html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-lock"></i> Уровень ' + lvl.level + '</div>';
     }
-    html += '</div>';
-    
-    html += '<div style="flex:1;text-align:center;padding:12px;border-radius:12px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);">';
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-crown" style="color:#ffd700;"></i> NoverPass</div>';
-    if (lvl.premium_reward && lvl.premium_reward.image) {
-        html += '<img src="' + lvl.premium_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
-    } else {
-        html += '<div style="width:64px;height:64px;border-radius:8px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fas fa-crown" style="font-size:24px;color:#ffd700;"></i></div>';
-    }
-    html += '<div style="font-size:12px;">' + (lvl.premium_reward ? lvl.premium_reward.name || 'Награда' : '—') + '</div>';
-    if (isPremAvail && !isPremClaimed && lvl.premium_reward) {
-        html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ', \'premium\')"><i class="fas fa-gift"></i> Забрать</button>';
-    } else if (isPremClaimed) {
-        html += '<div style="margin-top:8px;font-size:12px;color:#22c55e;"><i class="fas fa-check-circle"></i> Получено</div>';
-    } else if (!hasPremium) {
-        html += '<div style="margin-top:8px;font-size:12px;color:#ffd700;"><i class="fas fa-crown"></i> Нужен NoverPass</div>';
-    } else {
-        html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-lock"></i> Уровень ' + lvl.level + '</div>';
-    }
-    html += '</div>';
-    
     html += '</div></div>';
     detail.innerHTML = html;
 }
@@ -1319,8 +1277,8 @@ window.claimQuest = function(questId) {
     });
 };
 
-function doBpClaim(levelNum, tier) {
-    apiCall('battle-pass/claim', {method: 'POST', body: JSON.stringify({level: levelNum, tier: tier})}).then(function(r) {
+function doBpClaim(levelNum) {
+    apiCall('battle-pass/claim', {method: 'POST', body: JSON.stringify({level: levelNum})}).then(function(r) {
         if (r.success) {
             loadBattlePass();
         } else {
@@ -1331,16 +1289,16 @@ function doBpClaim(levelNum, tier) {
     });
 }
 
-window.activateBpPremium = async function() {
+window.activateBp = async function() {
     try {
-        var r = await apiCall('battle-pass/activate-premium', {method: 'POST', body: JSON.stringify({})});
+        var r = await apiCall('battle-pass/activate', {method: 'POST', body: JSON.stringify({})});
         if (r.success) {
             loadBattlePass();
         } else {
             alert(r.message);
         }
     } catch (e) {
-        console.error('Activate premium error:', e);
+        console.error('Activate error:', e);
     }
 };
 

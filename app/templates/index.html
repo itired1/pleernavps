@@ -342,7 +342,7 @@
     </div>
 </div>
 
-<!-- БОЕВОЙ ПРОПУСК -->
+<!-- СЕЗОННЫЙ ПАСС -->
 <div id="battlepass" class="tab-content">
     <div class="glass-card" style="position:relative;overflow:hidden;">
         <div style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 30% 50%,rgba(255,215,0,0.05),transparent 60%);pointer-events:none;"></div>
@@ -351,7 +351,7 @@
         </div>
         <div id="bpContent" style="display: none;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-                <h3><i class="fas fa-trophy" style="color:#ffd700;"></i> <span id="bpSeasonName">Боевой пропуск</span></h3>
+                <h3><i class="fas fa-trophy" style="color:#ffd700;"></i> <span id="bpSeasonName">Сезонный пасс</span></h3>
                 <div style="display:flex;gap:12px;align-items:center;">
                     <span id="bpDaysLeft" style="color:var(--text-muted);font-size:13px;"></span>
                     <span class="header-balance" style="background:var(--bg-elevated);padding:8px 16px;border-radius:20px;">
@@ -361,45 +361,49 @@
                 </div>
             </div>
 
-            <div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(99,102,241,0.08));border:1px solid rgba(255,215,0,0.2);border-radius:16px;padding:20px;margin-bottom:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                    <div>
-                        <span style="font-size:28px;font-weight:800;" id="bpLevel">1</span>
-                        <span style="color:var(--text-muted);"> уровень</span>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn-primary" id="bpPremiumBtn" onclick="activateBpPremium()" style="display:none;padding:6px 16px;font-size:13px;">
-                            <i class="fas fa-crown"></i> Premium
-                        </button>
-                        <span id="bpPremiumBadge" style="display:none;background:linear-gradient(135deg,#ffd700,#ff8c00);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#000;">
-                            <i class="fas fa-crown"></i> NoverPass
-                        </span>
-                    </div>
-                </div>
-                <div class="progress-bar" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin-bottom:8px;">
-                    <div id="bpProgressFill" class="progress-fill" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#6366f1,#ffd700);"></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
-                    <span id="bpXpText">0 XP</span>
-                    <span id="bpXpNext">0 XP до следующего уровня</span>
-                </div>
+            <!-- Активация -->
+            <div id="bpActivateSection" style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-trophy" style="font-size:48px;color:#ffd700;margin-bottom:16px;"></i>
+                <h3 style="margin-bottom:8px;">Сезонный пасс</h3>
+                <p style="color:var(--text-muted);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;">
+                    Получай награды за прослушивание музыки! Выполняй задания и открывай новые уровни.
+                </p>
+                <button class="btn-primary" onclick="activateBp()" style="padding:12px 32px;font-size:16px;">
+                    <i class="fas fa-rocket"></i> Активировать
+                </button>
             </div>
 
-            <div style="margin-bottom:16px;">
-                <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
-                    <h4 style="margin:0;"><i class="fas fa-star" style="color:#6366f1;"></i> Free</h4>
-                    <h4 style="margin:0;"><i class="fas fa-crown" style="color:#ffd700;"></i> <span style="color:#ffd700;">NoverPass</span></h4>
+            <!-- Основной контент пасса (после активации) -->
+            <div id="bpPassSection" style="display:none;">
+                <div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(99,102,241,0.08));border:1px solid rgba(255,215,0,0.2);border-radius:16px;padding:20px;margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div>
+                            <span style="font-size:28px;font-weight:800;" id="bpLevel">1</span>
+                            <span style="color:var(--text-muted);"> уровень</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin-bottom:8px;">
+                        <div id="bpProgressFill" class="progress-fill" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#6366f1,#ffd700);"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
+                        <span id="bpXpText">0 XP</span>
+                        <span id="bpXpNext">0 XP до следующего уровня</span>
+                    </div>
                 </div>
-                <div id="bpTimeline" class="bp-timeline" style="overflow-x:auto;padding-bottom:12px;">
-                    <div id="bpTimelineInner" style="display:flex;gap:4px;min-width:100%;"></div>
+
+                <div style="margin-bottom:16px;">
+                    <h4 style="margin:0 0 12px;"><i class="fas fa-star" style="color:#6366f1;"></i> Награды</h4>
+                    <div id="bpTimeline" class="bp-timeline" style="overflow-x:auto;padding-bottom:12px;">
+                        <div id="bpTimelineInner" style="display:flex;gap:4px;min-width:100%;"></div>
+                    </div>
                 </div>
-            </div>
 
-            <div id="bpLevelDetail" style="display:none;margin-bottom:16px;"></div>
+                <div id="bpLevelDetail" style="display:none;margin-bottom:16px;"></div>
 
-            <h4 style="margin:24px 0 12px;"><i class="fas fa-tasks" style="color:var(--accent);"></i> Задания</h4>
-            <div id="bpQuests" style="display:flex;flex-direction:column;gap:8px;">
-                <div style="text-align:center;padding:20px;color:var(--text-muted);">Загрузка заданий...</div>
+                <h4 style="margin:24px 0 12px;"><i class="fas fa-tasks" style="color:var(--accent);"></i> Задания</h4>
+                <div id="bpQuests" style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="text-align:center;padding:20px;color:var(--text-muted);">Загрузка заданий...</div>
+                </div>
             </div>
         </div>
     </div>
