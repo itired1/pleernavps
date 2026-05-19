@@ -645,6 +645,19 @@ def battle_pass_claim():
         return jsonify({'success': False, 'message': 'Уровень не найден'})
     claimed = json.loads(ubp.claimed_free or '[]')
     if level_num in claimed:
+        lvl = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=level_num).first()
+        if lvl and lvl.free_reward_json:
+            reward = json.loads(lvl.free_reward_json)
+            item_id = f"bp_{reward['type']}_{level_num}"
+            existing_inv = db.session.query(UserInventory).filter_by(user_id=user_id, item_id=item_id).first()
+            if not existing_inv:
+                inv = UserInventory(
+                    user_id=user_id, item_id=item_id, item_type=reward['type'],
+                    data=json.dumps({'type': reward['type'], 'name': reward.get('name', f'Уровень {level_num}'), 'image': reward.get('image', ''), 'rarity': 'common'})
+                )
+                db.session.add(inv)
+                db.session.commit()
+                return jsonify({'success': True, 'reward': reward, 'restored': True})
         return jsonify({'success': False, 'message': 'Награда уже получена'})
     if not lvl.free_reward_json:
         return jsonify({'success': False, 'message': 'Нет награды на этом уровне'})
@@ -686,6 +699,36 @@ def battle_pass_activate():
     ubp.has_premium = True
     db.session.commit()
     return jsonify({'success': True, 'message': 'Сезонный пасс активирован!'})
+
+@app.route('/api/battle-pass/restore-rewards', methods=['POST'])
+@login_required
+def battle_pass_restore_rewards():
+    user_id = session['user_id']
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'success': False, 'message': 'Нет активного сезона'})
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        return jsonify({'success': False, 'message': 'Нет прогресса'})
+    import json
+    claimed = json.loads(ubp.claimed_free or '[]')
+    restored = 0
+    for level_num in claimed:
+        lvl = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=level_num).first()
+        if not lvl or not lvl.free_reward_json:
+            continue
+        reward = json.loads(lvl.free_reward_json)
+        item_id = f"bp_{reward['type']}_{level_num}"
+        existing = db.session.query(UserInventory).filter_by(user_id=user_id, item_id=item_id).first()
+        if not existing:
+            inv = UserInventory(
+                user_id=user_id, item_id=item_id, item_type=reward['type'],
+                data=json.dumps({'type': reward['type'], 'name': reward.get('name', f'Уровень {level_num}'), 'image': reward.get('image', ''), 'rarity': 'common'})
+            )
+            db.session.add(inv)
+            restored += 1
+    db.session.commit()
+    return jsonify({'success': True, 'restored': restored, 'message': f'Восстановлено {restored} наград'})
 
 @app.route('/api/battle-pass/quests')
 @login_required

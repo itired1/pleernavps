@@ -1130,6 +1130,10 @@ window.loadBattlePass = async function() {
         if (activateSection) activateSection.style.display = 'none';
         if (passSection) passSection.style.display = 'block';
 
+        apiCall('battle-pass/restore-rewards', {method: 'POST', body: '{}'}).then(function(r) {
+            if (r.success && r.restored > 0) console.log('Restored', r.restored, 'rewards');
+        }).catch(function(){});
+
         document.getElementById('bpLevel').textContent = data.user.level;
         var pct = 0;
         if (data.user.xp_to_next > 0) {
