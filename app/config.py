@@ -34,13 +34,8 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
     GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5001/auth/google/callback')
 
-    # SoundCloud Proxy (если заблокирован в России)
+    # SoundCloud
     SOUNDCLOUD_CLIENT_ID = os.getenv('SOUNDCLOUD_CLIENT_ID', '')
-    SOUNDCLOUD_PROXY = os.getenv('SOUNDCLOUD_PROXY', None)
-    
-    # Cloudflare WARP
-    WARP_ENABLED = os.getenv('WARP_ENABLED', 'false').lower() == 'true'
-    WARP_PROXY = os.getenv('WARP_PROXY', 'socks5://127.0.0.1:40000')
 
     # Discord Rich Presence (Webhook для статуса)
     DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL', '')
