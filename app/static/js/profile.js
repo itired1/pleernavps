@@ -124,9 +124,9 @@ function updateProfileBadge(badgeId, badgeData) {
     if (badgeId) {
         let data = BADGES_DATA[badgeId];
         if (data) {
-            badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
+            badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 22px;"></i>';
         } else if (badgeData && badgeData.image) {
-            badgeHtml = '<img src="' + badgeData.image + '" style="width:20px;height:20px;object-fit:cover;border-radius:4px;">';
+            badgeHtml = '<img src="' + badgeData.image + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px;">';
         } else {
             const imageMap = {
                 'badge_animemix1': '/static/shop/banners/banner_8585.gif',
@@ -148,7 +148,7 @@ function updateProfileBadge(badgeId, badgeData) {
                 'badge_graffiti': '/static/shop/banners/badge_graffiti.jpg',
             };
             if (imageMap[badgeId]) {
-                badgeHtml = '<img src="' + imageMap[badgeId] + '" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">';
+                badgeHtml = '<img src="' + imageMap[badgeId] + '" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">';
             }
         }
     }
