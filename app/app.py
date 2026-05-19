@@ -650,8 +650,25 @@ def battle_pass_claim():
         return jsonify({'success': False, 'message': 'Нет награды на этом уровне'})
     claimed.append(level_num)
     ubp.claimed_free = json.dumps(claimed)
+    reward = json.loads(lvl.free_reward_json)
+    item_id = f"bp_{reward['type']}_{level_num}"
+    import random
+    existing_inv = db.session.query(UserInventory).filter_by(user_id=user_id, item_id=item_id).first()
+    if not existing_inv:
+        inv = UserInventory(
+            user_id=user_id,
+            item_id=item_id,
+            item_type=reward['type'],
+            data=json.dumps({
+                'type': reward['type'],
+                'name': reward.get('name', f'Уровень {level_num}'),
+                'image': reward.get('image', ''),
+                'rarity': 'common'
+            })
+        )
+        db.session.add(inv)
     db.session.commit()
-    return jsonify({'success': True, 'reward': json.loads(lvl.free_reward_json)})
+    return jsonify({'success': True, 'reward': reward})
 
 @app.route('/api/battle-pass/activate', methods=['POST'])
 @login_required
