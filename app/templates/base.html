@@ -46,6 +46,11 @@
                     <i class="fas fa-chart-bar"></i>
                     <span>Статистика</span>
                 </div>
+                <div class="nav-item" data-tab="battlepass">
+                    <i class="fas fa-trophy"></i>
+                    <span>Боевой пропуск</span>
+                    <span id="bpNewBadge" class="notification-badge" style="display:none;">NEW!</span>
+                </div>
                 <div class="nav-item" data-tab="shop">
                     <i class="fas fa-store"></i>
                     <span>Магазин</span>
@@ -97,11 +102,12 @@
                         <button type="button" class="source-btn" data-service="yandex" onclick="setSearchService('yandex')" title="Яндекс">
                             <i class="fab fa-yandex"></i>
                         </button>
-                        <!-- SoundCloud временно отключён
-                        <button type="button" class="source-btn" data-service="soundcloud" onclick="setSearchService('soundcloud')" title="SoundCloud (в разработке)">
-                            <i class="fab fa-soundcloud" style="opacity: 0.4;"></i>
+                        <button type="button" class="source-btn" data-service="vk" onclick="setSearchService('vk')" title="VK">
+                            <i class="fab fa-vk"></i>
                         </button>
-                        -->
+    <button type="button" class="source-btn" data-service="soundcloud" onclick="setSearchService('soundcloud')" title="SoundCloud">
+        <i class="fab fa-soundcloud"></i>
+    </button>
                     </div>
                 </div>
                 <div class="header-actions">
@@ -149,7 +155,7 @@
             </div>
             <div>
                 <div class="track-title" id="currentTrack">Нет трека</div>
-                <div class="track-artist" id="currentArtist">-</div>
+                <div class="track-artist" id="currentArtist" onclick="showArtistTracks()" style="cursor: pointer;" title="Все треки исполнителя">-</div>
             </div>
         </div>
         <div class="player-controls">
@@ -162,6 +168,9 @@
             <button class="control-btn" id="nextBtn">
                 <i class="fas fa-forward-step"></i>
             </button>
+            <button class="control-btn" id="autoplayBtn" onclick="toggleAutoplay()" title="Автоплей вкл" style="font-size: 14px;">
+                <i class="fas fa-infinity"></i>
+            </button>
         </div>
         <div class="player-progress">
             <span class="time-display" id="currentTime">0:00</span>
@@ -170,14 +179,20 @@
             </div>
             <span class="time-display" id="totalTime">0:00</span>
         </div>
-        <button id="playerLikeBtn" class="player-like-btn" onclick="togglePlayerLike()">
+        <button id="playerLikeBtn" class="player-like-btn" onclick="togglePlayerLike()" title="Лайк">
             <i class="far fa-heart"></i>
+        </button>
+        <button id="playerLyricsBtn" class="player-like-btn" onclick="showLyrics()" title="Текст песни">
+            <i class="fas fa-microphone-alt"></i>
         </button>
         <button id="playerQueueBtn" class="player-like-btn" onclick="addCurrentToQueue()" title="В очередь">
             <i class="fas fa-plus"></i>
         </button>
         <button id="playerAddToPlaylistBtn" class="player-like-btn" onclick="showAddToPlaylistFromPlayer()" title="Добавить в плейлист">
             <i class="fas fa-list-plus"></i>
+        </button>
+        <button id="playerFindScBtn" class="player-like-btn" onclick="findOnSoundCloud()" title="Найти на SoundCloud (без цензуры)" style="display: none;">
+            <i class="fab fa-soundcloud"></i>
         </button>
         <div class="player-volume">
             <i class="fas fa-volume-up"></i>
@@ -203,6 +218,11 @@
         <button class="mobile-nav-item" data-tab="shop" onclick="switchTab('shop')">
             <i class="fas fa-store"></i>
             <span>Магазин</span>
+        </button>
+        <button class="mobile-nav-item" data-tab="battlepass" onclick="switchTab('battlepass')">
+            <i class="fas fa-trophy"></i>
+            <span>Пропуск</span>
+            <span id="bpNewBadgeMobile" class="notification-badge" style="display:none;font-size:9px;padding:1px 5px;">NEW!</span>
         </button>
         <button class="mobile-nav-item" data-tab="profile" onclick="switchTab('profile')">
             <i class="fas fa-user"></i>
@@ -306,11 +326,9 @@
                     <label>Музыкальный сервис</label>
                     <select id="musicService">
                         <option value="yandex">Яндекс.Музыка</option>
-                        <!-- VK temporarily disabled
                         <option value="vk">VK Музыка</option>
                         <option value="soundcloud">SoundCloud</option>
                         <option value="all">Все сервисы</option>
-                        -->
                     </select>
                 </div>
                 <button type="submit" class="btn-primary" style="width: 100%;">

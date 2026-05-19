@@ -3,8 +3,8 @@ import requests
 import re
 from sqlalchemy import func
 from config import Config
-from models import db, User, UserCurrency, UserSetting, Friend, UserActivity, ListeningHistory, LikedTrack, UserInventory, ShopItem, Playlist, PlaylistTrack, SavedQueue
-from utils import send_verification_email, get_yandex_client, get_vk_api, Recommender
+from models import db, User, UserCurrency, UserSetting, Friend, UserActivity, ListeningHistory, LikedTrack, UserInventory, ShopItem, Playlist, PlaylistTrack, SavedQueue, BattlePassSeason, BattlePassLevel, UserBattlePass, BattlePassQuest, UserQuest
+from utils import send_verification_email, get_yandex_client, get_vk_api, get_vk_audio, Recommender
 import bcrypt
 import uuid
 import os
@@ -58,7 +58,14 @@ def get_cached_track(track_id, token, max_retries=3):
                     
                     download_info = client.tracks_download_info(track_num, get_direct_links=True)
                     if download_info and len(download_info) > 0:
-                        url = download_info[0].direct_link if hasattr(download_info[0], 'direct_link') and download_info[0].direct_link else None
+                        info = download_info[0]
+                        url = None
+                        if hasattr(info, 'direct_link') and info.direct_link:
+                            url = info.direct_link
+                        elif hasattr(info, 'url') and info.url:
+                            url = info.url
+                        elif isinstance(info, dict):
+                            url = info.get('direct_link') or info.get('url')
                         
                         if url:
                             result = {
@@ -72,33 +79,34 @@ def get_cached_track(track_id, token, max_retries=3):
                             track_cache[cache_key] = {**result, 'expires': time.time() + 1800}
                             return result
                         else:
+                            print(f"[YANDEX] No download URL for track {track_num}, info={info}")
                             return {'error': 'Трек недоступен', 'code': 'NO_URL'}
                     else:
+                        print(f"[YANDEX] No download info for track {track_num}")
                         return {'error': 'Трек недоступен для скачивания', 'code': 'NO_DOWNLOAD'}
             
             elif track_id.startswith('vk_'):
-                vk_id = track_id.replace('vk_', '')
-                user = db.session.get(User, session.get('user_id'))
-                if user and user.vk_token:
-                    vk = get_vk_api(user.vk_token)
-                    if vk:
+                vk_full = track_id.replace('vk_', '')
+                vk_audio = get_vk_audio(token)
+                if vk_audio:
+                    parts = vk_full.split('_')
+                    if len(parts) >= 2:
                         try:
-                            audio_list = vk.audio.getById(audios=f"-136022133_{vk_id}")
-                            if audio_list:
-                                audio = audio_list[0]
+                            track = vk_audio.get_by_id(int(parts[0]), int(parts[1]))
+                            if track and track.get('url'):
+                                covers = track.get('track_covers') or []
                                 result = {
-                                    'url': audio['url'],
-                                    'title': audio['title'],
-                                    'artist': audio['artist'],
-                                    'cover': audio.get('album', {}).get('thumb', {}).get('photo_300'),
-                                    'duration': audio['duration'] * 1000,
+                                    'url': track['url'],
+                                    'title': track['title'],
+                                    'artist': track['artist'],
+                                    'cover': covers[0] if covers else None,
+                                    'duration': track['duration'] * 1000,
                                     'service': 'vk'
                                 }
                                 track_cache[cache_key] = {**result, 'expires': time.time() + 1800}
                                 return result
-                        except Exception as e:
-                            print(f"VK track error: {e}")
-                            return {'error': 'Ошибка VK', 'code': 'VK_ERROR'}
+                        except Exception:
+                            pass
             
             return {'error': 'Трек не найден', 'code': 'NOT_FOUND'}
             
@@ -434,11 +442,11 @@ def api_profile():
                 'yandex_token_set': bool(user.yandex_token),
                 'vk_token_set': bool(user.vk_token),
                 'soundcloud_client_id_set': bool(user.soundcloud_client_id),
-                'soundcloud_proxy': user.soundcloud_proxy or '',
                 'current_source': user.current_source or 'yandex',
                 'created_at': user.created_at.isoformat(),
                 'is_admin': user.is_admin,
-                'equipped_badge': user.equipped_badge,
+        'equipped_badge': user.equipped_badge,
+        'equipped_frame': user.equipped_frame,
                 'equipped_frame': user.equipped_frame,
                 'equipped_theme': user.equipped_theme
             },
@@ -529,7 +537,297 @@ def record_listen():
     db.session.add(entry)
     db.session.commit()
     
+    add_battle_pass_xp(user_id, max(10, min(300, duration or 0)))
+    update_quest_progress(user_id, 'listen_count')
+    if duration and duration >= 60:
+        update_quest_progress(user_id, 'listen_minutes', amount=max(1, duration // 60))
+    
     return jsonify({'success': True})
+
+def add_battle_pass_xp(user_id, xp_amount):
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season or xp_amount <= 0:
+        return
+    now = datetime.utcnow()
+    if now < season.start_date or now > season.end_date:
+        return
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        ubp = UserBattlePass(user_id=user_id, season_id=season.id)
+        db.session.add(ubp)
+    ubp.xp = (ubp.xp or 0) + xp_amount
+    max_lvl = season.max_level or 100
+    while ubp.level < max_lvl:
+        lvl_rec = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=ubp.level).first()
+        if not lvl_rec:
+            break
+        needed = lvl_rec.xp_required
+        if ubp.xp >= needed:
+            ubp.xp -= needed
+            ubp.level += 1
+        else:
+            break
+    if ubp.xp < 0:
+        ubp.xp = 0
+    db.session.commit()
+
+@app.route('/api/battle-pass/status')
+@login_required
+def battle_pass_status():
+    user_id = session['user_id']
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'active': False, 'message': 'Нет активного сезона'})
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        ubp = UserBattlePass(user_id=user_id, season_id=season.id, level=1, xp=0)
+        db.session.add(ubp)
+        db.session.commit()
+    levels = db.session.query(BattlePassLevel).filter_by(season_id=season.id).order_by(BattlePassLevel.level).all()
+    now = datetime.utcnow()
+    import json
+    return jsonify({
+        'active': True,
+        'season': {
+            'id': season.id,
+            'name': season.name,
+            'start_date': season.start_date.isoformat(),
+            'end_date': season.end_date.isoformat(),
+            'max_level': season.max_level,
+            'days_left': max(0, (season.end_date - now).days)
+        },
+        'user': {
+            'level': ubp.level,
+            'xp': ubp.xp,
+            'xp_to_next': (db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=ubp.level).first().xp_required) if ubp.level < season.max_level else 0,
+            'has_premium': ubp.has_premium,
+            'claimed_free': json.loads(ubp.claimed_free or '[]'),
+            'claimed_premium': json.loads(ubp.claimed_premium or '[]')
+        },
+        'levels': [{
+            'level': l.level,
+            'xp_required': l.xp_required,
+            'free_reward': json.loads(l.free_reward_json) if l.free_reward_json else None,
+            'premium_reward': json.loads(l.premium_reward_json) if l.premium_reward_json else None
+        } for l in levels]
+    })
+
+@app.route('/api/battle-pass/claim', methods=['POST'])
+@login_required
+def battle_pass_claim():
+    user_id = session['user_id']
+    data = request.get_json()
+    level_num = data.get('level')
+    reward_tier = data.get('tier', 'free')
+    import json
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'success': False, 'message': 'Нет активного сезона'})
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        return jsonify({'success': False, 'message': 'Нет прогресса'})
+    if ubp.level < level_num:
+        return jsonify({'success': False, 'message': 'Уровень ещё не достигнут'})
+    lvl = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=level_num).first()
+    if not lvl:
+        return jsonify({'success': False, 'message': 'Уровень не найден'})
+    if reward_tier == 'free':
+        claimed = json.loads(ubp.claimed_free or '[]')
+        if level_num in claimed:
+            return jsonify({'success': False, 'message': 'Награда уже получена'})
+        if not lvl.free_reward_json:
+            return jsonify({'success': False, 'message': 'Нет награды на этом уровне'})
+        claimed.append(level_num)
+        ubp.claimed_free = json.dumps(claimed)
+        db.session.commit()
+        return jsonify({'success': True, 'reward': json.loads(lvl.free_reward_json)})
+    elif reward_tier == 'premium':
+        if not ubp.has_premium:
+            return jsonify({'success': False, 'message': 'Premium-пропуск не активирован'})
+        claimed = json.loads(ubp.claimed_premium or '[]')
+        if level_num in claimed:
+            return jsonify({'success': False, 'message': 'Награда уже получена'})
+        if not lvl.premium_reward_json:
+            return jsonify({'success': False, 'message': 'Нет premium-награды на этом уровне'})
+        claimed.append(level_num)
+        ubp.claimed_premium = json.dumps(claimed)
+        db.session.commit()
+        return jsonify({'success': True, 'reward': json.loads(lvl.premium_reward_json)})
+    return jsonify({'success': False, 'message': 'Неверный тип награды'})
+
+@app.route('/api/battle-pass/activate-premium', methods=['POST'])
+@login_required
+def battle_pass_activate_premium():
+    user_id = session['user_id']
+    data = request.get_json()
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'success': False, 'message': 'Нет активного сезона'})
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        return jsonify({'success': False, 'message': 'Нет прогресса'})
+    if ubp.has_premium:
+        return jsonify({'success': False, 'message': 'Premium уже активирован'})
+    level = data.get('level')
+    if level and ubp.level < 50:
+        return jsonify({'success': False, 'message': 'Premium открывается на 50 уровне'})
+    ubp.has_premium = True
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Premium-пропуск активирован!'})
+
+@app.route('/api/battle-pass/quests')
+@login_required
+def battle_pass_quests():
+    user_id = session['user_id']
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'quests': []})
+    from datetime import date
+    today = date.today()
+    quests = db.session.query(BattlePassQuest).filter_by(season_id=season.id, is_active=True).all()
+    result = []
+    for q in quests:
+        uq = db.session.query(UserQuest).filter_by(user_id=user_id, quest_id=q.id).first()
+        if not uq:
+            if q.type == 'daily':
+                uq = UserQuest(user_id=user_id, quest_id=q.id, assigned_date=today)
+            elif q.type == 'weekly':
+                uq = UserQuest(user_id=user_id, quest_id=q.id, assigned_date=today)
+            else:
+                continue
+            db.session.add(uq)
+            db.session.commit()
+        elif q.type == 'daily' and uq.assigned_date != today:
+            uq.progress = 0
+            uq.completed = False
+            uq.claimed = False
+            uq.assigned_date = today
+            db.session.commit()
+        elif q.type == 'weekly' and (today - uq.assigned_date).days >= 7:
+            uq.progress = 0
+            uq.completed = False
+            uq.claimed = False
+            uq.assigned_date = today
+            db.session.commit()
+        result.append({
+            'id': q.id,
+            'type': q.type,
+            'description': q.description,
+            'xp_reward': q.xp_reward,
+            'requirement_type': q.requirement_type,
+            'requirement_value': q.requirement_value,
+            'progress': uq.progress,
+            'completed': uq.completed,
+            'claimed': uq.claimed,
+        })
+    return jsonify({'quests': result})
+
+@app.route('/api/battle-pass/claim-quest', methods=['POST'])
+@login_required
+def battle_pass_claim_quest():
+    user_id = session['user_id']
+    data = request.get_json()
+    quest_id = data.get('quest_id')
+    uq = db.session.query(UserQuest).filter_by(user_id=user_id, quest_id=quest_id).first()
+    if not uq or not uq.completed or uq.claimed:
+        return jsonify({'success': False, 'message': 'Нельзя получить награду'})
+    uq.claimed = True
+    add_battle_pass_xp(user_id, uq.quest.xp_reward)
+    db.session.commit()
+    return jsonify({'success': True, 'xp_added': uq.quest.xp_reward})
+
+def update_quest_progress(user_id, req_type, amount=1):
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return
+    from datetime import date
+    today = date.today()
+    quests = db.session.query(BattlePassQuest).filter_by(season_id=season.id, requirement_type=req_type, is_active=True).all()
+    for q in quests:
+        uq = db.session.query(UserQuest).filter_by(user_id=user_id, quest_id=q.id).first()
+        if not uq:
+            continue
+        if q.type == 'daily' and uq.assigned_date != today:
+            continue
+        if q.type == 'weekly' and (today - uq.assigned_date).days >= 7:
+            continue
+        if uq.completed or uq.claimed:
+            continue
+        uq.progress = min(uq.progress + amount, q.requirement_value)
+        if uq.progress >= q.requirement_value:
+            uq.completed = True
+    db.session.commit()
+
+@app.route('/api/battle-pass/init-season', methods=['POST'])
+def init_battle_pass_season():
+    data = request.get_json()
+    name = data.get('name', 'Сезон 1')
+    max_level = data.get('max_level', 100)
+    days = data.get('days', 90)
+    now = datetime.utcnow()
+    db.session.query(BattlePassSeason).filter_by(is_active=True).update({'is_active': False})
+    db.session.commit()
+    season = BattlePassSeason(
+        name=name, start_date=now, end_date=now + timedelta(days=days),
+        max_level=max_level, is_active=True
+    )
+    db.session.add(season)
+    db.session.flush()
+    for lvl in range(1, max_level + 1):
+        needed = lvl * 100
+        bl = BattlePassLevel(season_id=season.id, level=lvl, xp_required=needed)
+        db.session.add(bl)
+    populate_battle_pass_rewards(season.id, max_level)
+    populate_battle_pass_quests(season.id)
+    db.session.commit()
+    return jsonify({'success': True, 'season_id': season.id, 'name': name, 'max_level': max_level})
+
+@app.route('/api/battle-pass/populate-rewards', methods=['POST'])
+def populate_bp_rewards():
+    data = request.get_json()
+    season_id = data.get('season_id')
+    season = db.session.get(BattlePassSeason, season_id) if season_id else db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'success': False, 'message': 'Сезон не найден'})
+    populate_battle_pass_rewards(season.id, season.max_level)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Награды для {season.max_level} уровней добавлены'})
+
+def populate_battle_pass_rewards(season_id, max_level):
+    import random
+    images = list(BP_REWARD_IMAGES)
+    random.seed(season_id)
+    random.shuffle(images)
+    for lvl in range(1, max_level + 1):
+        idx = (lvl - 1) % len(images)
+        filename, rtype = images[idx]
+        img_path = f'/static/battlepass/{filename}'
+        free_reward = None
+        premium_reward = None
+        if rtype == 'banner':
+            free_reward = {'type': 'banner', 'image': img_path, 'name': f'Баннер {lvl}'}
+            premium_reward = {'type': 'badge', 'image': img_path, 'name': f'Значок {lvl}'}
+        elif rtype == 'badge':
+            free_reward = {'type': 'badge', 'image': img_path, 'name': f'Значок {lvl}'}
+            premium_reward = {'type': 'frame', 'image': img_path, 'name': f'Рамка {lvl}'}
+        elif rtype == 'frame':
+            free_reward = {'type': 'frame', 'image': img_path, 'name': f'Рамка {lvl}'}
+            premium_reward = {'type': 'banner', 'image': img_path, 'name': f'Баннер {lvl}'}
+        import json
+        bl = db.session.query(BattlePassLevel).filter_by(season_id=season_id, level=lvl).first()
+        if bl:
+            bl.free_reward_json = json.dumps(free_reward)
+            bl.premium_reward_json = json.dumps(premium_reward)
+
+def populate_battle_pass_quests(season_id):
+    for qt in BP_QUEST_TEMPLATES:
+        q = BattlePassQuest(
+            season_id=season_id, type=qt['type'],
+            description=qt['desc'], xp_reward=qt['xp'],
+            requirement_type=qt['req_type'], requirement_value=qt['req_val'],
+            is_active=True
+        )
+        db.session.add(q)
 
 @app.route('/user/<int:user_id>')
 @login_required
@@ -576,10 +874,10 @@ def profile_page():
             user.avatar_url = data['avatar_url']
         if 'current_source' in data:
             user.current_source = data['current_source']
-            session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk']
+            session['active_sources'] = [data['current_source']] if data['current_source'] != 'all' else ['yandex', 'vk', 'soundcloud']
         
         if 'yandex_token' in data and data['yandex_token']:
-            print(f"[PROFILE] Saving yandex_token: {data['yandex_token'][:20]}...")
+            print(f"[PROFILE] Saving yandex_token")
             user.yandex_token = data['yandex_token']
             db.session.commit()
             
@@ -588,7 +886,7 @@ def profile_page():
             return jsonify({'success': True, 'message': 'Токен Яндекс.Музыки сохранён', 'source': 'yandex'})
         
         if 'vk_token' in data and data['vk_token']:
-            print(f"[PROFILE] Saving vk_token: {data['vk_token'][:20]}...")
+            print(f"[PROFILE] Saving vk_token")
             user.vk_token = data['vk_token']
             db.session.commit()
             
@@ -606,10 +904,6 @@ def profile_page():
             return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
             user.soundcloud_client_id = data['soundcloud_client_id'] or None
-        if 'soundcloud_proxy' in data:
-            user.soundcloud_proxy = data['soundcloud_proxy'] or None
-            if user.soundcloud_proxy:
-                session['soundcloud_proxy'] = user.soundcloud_proxy
         
         db.session.commit()
         return jsonify({'success': True, 'message': 'Профиль обновлён'})
@@ -661,17 +955,24 @@ def home():
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
-                plists = vk.audio.getPlaylists(count=50)
-                if 'items' in plists:
-                    total_playlists += len(plists['items'])
-                    for p in plists['items'][:5]:
+                audio = get_vk_audio(user.vk_token)
+                if audio:
+                    plists = audio.get_albums()
+                    total_playlists += len(plists)
+                    for p in plists[:10]:
                         result['playlists'].append({
-                            'id': f"vk_{p['id']}",
+                            'id': f"vk_{p['owner_id']}_{p['id']}",
                             'title': p['title'],
-                            'track_count': p['count'],
-                            'cover_uri': p.get('photo', {}).get('photo_300'),
+                            'track_count': 0,
+                            'cover_uri': None,
                             'service': 'vk'
                         })
+            except: pass
+            try:
+                audio = get_vk_audio(user.vk_token)
+                if audio:
+                    vk_tracks = list(audio.get())
+                    total_liked += len(vk_tracks)
             except: pass
     
     user_playlists = db.session.query(Playlist).filter_by(user_id=session['user_id']).order_by(Playlist.created_at.desc()).limit(10).all()
@@ -1008,11 +1309,7 @@ def search():
     user_id = session.get('user_id')
     user = db.session.get(User, user_id) if user_id else None
     
-    token_preview = 'None'
-    if user and user.yandex_token:
-        token_preview = user.yandex_token[:20] + '...'
-    
-    print(f"[SEARCH] user_id={user_id}, user_exists={user is not None}, yandex_token={token_preview}")
+    print(f"[SEARCH] user_id={user_id}, user_exists={user is not None}, yandex_token_set={bool(user and user.yandex_token)}")
     
     if not user:
         print(f"[SEARCH] No user found for session!")
@@ -1046,22 +1343,23 @@ def search():
                 print(f"Yandex search error: {e}")
     
     if 'vk' in services and user and user.vk_token:
-        vk = get_vk_api(user.vk_token)
-        if vk:
-            try:
-                search_res = vk.audio.search(q=q, count=15)
-                if 'items' in search_res:
-                    for t in search_res['items']:
-                        result['tracks'].append({
-                            'id': f"vk_{t['id']}",
-                            'title': t['title'],
-                            'artists': [t['artist']],
-                            'duration': t['duration'] * 1000,
-                            'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
-                            'service': 'vk'
-                        })
-            except Exception as e:
-                print(f"VK search error: {e}")
+        try:
+            audio = get_vk_audio(user.vk_token)
+            if audio:
+                search_res = list(audio.search(q=q, count=15))
+                for t in search_res:
+                    artists_list = [t.get('artist', '')] if t.get('artist') else []
+                    covers = t.get('track_covers', [])
+                    result['tracks'].append({
+                        'id': f"vk_{t['owner_id']}_{t['id']}",
+                        'title': t['title'],
+                        'artists': artists_list,
+                        'duration': t['duration'] * 1000,
+                        'cover_uri': covers[0] if covers else None,
+                        'service': 'vk'
+                    })
+        except Exception:
+            pass
     
     return jsonify(result)
 
@@ -1097,18 +1395,19 @@ def playlists():
         vk = get_vk_api(user.vk_token)
         if vk:
             try:
-                plists = vk.audio.getPlaylists(count=50)
-                if 'items' in plists:
-                    for p in plists['items']:
+                audio = get_vk_audio(user.vk_token)
+                if audio:
+                    plists = audio.get_albums()
+                    for p in plists:
                         result.append({
-                            'id': f"vk_{p['id']}",
+                            'id': f"vk_{p['owner_id']}_{p['id']}",
                             'title': p['title'],
-                            'track_count': p['count'],
-                            'cover_uri': p.get('photo', {}).get('photo_300'),
+                            'track_count': 0,
+                            'cover_uri': None,
                             'service': 'vk'
                         })
-            except Exception as e:
-                print(f"VK playlists error: {e}")
+            except Exception:
+                pass
     
     user_playlists = db.session.query(Playlist).filter_by(user_id=session['user_id']).order_by(Playlist.created_at.desc()).all()
     print(f"DEBUG: Found {len(user_playlists)} local playlists for user_id={session['user_id']}")
@@ -1140,6 +1439,7 @@ def create_playlist():
     )
     db.session.add(playlist)
     db.session.commit()
+    update_quest_progress(session['user_id'], 'playlists_created')
     
     return jsonify({
         'success': True,
@@ -1218,18 +1518,47 @@ def liked_tracks():
             return jsonify({'error': str(e), 'tracks': []})
     
     elif source == 'vk' and user and user.vk_token:
+        try:
+            audio = get_vk_audio(user.vk_token)
+            if audio:
+                audio_list = list(audio.get())
+                import random
+                random.shuffle(audio_list)
+                for t in audio_list[:11]:
+                    vk_artist = t.get('artist', '') or ''
+                    covers = t.get('track_covers', [])
+                    tracks.append({
+                        'id': f"vk_{t['owner_id']}_{t['id']}",
+                        'title': t['title'],
+                        'artists': [vk_artist] if vk_artist else [],
+                        'artist': vk_artist,
+                        'duration': t['duration'] * 1000,
+                        'cover_uri': covers[0] if covers else None,
+                        'service': 'vk'
+                    })
+        except Exception:
+            favorites = db.session.query(LikedTrack).filter_by(user_id=user.id).filter(
+                LikedTrack.track_id.like('vk_%')
+            ).order_by(LikedTrack.liked_at.desc()).all()
+            import random
+            random.shuffle(favorites)
+            for f in favorites[:11]:
+                if f.track_data:
+                    data = json.loads(f.track_data)
+                    data['id'] = f.track_id
+                    tracks.append(data)
+    
+    elif source == 'soundcloud':
         favorites = db.session.query(LikedTrack).filter_by(user_id=user.id).filter(
-            LikedTrack.track_id.like('vk_%')
+            LikedTrack.track_id.like('sc_%')
         ).order_by(LikedTrack.liked_at.desc()).all()
-        
         import random
         random.shuffle(favorites)
         for f in favorites[:11]:
             if f.track_data:
                 data = json.loads(f.track_data)
                 data['id'] = f.track_id
-                if data.get('url'):
-                    tracks.append(data)
+                tracks.append(data)
     
     return jsonify({'tracks': tracks})
 
@@ -1284,6 +1613,7 @@ def toggle_favorite(track_id):
         )
         db.session.add(favorite)
         db.session.commit()
+        update_quest_progress(user_id, 'like_tracks')
         return jsonify({'liked': True, 'message': 'Добавлено в избранное'})
     
     elif request.method == 'DELETE':
@@ -1449,31 +1779,32 @@ def playlist_tracks(playlist_id):
     
     elif playlist_id.startswith('vk_'):
         if user and user.vk_token:
-            vk = get_vk_api(user.vk_token)
-            if vk:
-                try:
+            try:
+                audio = get_vk_audio(user.vk_token)
+                if audio:
                     parts = playlist_id.replace('vk_', '').split('_')
-                    if len(parts) == 2:
-                        owner_id, playlist_id_vk = parts
-                        audio_list = vk.audio.get(owner_id=owner_id, album_id=playlist_id_vk)
+                    if len(parts) >= 2:
+                        owner_id = int(parts[0])
+                        playlist_id_vk = int(parts[1])
+                        audio_list = audio.get(owner_id=owner_id, album_id=playlist_id_vk)
                     else:
-                        owner_id = parts[0]
-                        audio_list = vk.audio.get(owner_id=owner_id)
+                        owner_id = int(parts[0])
+                        audio_list = audio.get(owner_id=owner_id)
                     
-                    if 'items' in audio_list:
-                        for t in audio_list['items']:
-                            vk_artist = t.get('artist', '') or ''
-                            tracks.append({
-                                'id': f"vk_{t['id']}",
-                                'title': t['title'],
-                                'artists': [vk_artist] if vk_artist else [],
-                                'artist': vk_artist,
-                                'duration': t['duration'] * 1000,
-                                'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
-                                'service': 'vk'
-                            })
-                except Exception as e:
-                    print(f"VK playlist error: {e}")
+                    for t in audio_list:
+                        vk_artist = t.get('artist', '') or ''
+                        covers = t.get('track_covers', [])
+                        tracks.append({
+                            'id': f"vk_{t['owner_id']}_{t['id']}",
+                            'title': t['title'],
+                            'artists': [vk_artist] if vk_artist else [],
+                            'artist': vk_artist,
+                            'duration': t['duration'] * 1000,
+                            'cover_uri': covers[0] if covers else None,
+                            'service': 'vk'
+                        })
+            except Exception:
+                pass
     
     elif playlist_id.startswith('local_'):
         local_id = int(playlist_id.replace('local_', ''))
@@ -1641,6 +1972,259 @@ def play_track(track_id):
         return jsonify({'error': 'YouTube недоступен'}), 500
     
     return jsonify({'error': 'Трек не найден', 'code': 'NOT_FOUND'}), 404
+
+@app.route('/api/soundcloud/discover-client-id', methods=['POST'])
+@login_required
+def discover_sc_client_id():
+    data = request.get_json()
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'success': False, 'message': 'Введите URL профиля SoundCloud'})
+
+    if not url.startswith('https://soundcloud.com/'):
+        return jsonify({'success': False, 'message': 'URL должен начинаться с https://soundcloud.com/'})
+
+    try:
+        resp = requests.get(url, timeout=15, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        if resp.status_code != 200:
+            return jsonify({'success': False, 'message': f'Страница вернула код {resp.status_code}'})
+
+        html = resp.text
+        
+        patterns = [
+            r'client_id["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{10,64})["\']',
+            r'"clientId"\s*:\s*"([a-zA-Z0-9_\-]{10,64})"',
+            r'client_id=([a-zA-Z0-9_\-]{10,64})',
+        ]
+        
+        found_id = None
+        for p in patterns:
+            m = re.search(p, html)
+            if m:
+                found_id = m.group(1)
+                break
+
+        if not found_id:
+            scripts = re.findall(r'<script[^>]*src=["\']([^"\']+\.js[^"\']*)["\']', html)
+            for script_url in scripts[:5]:
+                try:
+                    js_resp = requests.get(script_url if script_url.startswith('http') else f'https:{script_url}', timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                    m = re.search(r'client_id["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{10,64})["\']', js_resp.text)
+                    if m:
+                        found_id = m.group(1)
+                        break
+                except:
+                    continue
+
+        if not found_id:
+            return jsonify({'success': False, 'message': 'Не удалось найти client_id на странице. Попробуйте вручную через DevTools.'})
+
+        test = requests.get(
+            f'https://api-v2.soundcloud.com/search/tracks?q=test&limit=1&client_id={found_id}',
+            timeout=10,
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        if test.status_code != 200:
+            return jsonify({
+                'success': False,
+                'message': f'Найден client_id, но API вернул ошибку {test.status_code}. Возможно, ключ устарел.',
+                'client_id': found_id
+            })
+
+        user = db.session.get(User, session['user_id'])
+        if user:
+            user.soundcloud_client_id = found_id
+            db.session.commit()
+
+        return jsonify({'success': True, 'client_id': found_id, 'message': 'Client ID найден и сохранён!'})
+
+    except requests.exceptions.Timeout:
+        return jsonify({'success': False, 'message': 'Таймаут при загрузке страницы SoundCloud'})
+    except requests.exceptions.ConnectionError:
+        return jsonify({'success': False, 'message': 'Ошибка соединения. Возможно, SoundCloud заблокирован.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Ошибка: {str(e)}'})
+
+@app.route('/api/similar', methods=['POST'])
+@login_required
+def similar_tracks():
+    data = request.get_json()
+    track_id = (data.get('track_id') or '').strip()
+    service = (data.get('service') or '').strip().lower()
+
+    if not track_id or not service:
+        return jsonify({'tracks': []})
+
+    user = db.session.get(User, session['user_id'])
+    result = []
+
+    try:
+        if service == 'yandex' and user and user.yandex_token:
+            client = get_yandex_client(user.yandex_token)
+            if client:
+                yandex_id = track_id.replace('yandex_', '')
+                try:
+                    similar = client.tracks_similar(int(yandex_id))
+                    if similar:
+                        for track in similar[:5]:
+                            t = track.track if hasattr(track, 'track') else track
+                            if t and hasattr(t, 'id'):
+                                result.append({
+                                    'id': f"yandex_{t.id}",
+                                    'title': t.title,
+                                    'artist': ', '.join(a.name for a in t.artists) if hasattr(t, 'artists') and t.artists else '',
+                                    'artists': [a.name for a in t.artists] if hasattr(t, 'artists') and t.artists else [],
+                                    'duration': t.duration_ms,
+                                    'cover_uri': f"https://{t.cover_uri.replace('%%', '300x300')}" if hasattr(t, 'cover_uri') and t.cover_uri else '',
+                                    'service': 'yandex'
+                                })
+                except Exception as e:
+                    print(f"Yandex similar error: {e}")
+
+        elif service == 'vk' and user and user.vk_token:
+            vk_audio = get_vk_audio(user.vk_token)
+            if vk_audio:
+                parts = track_id.replace('vk_', '').split('_')
+                if len(parts) >= 2:
+                    try:
+                        owner_id, audio_id = int(parts[0]), int(parts[1])
+                        similar = vk_audio.get_recommendations(owner_id, audio_id)
+                        for track in similar[:5]:
+                            if hasattr(track, 'id'):
+                                result.append({
+                                    'id': f"vk_{track.owner_id}_{track.id}",
+                                    'title': track.title,
+                                    'artist': track.artist,
+                                    'artists': [track.artist],
+                                    'duration': track.duration * 1000,
+                                    'cover_uri': track.track_covers[0] if hasattr(track, 'track_covers') and track.track_covers else '',
+                                    'service': 'vk'
+                                })
+                    except Exception as e:
+                        print(f"VK similar error: {e}")
+
+        elif service == 'soundcloud' and user and user.soundcloud_client_id:
+            sc_id = track_id.replace('sc_', '')
+            try:
+                url = f'https://api-v2.soundcloud.com/tracks/{sc_id}/related?client_id={user.soundcloud_client_id}'
+                resp = requests.get(url, timeout=15, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                })
+                if resp.status_code == 200:
+                    related = resp.json().get('collection', [])
+                    for track in related[:5]:
+                        if isinstance(track, dict) and track.get('kind') == 'track':
+                            result.append({
+                                'id': f"sc_{track['id']}",
+                                'title': track.get('title', ''),
+                                'artist': track.get('user', {}).get('username', ''),
+                                'artists': [track.get('user', {}).get('username', '')],
+                                'duration': track.get('duration', 0),
+                                'cover_uri': (track.get('artwork_url') or '').replace('-large', '-t500x500'),
+                                'service': 'soundcloud'
+                            })
+            except Exception as e:
+                print(f"SC similar error: {e}")
+
+    except Exception as e:
+        print(f"Similar tracks error: {e}")
+
+    return jsonify({'tracks': result})
+
+@app.route('/api/find-cross-service', methods=['POST'])
+@login_required
+def find_cross_service():
+    data = request.get_json()
+    artist = (data.get('artist') or '').strip()
+    title = (data.get('title') or '').strip()
+    from_service = (data.get('from_service') or '').strip().lower()
+    to_service = (data.get('to_service') or 'soundcloud').strip().lower()
+
+    if not title:
+        return jsonify({'found': False})
+
+    query = f"{artist} {title}" if artist else title
+    query_clean = re.sub(r'[\(\[].*?[\)\]]', '', query).strip()
+
+    user = db.session.get(User, session['user_id'])
+    result = None
+
+    if to_service == 'soundcloud' and user and user.soundcloud_client_id:
+        try:
+            from utils import soundcloud_search
+            tracks = soundcloud_search(query_clean, limit=5)
+            if tracks and len(tracks) > 0:
+                result = tracks[0]
+        except Exception as e:
+            print(f"Cross-service SC search error: {e}")
+
+    return jsonify({'found': bool(result), 'track': result})
+
+@app.route('/api/artist-tracks', methods=['POST'])
+@login_required
+def artist_tracks():
+    data = request.get_json()
+    artist = (data.get('artist') or '').strip()
+    if not artist:
+        return jsonify({'tracks': []})
+
+    user = db.session.get(User, session['user_id'])
+    all_tracks = []
+
+    if user and user.yandex_token:
+        try:
+            from utils import get_yandex_client
+            client = get_yandex_client(user.yandex_token)
+            if client:
+                search = client.search(artist, search_type='track', page=0, limit_per_page=5)
+                if search and search.tracks:
+                    for t in search.tracks[:5]:
+                        all_tracks.append({
+                            'id': f"yandex_{t.id}",
+                            'title': t.title,
+                            'artist': ', '.join(a.name for a in t.artists) if t.artists else artist,
+                            'artists': [a.name for a in t.artists] if t.artists else [artist],
+                            'duration': t.duration_ms,
+                            'cover_uri': f"https://{t.cover_uri.replace('%%', '300x300')}" if t.cover_uri else '',
+                            'service': 'yandex'
+                        })
+        except Exception as e:
+            print(f"Yandex artist search error: {e}")
+
+    if user and user.vk_token:
+        try:
+            from utils import get_vk_audio
+            vk_audio = get_vk_audio(user.vk_token)
+            if vk_audio:
+                vk_tracks = vk_audio.search(q=artist, count=5)
+                for track in vk_tracks:
+                    if isinstance(track, dict):
+                        all_tracks.append({
+                            'id': f"vk_{track['owner_id']}_{track['id']}",
+                            'title': track.get('title', ''),
+                            'artist': track.get('artist', ''),
+                            'artists': [track.get('artist', '')],
+                            'duration': track.get('duration', 0) * 1000,
+                            'cover_uri': (track.get('track_covers') or [''])[0] or '',
+                            'service': 'vk'
+                        })
+        except Exception as e:
+            print(f"VK artist search error: {e}")
+
+    if user and user.soundcloud_client_id:
+        try:
+            from utils import soundcloud_search
+            sc_tracks = soundcloud_search(artist, limit=5)
+            if sc_tracks:
+                for t in sc_tracks:
+                    t['artists'] = [t.get('artist', '')]
+                    all_tracks.append(t)
+        except Exception as e:
+            print(f"SC artist search error: {e}")
+
+    return jsonify({'tracks': all_tracks, 'artist': artist})
 
 @app.route('/api/stream/sc/<track_id>')
 @login_required
@@ -1899,6 +2483,15 @@ FRAMES = {
     'frame_fire': {'name': '🔥 Огненная', 'price': 300, 'rarity': 'epic', 'color': 'linear-gradient(45deg, #ff6b00, #ff0000)'},
     'frame_ice': {'name': '❄️ Ледяная', 'price': 300, 'rarity': 'epic', 'color': 'linear-gradient(45deg, #00bfff, #00ffff)'},
     'frame_neon': {'name': '💜 Неон', 'price': 200, 'rarity': 'rare', 'color': '#bf00ff'},
+    'frame_skull': {'name': '💀 Череп', 'price': 350, 'rarity': 'legendary', 'image': '/static/shop/banners/badge_skull.gif'},
+    'frame_dragon': {'name': '🐉 Дракон', 'price': 400, 'rarity': 'legendary', 'image': '/static/shop/banners/badge_dragon.gif'},
+    'frame_demon': {'name': '😈 Демон', 'price': 400, 'rarity': 'legendary', 'image': '/static/shop/banners/badge_demon.gif'},
+    'frame_knight': {'name': '⚔️ Рыцарь', 'price': 350, 'rarity': 'legendary', 'image': '/static/shop/banners/badge_knight.gif'},
+    'frame_samurai': {'name': '🗡️ Самурай', 'price': 350, 'rarity': 'legendary', 'image': '/static/shop/banners/badge_samurai.jpg'},
+    'frame_street': {'name': '🏙️ Street Style', 'price': 300, 'rarity': 'epic', 'image': '/static/shop/banners/badge_street.jpg'},
+    'frame_graffiti': {'name': '🎨 Граффити', 'price': 300, 'rarity': 'epic', 'image': '/static/shop/banners/badge_graffiti.jpg'},
+    'frame_anime1': {'name': '🎌 Anime Wave #1', 'price': 350, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_8585.gif'},
+    'frame_anime2': {'name': '🎌 Anime Wave #2', 'price': 350, 'rarity': 'legendary', 'image': '/static/shop/banners/banner_3106.gif'},
 }
 
 THEMES = {
@@ -1909,6 +2502,40 @@ THEMES = {
     'theme_gold': {'name': '💛 Золотая', 'price': 250, 'rarity': 'rare', 'accent': '#eab308'},
     'theme_pink': {'name': '💗 Розовая', 'price': 200, 'rarity': 'epic', 'accent': '#ec4899'},
 }
+
+BP_REWARD_IMAGES = [
+    # (filename, type) — alternating banner, badge, frame
+    ('14aad66b004dd19cf52b7b82f3ef64fe.gif', 'frame'),
+    ('157af5146af0795ada2fa71505db8db1.jpg', 'banner'),
+    ('25934f82c4e78f171ca27995f3ec9c17.gif', 'badge'),
+    ('353e25c360a46d89f53576577ebcd308.gif', 'frame'),
+    ('411881d2b4ed7267e5105de190ee6d5d.jpg', 'banner'),
+    ('53c7d9bdbd0daf649ec984a82b66060c.jpg', 'badge'),
+    ('5a7b19110bc06b7ba8d361b903f738b7.jpg', 'frame'),
+    ('5cda98797f969c1595da5c1f6d6179dd.jpg', 'banner'),
+    ('5e5c0fc411760a7adc814c3d045af878.gif', 'badge'),
+    ('5fe2766bc465290b7b95856832cef409.gif', 'frame'),
+    ('671b9fb954b9b4eee6d25664b00f7418.jpg', 'banner'),
+    ('75755683fe0b81ab49fa79bddff710c8.jpg', 'badge'),
+    ('8153b971a10587234450d65f99117d5c.gif', 'frame'),
+    ('a2827b398423507f4f048dcf559e02d3.jpg', 'banner'),
+    ('b84af96293b7175fc8afdae280e976fb.jpg', 'badge'),
+    ('d7b35bb1d1705a9eaaf926c41f8603d5.jpg', 'frame'),
+    ('e73db1d568520988017d853e2e722568.gif', 'banner'),
+    ('eab690c70475355327f1a244b504dfd6.gif', 'badge'),
+    ('ff015838339ff3f36c8a98522ea3335d.jpg', 'frame'),
+]
+
+BP_QUEST_TEMPLATES = [
+    {'type': 'daily', 'desc': 'Слушайте 5 треков', 'xp': 50, 'req_type': 'listen_count', 'req_val': 5},
+    {'type': 'daily', 'desc': 'Слушайте 15 минут', 'xp': 80, 'req_type': 'listen_minutes', 'req_val': 15},
+    {'type': 'daily', 'desc': 'Лайкните 3 трека', 'xp': 60, 'req_type': 'like_tracks', 'req_val': 3},
+    {'type': 'daily', 'desc': 'Добавьте 5 треков в очередь', 'xp': 40, 'req_type': 'add_to_queue', 'req_val': 5},
+    {'type': 'weekly', 'desc': 'Слушайте 50 треков', 'xp': 300, 'req_type': 'listen_count', 'req_val': 50},
+    {'type': 'weekly', 'desc': 'Слушайте 2 часа', 'xp': 500, 'req_type': 'listen_minutes', 'req_val': 120},
+    {'type': 'weekly', 'desc': 'Лайкните 15 треков', 'xp': 350, 'req_type': 'like_tracks', 'req_val': 15},
+    {'type': 'weekly', 'desc': 'Создайте 2 плейлиста', 'xp': 200, 'req_type': 'playlists_created', 'req_val': 2},
+]
 
 def get_item_by_id(item_id):
     all_items = {}
@@ -1972,7 +2599,10 @@ def buy_item():
             item_data['icon'] = item.get('icon', 'fa-star')
             item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'frame':
-        item_data['color'] = item.get('color', '#ffd700')
+        if item.get('image'):
+            item_data['image'] = item.get('image', '')
+        else:
+            item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'theme':
         item_data['accent'] = item.get('accent', '#6366f1')
     
@@ -2018,10 +2648,16 @@ def gift_item():
     if item_type == 'banner':
         item_data['image'] = item.get('image', '')
     elif item_type == 'badge':
-        item_data['icon'] = item.get('icon', 'fa-star')
-        item_data['color'] = item.get('color', '#ffd700')
+        if item.get('image'):
+            item_data['image'] = item.get('image', '')
+        else:
+            item_data['icon'] = item.get('icon', 'fa-star')
+            item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'frame':
-        item_data['color'] = item.get('color', '#ffd700')
+        if item.get('image'):
+            item_data['image'] = item.get('image', '')
+        else:
+            item_data['color'] = item.get('color', '#ffd700')
     elif item_type == 'theme':
         item_data['accent'] = item.get('accent', '#6366f1')
     
@@ -2312,7 +2948,7 @@ def equip_frame():
     user = db.session.get(User, session['user_id'])
     
     if frame_id:
-        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=frame_id, data__contains='frame').first()
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=frame_id, item_type='frame').first()
         if not inv:
             return jsonify({'success': False, 'message': 'Рамка не куплена'}), 400
     
@@ -2732,9 +3368,7 @@ def add_playlist_by_link():
     vk_match = re.search(r'vk\.com/(?:audios|wall-?\d+.*?album=(\d+))', url)
     
     print(f"DEBUG: URL={url}")
-    print(f"DEBUG: yandex_match={yandex_match}")
-    print(f"DEBUG: vk_match={vk_match}")
-    print(f"DEBUG: user={user}, user.yandex_token={getattr(user, 'yandex_token', None)[:20] + '...' if user and user.yandex_token else None}")
+    print(f"DEBUG: yandex_match={yandex_match}, vk_match={vk_match}")
     
     if yandex_match:
         playlist_id = yandex_match.group(1)
@@ -2854,48 +3488,48 @@ def add_playlist_by_link():
         
         if user and user.vk_token:
             try:
-                vk = get_vk_api(user.vk_token)
-                if vk:
+                audio_api = get_vk_audio(user.vk_token)
+                if audio_api:
                     if album_id:
-                        audios = vk.audio.get(owner_id=owner_id, album_id=album_id)
+                        audios = audio_api.get(owner_id=int(owner_id), album_id=int(album_id))
                     else:
-                        audios = vk.audio.get(owner_id=owner_id)
+                        audios = audio_api.get(owner_id=int(owner_id))
                     
-                    if 'items' in audios:
-                        new_playlist = Playlist(
-                            user_id=user.id,
-                            title=f'VK Плейлист {owner_id}',
-                            description='Импортирован из VK',
-                            is_public=False
+                    new_playlist = Playlist(
+                        user_id=user.id,
+                        title=f'VK Плейлист {owner_id}',
+                        description='Импортирован из VK',
+                        is_public=False
+                    )
+                    db.session.add(new_playlist)
+                    db.session.commit()
+                    
+                    for t in audios:
+                        covers = t.get('track_covers', [])
+                        pt = PlaylistTrack(
+                            playlist_id=new_playlist.id,
+                            track_id=f"vk_{t['owner_id']}_{t['id']}",
+                            track_data=json.dumps({
+                                'title': t['title'],
+                                'artists': [t['artist']],
+                                'cover_uri': covers[0] if covers else None,
+                                'duration': t['duration'] * 1000
+                            })
                         )
-                        db.session.add(new_playlist)
-                        db.session.commit()
-                        
-                        for t in audios['items']:
-                            pt = PlaylistTrack(
-                                playlist_id=new_playlist.id,
-                                track_id=f"vk_{t['id']}",
-                                track_data=json.dumps({
-                                    'title': t['title'],
-                                    'artists': [t['artist']],
-                                    'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
-                                    'duration': t['duration'] * 1000
-                                })
-                            )
-                            db.session.add(pt)
-                        
-                        db.session.commit()
-                        
-                        return jsonify({
-                            'success': True,
-                            'playlist': {
-                                'id': f"local_{new_playlist.id}",
-                                'title': new_playlist.title,
-                                'track_count': len(audios['items']),
-                                'cover_uri': None,
-                                'service': 'local'
-                            }
-                        })
+                        db.session.add(pt)
+                    
+                    db.session.commit()
+                    
+                    return jsonify({
+                        'success': True,
+                        'playlist': {
+                            'id': f"local_{new_playlist.id}",
+                            'title': new_playlist.title,
+                            'track_count': len(audios),
+                            'cover_uri': None,
+                            'service': 'local'
+                        }
+                    })
             except Exception as e:
                 print(f"VK playlist import error: {e}")
                 return jsonify({'error': f'Ошибка импорта: {str(e)[:100]}'}), 500

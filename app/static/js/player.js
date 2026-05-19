@@ -11,6 +11,10 @@ let listenHistory = [];
 window.currentSource = null;
 window.currentSourceTracks = [];
 let hlsPlayer = null;
+let autoplayEnabled = true;
+let autoplayLoading = false;
+let crossfadeDuration = 3;
+let crossfadeTimer = null;
 
 function saveQueueState() {
     const state = {
@@ -18,7 +22,8 @@ function saveQueueState() {
         currentTrackIndex: currentTrackIndex,
         currentTrack: currentTrack,
         isShuffle: isShuffle,
-        repeatMode: repeatMode
+        repeatMode: repeatMode,
+        autoplay: autoplayEnabled
     };
     localStorage.setItem('itired_queue', JSON.stringify(state));
 }
@@ -41,6 +46,9 @@ function loadQueueState() {
                 currentTrackIndex = state.currentTrackIndex || 0;
                 isShuffle = state.isShuffle || false;
                 repeatMode = state.repeatMode || 'off';
+                if (state.autoplay !== undefined) autoplayEnabled = state.autoplay;
+                
+                initAutoplayBtn();
                 
                 if (state.currentTrack) {
                     currentTrack = window.currentTrack = state.currentTrack;
@@ -203,6 +211,9 @@ function showHistory() {
 }
 
 function initAudioPlayer() {
+    if (window._audioInitialized) return;
+    window._audioInitialized = true;
+    
     audioPlayer = document.getElementById('audioPlayer');
     if (!audioPlayer) {
         audioPlayer = document.createElement('audio');
@@ -236,6 +247,11 @@ function initAudioPlayer() {
             showNotification('Ошибка воспроизведения', 'error');
         }
     });
+    
+    initWebAudio();
+}
+
+function initWebAudio() {
 }
 
 function updateProgress() {
@@ -274,13 +290,84 @@ function handleTrackEnd() {
         audioPlayer.currentTime = 0;
         audioPlayer.play().catch(console.error);
     } else if (repeatMode === 'all') {
-        nextTrack();
+        crossfadeToNext(nextTrack);
     } else if (currentTrackIndex >= queue.length - 1) {
-        if (window.autoRefreshWave || window.currentSource === 'wave') {
+        if (autoplayEnabled && currentTrack && currentTrack.service && currentTrack.id) {
+            fetchSimilarTrack(currentTrack.service, currentTrack.id);
+        } else if (window.autoRefreshWave || window.currentSource === 'wave') {
             window.refreshWave();
         }
     } else {
-        nextTrack();
+        crossfadeToNext(nextTrack);
+    }
+}
+
+function crossfadeToNext(playFn) {
+    if (crossfadeDuration <= 0 || !audioPlayer || audioPlayer.volume <= 0.01) {
+        playFn();
+        return;
+    }
+    var steps = 20;
+    var interval = (crossfadeDuration * 1000) / steps;
+    var vol = audioPlayer.volume;
+    var step = vol / steps;
+    
+    if (crossfadeTimer) clearInterval(crossfadeTimer);
+    crossfadeTimer = setInterval(function() {
+        vol = Math.max(0, vol - step);
+        audioPlayer.volume = vol;
+        if (vol <= 0) {
+            clearInterval(crossfadeTimer);
+            crossfadeTimer = null;
+            audioPlayer.volume = 1;
+            playFn();
+        }
+    }, interval);
+}
+
+async function fetchSimilarTrack(service, trackId) {
+    if (autoplayLoading) return;
+    autoplayLoading = true;
+    try {
+        var resp = await fetch('/api/similar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ track_id: trackId, service: service })
+        });
+        var data = await resp.json();
+        if (data.tracks && data.tracks.length > 0) {
+            var track = data.tracks[0];
+            queue.push(track);
+            currentTrackIndex = queue.length - 1;
+            playQueueItem(currentTrackIndex);
+        }
+    } catch (e) {
+        console.error('Autoplay error:', e);
+    } finally {
+        autoplayLoading = false;
+    }
+}
+
+window.toggleAutoplay = function() {
+    autoplayEnabled = !autoplayEnabled;
+    updateAutoplayBtn();
+    saveQueueState();
+    return autoplayEnabled;
+};
+
+function initAutoplayBtn() {
+    var btn = document.getElementById('autoplayBtn');
+    if (btn) {
+        btn.classList.toggle('active', autoplayEnabled);
+        btn.title = autoplayEnabled ? 'Автоплей вкл' : 'Автоплей выкл';
+    }
+}
+
+function updateAutoplayBtn() {
+    var btn = document.getElementById('autoplayBtn');
+    if (btn) {
+        btn.classList.toggle('active', autoplayEnabled);
+        btn.title = autoplayEnabled ? 'Автоплей вкл' : 'Автоплей выкл';
     }
 }
 
@@ -862,6 +949,19 @@ function updatePlayerUI(track) {
             playing: !audioPlayer.paused
         }
     }));
+    
+    if (track.service && track.service !== 'soundcloud') {
+        var scBtn = document.getElementById('playerFindScBtn');
+        if (scBtn) {
+            scBtn.style.display = '';
+            scBtn.dataset.trackTitle = track.title || '';
+            scBtn.dataset.trackArtist = artistText || '';
+            scBtn.dataset.trackService = track.service || '';
+        }
+    } else {
+        var scBtn = document.getElementById('playerFindScBtn');
+        if (scBtn) scBtn.style.display = 'none';
+    }
 }
 
 function showMiniNotification(track) {
@@ -906,6 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initAudioPlayer, 100);
     
     loadQueueState();
+    initAutoplayBtn();
     
     const playBtn = document.getElementById('playPauseBtn');
     console.log('playBtn found:', !!playBtn);
@@ -936,40 +1037,92 @@ document.addEventListener('DOMContentLoaded', function() {
     updateShuffleButton();
     updateRepeatButton();
     
-    window.addEventListener('beforeunload', function() {
-        saveQueueState();
-    });
+window.addEventListener('beforeunload', function() {
+    saveQueueState();
 });
 
-// Web Audio API for volume normalization (ReplayGain)
-(function() {
-    if (window.AudioContext || window.webkitAudioContext) {
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            window.audioContext = new AudioContext();
-            window.gainNode = window.audioContext.createGain();
-            window.sourceNode = window.audioContext.createMediaElementSource(audioPlayer);
-            window.sourceNode.connect(window.gainNode);
-            window.gainNode.connect(window.audioContext.destination);
-            
-            // Restore saved gain value
-            const savedGain = localStorage.getItem('itired_gain');
-            if (savedGain) {
-                window.gainNode.gain.value = parseFloat(savedGain);
-            }
-            
-            console.log('Web Audio API initialized for volume normalization');
-        } catch (e) {
-            console.warn('Web Audio API not supported:', e);
-        }
-    }
+// Cross-service track search (find censored tracks on SoundCloud)
+window.findOnSoundCloud = async function() {
+    var btn = document.getElementById('playerFindScBtn');
+    if (!btn) return;
     
-    // Function to set gain (volume normalization)
-    window.setGain = function(gain) {
-        if (window.gainNode) {
-            window.gainNode.gain.value = gain;
-            localStorage.setItem('itired_gain', gain);
-            console.log('Gain set to:', gain);
+    var title = btn.dataset.trackTitle;
+    var artist = btn.dataset.trackArtist;
+    if (!title) return;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    try {
+        var resp = await fetch('/api/find-cross-service', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ artist: artist, title: title, from_service: btn.dataset.trackService, to_service: 'soundcloud' })
+        });
+        var data = await resp.json();
+        
+        if (data.found && data.track) {
+            showNotification('Нашлась версия на SoundCloud!', 'success');
+            playTrack(data.track.id);
+        } else {
+            showNotification('Не удалось найти трек на SoundCloud', 'error');
         }
-    };
-})();
+    } catch (e) {
+        console.error('Find on SC error:', e);
+        showNotification('Ошибка поиска', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-soundcloud"></i>';
+    }
+};
+
+    var track = window.currentTrack;
+    if (!track) return;
+    
+    var artistText = '';
+    if (track.artists && Array.isArray(track.artists)) artistText = track.artists.join(', ');
+    else if (track.artist) artistText = track.artist;
+    if (!artistText) return;
+    
+    openModal('artistModal');
+    document.getElementById('artistModalName').textContent = artistText;
+    document.getElementById('artistContent').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i></div>';
+    
+    fetch('/api/artist-tracks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artist: artistText })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var container = document.getElementById('artistContent');
+        if (!data.tracks || data.tracks.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-frown" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Треки не найдены</p></div>';
+            return;
+        }
+        var html = '';
+        data.tracks.forEach(function(t) {
+            var cover = t.cover_uri ? '<img src="' + t.cover_uri + '" alt="" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover;">' : '<div style="width: 44px; height: 44px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music" style="color: var(--text-secondary);"></i></div>';
+            var svcIcon = t.service === 'yandex' ? '<i class="fab fa-yandex" style="color: #ff3333;"></i>' : t.service === 'vk' ? '<i class="fab fa-vk" style="color: #4a76a8;"></i>' : t.service === 'soundcloud' ? '<i class="fab fa-soundcloud" style="color: #ff5500;"></i>' : '';
+            html += '<div class="search-item" onclick="playTrack(\'' + t.id + '\'); closeModal(\'artistModal\')" style="cursor: pointer;">' +
+                cover +
+                '<div class="search-item-info">' +
+                '<div class="search-item-title">' + escapeHtml(t.title) + ' ' + svcIcon + '</div>' +
+                '<div class="search-item-artist">' + escapeHtml(t.artist || '') + '</div>' +
+                '</div></div>';
+        });
+        container.innerHTML = html;
+    })
+    .catch(function(e) {
+        console.error('Artist tracks error:', e);
+        document.getElementById('artistContent').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Ошибка загрузки</p></div>';
+    });
+};
+});
+
+// Volume normalization (uses native audio element volume)
+window.setGain = function(gain) {
+    if (audioPlayer) {
+        audioPlayer.volume = Math.min(1, Math.max(0, gain));
+    }
+};

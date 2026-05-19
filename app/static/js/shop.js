@@ -51,6 +51,15 @@ const DEFAULT_FRAMES = [
     { id: 'frame_fire', name: 'Огненная', type: 'frame', price: 300, rarity: 'epic', data: { color: 'linear-gradient(45deg, #ff6b00, #ff0000)' } },
     { id: 'frame_ice', name: 'Ледяная', type: 'frame', price: 300, rarity: 'epic', data: { color: 'linear-gradient(45deg, #00bfff, #00ffff)' } },
     { id: 'frame_neon', name: 'Неон', type: 'frame', price: 200, rarity: 'rare', data: { color: '#bf00ff' } },
+    { id: 'frame_skull', name: 'Череп', type: 'frame', price: 350, rarity: 'legendary', data: { image: '/static/shop/banners/badge_skull.gif' } },
+    { id: 'frame_dragon', name: 'Дракон', type: 'frame', price: 400, rarity: 'legendary', data: { image: '/static/shop/banners/badge_dragon.gif' } },
+    { id: 'frame_demon', name: 'Демон', type: 'frame', price: 400, rarity: 'legendary', data: { image: '/static/shop/banners/badge_demon.gif' } },
+    { id: 'frame_knight', name: 'Рыцарь', type: 'frame', price: 350, rarity: 'legendary', data: { image: '/static/shop/banners/badge_knight.gif' } },
+    { id: 'frame_samurai', name: 'Самурай', type: 'frame', price: 350, rarity: 'legendary', data: { image: '/static/shop/banners/badge_samurai.jpg' } },
+    { id: 'frame_street', name: 'Street Style', type: 'frame', price: 300, rarity: 'epic', data: { image: '/static/shop/banners/badge_street.jpg' } },
+    { id: 'frame_graffiti', name: 'Граффити', type: 'frame', price: 300, rarity: 'epic', data: { image: '/static/shop/banners/badge_graffiti.jpg' } },
+    { id: 'frame_anime1', name: 'Anime Wave #1', type: 'frame', price: 350, rarity: 'legendary', data: { image: '/static/shop/banners/banner_8585.gif' } },
+    { id: 'frame_anime2', name: 'Anime Wave #2', type: 'frame', price: 350, rarity: 'legendary', data: { image: '/static/shop/banners/banner_3106.gif' } },
 ];
 
 const DEFAULT_THEMES = [
@@ -114,7 +123,11 @@ function displayShopItems(category) {
             if (item.data.image) preview = '<img src="' + item.data.image + '" style="width:100%;height:100%;object-fit:cover;">';
             else preview = '<i class="fas ' + (item.data.icon || 'fa-star') + '" style="font-size:48px;color:' + (item.data.color || '#ffd700') + '"></i>';
         } else if (item.type === 'frame') {
-            preview = '<div style="width:60px;height:60px;border-radius:50%;border:6px solid ' + item.data.color + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:28px;"></i></div>';
+            if (item.data.image) {
+                preview = '<div style="width:60px;height:60px;border-radius:50%;padding:3px;background:url(' + item.data.image + ') center/cover no-repeat;display:flex;align-items:center;justify-content:center;"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg-elevated,#1e1e2e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:28px;color:var(--accent,#6366f1);"></i></div></div>';
+            } else {
+                preview = '<div style="width:60px;height:60px;border-radius:50%;padding:3px;background:' + item.data.color + ';display:flex;align-items:center;justify-content:center;"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg-elevated,#1e1e2e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:28px;color:var(--accent,#6366f1);"></i></div></div>';
+            }
         } else if (item.type === 'theme') {
             preview = '<div style="width:60px;height:60px;border-radius:8px;background:' + item.data.accent + ';box-shadow:0 0 20px ' + item.data.accent + ';"></div>';
         } else {

@@ -33,7 +33,6 @@ function updateProfileForm(profile) {
     const yandexToken = document.getElementById('yandex_token');
     const vkToken = document.getElementById('vk_token');
     const soundcloudClientId = document.getElementById('soundcloud_client_id');
-    const soundcloudProxy = document.getElementById('soundcloud_proxy');
     const profileDisplayName = document.getElementById('profileDisplayName');
     const profileUsername = document.getElementById('profileUsername');
     const joinDate = document.getElementById('joinDate');
@@ -49,7 +48,6 @@ function updateProfileForm(profile) {
     if (yandexToken) yandexToken.value = local.yandex_token_set ? '***' : '';
     if (vkToken) vkToken.value = local.vk_token_set ? '***' : '';
     if (soundcloudClientId) soundcloudClientId.value = local.soundcloud_client_id_set ? '***' : '';
-    if (soundcloudProxy) soundcloudProxy.value = local.soundcloud_proxy || '';
     
     if (yandexCheck) yandexCheck.style.display = local.yandex_token_set ? 'inline' : 'none';
     if (vkCheck) vkCheck.style.display = local.vk_token_set ? 'inline' : 'none';
@@ -74,6 +72,8 @@ function updateProfileForm(profile) {
     if (local.equipped_badge) {
         updateProfileBadge(local.equipped_badge);
     }
+    
+    applyFrame(local.equipped_frame);
     
     loadActiveBanner();
 }
@@ -157,6 +157,44 @@ function updateProfileBadge(badgeId) {
     });
 }
 
+const FRAMES_DATA = {
+    'frame_gold': { color: '#ffd700' },
+    'frame_rainbow': { color: 'linear-gradient(45deg, red, orange, yellow, green, blue, purple)' },
+    'frame_fire': { color: 'linear-gradient(45deg, #ff6b00, #ff0000)' },
+    'frame_ice': { color: 'linear-gradient(45deg, #00bfff, #00ffff)' },
+    'frame_neon': { color: '#bf00ff' },
+    'frame_skull': { image: '/static/shop/banners/badge_skull.gif' },
+    'frame_dragon': { image: '/static/shop/banners/badge_dragon.gif' },
+    'frame_demon': { image: '/static/shop/banners/badge_demon.gif' },
+    'frame_knight': { image: '/static/shop/banners/badge_knight.gif' },
+    'frame_samurai': { image: '/static/shop/banners/badge_samurai.jpg' },
+    'frame_street': { image: '/static/shop/banners/badge_street.jpg' },
+    'frame_graffiti': { image: '/static/shop/banners/badge_graffiti.jpg' },
+    'frame_anime1': { image: '/static/shop/banners/banner_8585.gif' },
+    'frame_anime2': { image: '/static/shop/banners/banner_3106.gif' },
+};
+
+function applyFrame(frameId) {
+    var avatarIds = ['profileAvatar', 'sidebarAvatar', 'headerUserAvatar'];
+    avatarIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('frame-active', 'color-frame', 'image-frame');
+        el.style.removeProperty('--frame-bg');
+        if (frameId && FRAMES_DATA[frameId]) {
+            el.classList.add('frame-active');
+            var data = FRAMES_DATA[frameId];
+            if (data.image) {
+                el.classList.add('image-frame');
+                el.style.setProperty('--frame-bg', 'url(' + data.image + ')');
+            } else {
+                el.classList.add('color-frame');
+                el.style.setProperty('--frame-bg', data.color);
+            }
+        }
+    });
+}
+
 document.querySelectorAll('#profile .source-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
         document.querySelectorAll('#profile .source-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -207,12 +245,12 @@ async function saveProfile() {
         yandex_token: document.getElementById('yandex_token')?.value || '',
         vk_token: document.getElementById('vk_token')?.value || '',
         soundcloud_client_id: document.getElementById('soundcloud_client_id')?.value || '',
-        soundcloud_proxy: document.getElementById('soundcloud_proxy')?.value || '',
         current_source: activeSource?.dataset.source || 'yandex'
     };
     
     if (data.yandex_token === '***') delete data.yandex_token;
     if (data.vk_token === '***') delete data.vk_token;
+    if (data.soundcloud_client_id === '***') delete data.soundcloud_client_id;
     
     try {
         var result = await fetch('/profile', {
@@ -328,8 +366,12 @@ function renderCustomizeItems(items, type, equippedId) {
                 preview = '<i class="fas ' + icon + '" style="font-size: 24px; color: ' + color + ';"></i>';
             }
         } else if (type === 'frame') {
-            const color = item.data.color || '#ffd700';
-            preview = '<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid ' + color + '; display: flex; align-items: center; justify-content: center;"><i class="fas fa-user" style="font-size: 16px;"></i></div>';
+            if (item.data.image) {
+                preview = '<div style="width:40px;height:40px;border-radius:50%;padding:3px;background:url(' + item.data.image + ') center/cover no-repeat;display:flex;align-items:center;justify-content:center;"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg-elevated,#1e1e2e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:16px;color:var(--accent,#6366f1);"></i></div></div>';
+            } else {
+                const color = item.data.color || '#ffd700';
+                preview = '<div style="width:40px;height:40px;border-radius:50%;padding:3px;background:' + color + ';display:flex;align-items:center;justify-content:center;"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg-elevated,#1e1e2e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:16px;color:var(--accent,#6366f1);"></i></div></div>';
+            }
         } else if (type === 'theme') {
             const accent = item.data.accent || '#6366f1';
             preview = '<div style="width: 40px; height: 40px; border-radius: 8px; background: ' + accent + '; box-shadow: 0 0 10px ' + accent + ';"></div>';
@@ -426,5 +468,53 @@ window.loadStats = async function() {
     } catch (error) {
         console.error('Load stats error:', error);
         document.getElementById('statsLoading').innerHTML = '<p style="color: var(--text-muted);">Ошибка загрузки статистики</p>';
+    }
+};
+
+window.discoverScClientId = async function() {
+    var btn = document.getElementById('scDiscoverBtn');
+    var statusEl = document.getElementById('scDiscoverStatus');
+    var input = document.getElementById('soundcloud_client_id');
+    
+    if (!input || !input.value || !input.value.includes('soundcloud.com')) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#ff6b6b';
+        statusEl.textContent = 'Введите URL профиля SoundCloud (например, https://soundcloud.com/имя)';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--text-muted)';
+    statusEl.textContent = 'Поиск client_id...';
+    
+    try {
+        var result = await fetch('/api/soundcloud/discover-client-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: input.value })
+        }).then(function(r) { return r.json(); });
+        
+        if (result.success) {
+            input.value = result.client_id;
+            statusEl.style.color = '#2ed573';
+            statusEl.textContent = 'Client ID найден и сохранён!';
+            showNotification('SoundCloud Client ID сохранён!', 'success');
+            loadProfileData();
+        } else {
+            statusEl.style.color = '#ff6b6b';
+            statusEl.textContent = result.message || 'Ошибка';
+            if (result.client_id) {
+                input.value = result.client_id;
+                statusEl.textContent += ' Но client_id показан выше — попробуйте вручную.';
+            }
+        }
+    } catch (error) {
+        statusEl.style.color = '#ff6b6b';
+        statusEl.textContent = 'Ошибка сети: ' + error.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i>';
     }
 };

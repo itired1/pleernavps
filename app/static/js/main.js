@@ -85,13 +85,29 @@ window.playMyWave = async function() {
     
     console.log('playMyWave: loading...');
     try {
-        // Load liked tracks from Yandex as personal wave
-        const likedTracks = await apiCall('liked-tracks');
         let tracks = [];
         
-        if (likedTracks && likedTracks.tracks && likedTracks.tracks.length > 0) {
-            // Filter Yandex tracks and use them
-            tracks = likedTracks.tracks.filter(t => t.service === 'yandex' || t.id.toString().startsWith('yandex_'));
+        // Load liked tracks from Yandex
+        const yandexLiked = await apiCall('liked-tracks?source=yandex');
+        if (yandexLiked && yandexLiked.tracks && yandexLiked.tracks.length > 0) {
+            tracks = tracks.concat(yandexLiked.tracks);
+        }
+        
+        // Load liked tracks from VK
+        const vkLiked = await apiCall('liked-tracks?source=vk');
+        if (vkLiked && vkLiked.tracks && vkLiked.tracks.length > 0) {
+            tracks = tracks.concat(vkLiked.tracks);
+        }
+        
+        // Load liked tracks from SoundCloud
+        const scLiked = await apiCall('liked-tracks?source=soundcloud');
+        if (scLiked && scLiked.tracks && scLiked.tracks.length > 0) {
+            tracks = tracks.concat(scLiked.tracks);
+        }
+        
+        // Shuffle combined tracks
+        if (tracks.length > 0) {
+            tracks.sort(() => Math.random() - 0.5);
         }
         
         if (tracks.length === 0) {
@@ -101,8 +117,9 @@ window.playMyWave = async function() {
         }
         
         if (!tracks || tracks.length === 0) {
-            container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Лайкните треки в Яндекс.Музыке для персонализации</p></div>';
-            showNotification('Лайкните треки в Яндекс.Музыке', 'info');
+            const msg = 'Добавьте треки в библиотеку для персонализации';
+            container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">' + msg + '</p></div>';
+            showNotification(msg, 'info');
             return;
         }
         
@@ -149,7 +166,14 @@ window.playMyWave = async function() {
         
         if (tracks.length > 0) {
             playTrack(tracks[0].id);
-            showNotification('▶ Моя Волна (ЯндексМузыка)', 'success');
+            const hasVk = tracks.some(t => t.service === 'vk' || t.id.toString().startsWith('vk_'));
+            const hasYa = tracks.some(t => t.service === 'yandex' || t.id.toString().startsWith('yandex_'));
+            const hasSc = tracks.some(t => t.service === 'soundcloud' || t.id.toString().startsWith('sc_'));
+            var services = [];
+            if (hasYa) services.push('Яндекс');
+            if (hasVk) services.push('VK');
+            if (hasSc) services.push('SoundCloud');
+            showNotification('▶ Моя Волна (' + services.join(' + ') + ')', 'success');
         }
         
     } catch (error) {
@@ -166,7 +190,9 @@ window.loadMyWave = function() {
 };
 
 window.refreshLikedTracks = function() {
-    loadLikedTracks('yandex');
+    var activeBtn = document.querySelector('#likedSourceSelector .source-btn.active');
+    var source = activeBtn ? activeBtn.dataset.source : 'yandex';
+    loadLikedTracks(source);
 };
 
 window.loadLikedTracks = async function(source) {
@@ -371,6 +397,9 @@ async function loadProfile() {
                     if (el) el.innerHTML = avatarHtml;
                 });
             }
+            if (typeof applyFrame === 'function') {
+                applyFrame(local.equipped_frame);
+            }
         }
     } catch (error) {
         console.error('Load profile error:', error);
@@ -451,16 +480,16 @@ window.switchTab = function(tabName) {
     if (tabName === 'history' && typeof loadHistory === 'function') loadHistory();
     if (tabName === 'shop' && typeof initShop === 'function') initShop();
     if (tabName === 'stats' && typeof loadStats === 'function') loadStats();
+    if (tabName === 'battlepass') {
+        if (typeof loadBattlePass === 'function') loadBattlePass();
+        hideBpNewBadge();
+    }
 };
 
 let searchTimeout = null;
 window.currentSearchService = 'all';
 
 window.setSearchService = function(service) {
-    if (service === 'soundcloud') {
-        showNotification('SoundCloud временно недоступен', 'warning');
-        return;
-    }
     window.currentSearchService = service;
     document.querySelectorAll('.search-service-selector .source-btn').forEach(function(btn) {
         btn.classList.toggle('active', btn.dataset.service === service);
@@ -522,13 +551,6 @@ function displaySearchDropdown(results) {
     
     if (!tracks.length) {
         showSearchEmpty();
-        return;
-    }
-    
-    tracks = tracks.filter(function(t) { return t.service !== 'soundcloud'; });
-    
-    if (!tracks.length) {
-        showSearchEmpty('SoundCloud временно недоступен');
         return;
     }
     
@@ -619,6 +641,8 @@ function displaySearchResults(results) {
                 ? '<i class="fab fa-yandex" style="color: #ff3333; font-size: 10px;"></i>' 
                 : t.service === 'vk' 
                 ? '<i class="fab fa-vk" style="color: #4a76a8; font-size: 10px;"></i>' 
+                : t.service === 'soundcloud'
+                ? '<i class="fab fa-soundcloud" style="color: #ff5500; font-size: 10px;"></i>'
                 : '';
             
             var duration = '';
@@ -1070,3 +1094,269 @@ if (typeof window.openProfileCustomize !== 'function') {
 if (typeof window.loadActiveBanner !== 'function') {
     window.loadActiveBanner = function() {};
 }
+
+window.loadBattlePass = async function() {
+    var loading = document.getElementById('bpLoading');
+    var content = document.getElementById('bpContent');
+    if (loading) loading.style.display = 'block';
+    if (content) content.style.display = 'none';
+    try {
+        var data = await apiCall('battle-pass/status');
+        if (!data.active) {
+            if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Нет активного сезона боевого пропуска</div>';
+            return;
+        }
+        if (loading) loading.style.display = 'none';
+        if (content) content.style.display = 'block';
+        
+        document.getElementById('bpSeasonName').textContent = data.season.name;
+        document.getElementById('bpDaysLeft').textContent = 'Осталось ' + data.season.days_left + ' дн.';
+        
+        var bpBalance = document.getElementById('bpBalance');
+        if (bpBalance) {
+            apiCall('currency/balance').then(function(b) {
+                bpBalance.textContent = b.balance || 0;
+            }).catch(function(){});
+        }
+        
+        document.getElementById('bpLevel').textContent = data.user.level;
+        var pct = 0;
+        if (data.user.xp_to_next > 0) {
+            pct = Math.min(100, Math.round((data.user.xp / data.user.xp_to_next) * 100));
+        }
+        document.getElementById('bpProgressFill').style.width = pct + '%';
+        document.getElementById('bpXpText').textContent = data.user.xp + ' XP';
+        document.getElementById('bpXpNext').textContent = data.user.xp_to_next > 0 ? data.user.xp + ' / ' + data.user.xp_to_next + ' XP' : 'Максимальный уровень!';
+        
+        var premiumBtn = document.getElementById('bpPremiumBtn');
+        var premiumBadge = document.getElementById('bpPremiumBadge');
+        if (data.user.has_premium) {
+            if (premiumBtn) premiumBtn.style.display = 'none';
+            if (premiumBadge) premiumBadge.style.display = 'inline-block';
+        } else {
+            if (premiumBtn) {
+                premiumBtn.style.display = data.user.level >= 50 ? 'inline-block' : 'none';
+            }
+        }
+        
+        var claimedFree = data.user.claimed_free || [];
+        var claimedPremium = data.user.claimed_premium || [];
+        var userLevel = data.user.level;
+        var hasPremium = data.user.has_premium;
+        
+        var container = document.getElementById('bpTimelineInner');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        (data.levels || []).forEach(function(lvl) {
+            var cell = document.createElement('div');
+            cell.className = 'bp-level-cell';
+            
+            var isFreeClaimed = claimedFree.indexOf(lvl.level) !== -1;
+            var isPremClaimed = claimedPremium.indexOf(lvl.level) !== -1;
+            var isFreeAvail = lvl.level <= userLevel;
+            var isPremAvail = isFreeAvail && hasPremium;
+            var isCurrent = lvl.level === userLevel;
+            
+            cell.setAttribute('data-level', lvl.level);
+            if (isCurrent) cell.classList.add('current');
+            if (lvl.level <= userLevel) cell.classList.add('unlocked');
+            
+            var content = document.createElement('div');
+            content.className = 'bp-level-content';
+            
+            var num = document.createElement('div');
+            num.className = 'bp-level-num';
+            if (lvl.level % 10 === 0 || lvl.level === 1 || lvl.level === data.season.max_level) {
+                num.textContent = lvl.level;
+            }
+            content.appendChild(num);
+            
+            var freeSlot = document.createElement('div');
+            freeSlot.className = 'bp-reward-slot free' + (isFreeAvail ? ' avail' : ' locked') + (isFreeClaimed ? ' claimed' : '') + (lvl.free_reward ? ' has-reward' : '');
+            freeSlot.title = lvl.free_reward ? (lvl.free_reward.name || 'Награда Free') : 'Нет награды';
+            if (lvl.free_reward && lvl.free_reward.image) {
+                var img = document.createElement('img');
+                img.src = lvl.free_reward.image;
+                img.className = 'bp-reward-img';
+                freeSlot.appendChild(img);
+            } else if (lvl.free_reward) {
+                freeSlot.innerHTML = '<i class="fas fa-gift"></i>';
+            }
+            if (isFreeClaimed) freeSlot.innerHTML += '<div class="bp-check"><i class="fas fa-check"></i></div>';
+            content.appendChild(freeSlot);
+            
+            var premSlot = document.createElement('div');
+            premSlot.className = 'bp-reward-slot premium' + (isPremAvail ? ' avail' : ' locked') + (isPremClaimed ? ' claimed' : '') + (lvl.premium_reward ? ' has-reward' : '');
+            premSlot.title = lvl.premium_reward ? (lvl.premium_reward.name || 'Награда NoverPass') : 'Нет награды';
+            if (lvl.premium_reward && lvl.premium_reward.image) {
+                var img2 = document.createElement('img');
+                img2.src = lvl.premium_reward.image;
+                img2.className = 'bp-reward-img';
+                premSlot.appendChild(img2);
+            } else if (lvl.premium_reward) {
+                premSlot.innerHTML = '<i class="fas fa-crown"></i>';
+            }
+            if (isPremClaimed) premSlot.innerHTML += '<div class="bp-check"><i class="fas fa-check"></i></div>';
+            content.appendChild(premSlot);
+            
+            cell.appendChild(content);
+            
+            cell.onclick = function() {
+                showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPremAvail);
+            };
+            
+            container.appendChild(cell);
+        });
+        
+        loadBattlePassQuests();
+    } catch (e) {
+        console.error('Battle pass load error:', e);
+        if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Ошибка загрузки боевого пропуска</div>';
+    }
+};
+
+function showBpLevelDetail(lvl, isFreeClaimed, isPremClaimed, isFreeAvail, isPremAvail) {
+    var detail = document.getElementById('bpLevelDetail');
+    if (!detail) return;
+    detail.style.display = 'block';
+    var html = '<div class="glass-card" style="padding:16px;border:1px solid rgba(255,215,0,0.2);">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    html += '<h4 style="margin:0;"><i class="fas fa-trophy" style="color:#ffd700;"></i> Уровень ' + lvl.level + '</h4>';
+    html += '<span style="font-size:12px;color:var(--text-muted);">' + lvl.xp_required + ' XP</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:16px;">';
+    
+    html += '<div style="flex:1;text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);">';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-star" style="color:#6366f1;"></i> Free</div>';
+    if (lvl.free_reward && lvl.free_reward.image) {
+        html += '<img src="' + lvl.free_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
+    } else {
+        html += '<div style="width:64px;height:64px;border-radius:8px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fas fa-gift" style="font-size:24px;color:var(--text-muted);"></i></div>';
+    }
+    html += '<div style="font-size:12px;">' + (lvl.free_reward ? lvl.free_reward.name || 'Награда' : '—') + '</div>';
+    if (isFreeAvail && !isFreeClaimed && lvl.free_reward) {
+        html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ', \'free\')"><i class="fas fa-gift"></i> Забрать</button>';
+    } else if (isFreeClaimed) {
+        html += '<div style="margin-top:8px;font-size:12px;color:#22c55e;"><i class="fas fa-check-circle"></i> Получено</div>';
+    } else {
+        html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-lock"></i> Уровень ' + lvl.level + '</div>';
+    }
+    html += '</div>';
+    
+    html += '<div style="flex:1;text-align:center;padding:12px;border-radius:12px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);">';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-crown" style="color:#ffd700;"></i> NoverPass</div>';
+    if (lvl.premium_reward && lvl.premium_reward.image) {
+        html += '<img src="' + lvl.premium_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
+    } else {
+        html += '<div style="width:64px;height:64px;border-radius:8px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fas fa-crown" style="font-size:24px;color:#ffd700;"></i></div>';
+    }
+    html += '<div style="font-size:12px;">' + (lvl.premium_reward ? lvl.premium_reward.name || 'Награда' : '—') + '</div>';
+    if (isPremAvail && !isPremClaimed && lvl.premium_reward) {
+        html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ', \'premium\')"><i class="fas fa-gift"></i> Забрать</button>';
+    } else if (isPremClaimed) {
+        html += '<div style="margin-top:8px;font-size:12px;color:#22c55e;"><i class="fas fa-check-circle"></i> Получено</div>';
+    } else if (!hasPremium) {
+        html += '<div style="margin-top:8px;font-size:12px;color:#ffd700;"><i class="fas fa-crown"></i> Нужен NoverPass</div>';
+    } else {
+        html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-lock"></i> Уровень ' + lvl.level + '</div>';
+    }
+    html += '</div>';
+    
+    html += '</div></div>';
+    detail.innerHTML = html;
+}
+
+function loadBattlePassQuests() {
+    var container = document.getElementById('bpQuests');
+    if (!container) return;
+    apiCall('battle-pass/quests').then(function(data) {
+        if (!data.quests || data.quests.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Нет заданий</div>';
+            return;
+        }
+        var html = '';
+        data.quests.forEach(function(q) {
+            var pct = q.requirement_value > 0 ? Math.min(100, Math.round((q.progress / q.requirement_value) * 100)) : 0;
+            var typeLabel = q.type === 'daily' ? 'Ежедневно' : 'Еженедельно';
+            var typeIcon = q.type === 'daily' ? 'fa-sun' : 'fa-calendar-week';
+            var isDone = q.completed && !q.claimed;
+            var isClaimed = q.claimed;
+            html += '<div class="glass-card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;' + (isClaimed ? ' opacity: 0.5;' : '') + '">';
+            html += '<div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center;"><i class="fas ' + typeIcon + '" style="color: var(--accent);"></i></div>';
+            html += '<div style="flex: 1; min-width: 0;">';
+            html += '<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">';
+            html += '<span style="font-size: 14px; font-weight: 600;">' + q.description + '</span>';
+            html += '<span style="font-size: 12px; color: #ffd700; white-space: nowrap;"><i class="fas fa-star"></i> +' + q.xp_reward + ' XP</span>';
+            html += '</div>';
+            html += '<div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">';
+            html += '<div class="progress-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"><div class="progress-fill" style="height: 100%; width: ' + pct + '%; border-radius: 3px; background: var(--accent);"></div></div>';
+            html += '<span style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">' + q.progress + '/' + q.requirement_value + '</span>';
+            if (isDone) {
+                html += '<button class="btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="claimQuest(' + q.id + ')"><i class="fas fa-gift"></i></button>';
+            } else if (isClaimed) {
+                html += '<span style="font-size: 12px; color: #22c55e;"><i class="fas fa-check"></i></span>';
+            } else {
+                html += '<span style="font-size: 11px; color: var(--text-muted);">' + typeLabel + '</span>';
+            }
+            html += '</div></div></div>';
+        });
+        container.innerHTML = html;
+    }).catch(function(e) {
+        console.error('Load quests error:', e);
+    });
+}
+
+window.claimQuest = function(questId) {
+    apiCall('battle-pass/claim-quest', {method: 'POST', body: JSON.stringify({quest_id: questId})}).then(function(r) {
+        if (r.success) {
+            loadBattlePass();
+        } else {
+            alert(r.message);
+        }
+    }).catch(function(e) {
+        console.error('Claim quest error:', e);
+    });
+};
+
+function doBpClaim(levelNum, tier) {
+    apiCall('battle-pass/claim', {method: 'POST', body: JSON.stringify({level: levelNum, tier: tier})}).then(function(r) {
+        if (r.success) {
+            loadBattlePass();
+        } else {
+            alert(r.message);
+        }
+    }).catch(function(e) {
+        console.error('Claim error:', e);
+    });
+}
+
+window.activateBpPremium = async function() {
+    try {
+        var r = await apiCall('battle-pass/activate-premium', {method: 'POST', body: JSON.stringify({})});
+        if (r.success) {
+            loadBattlePass();
+        } else {
+            alert(r.message);
+        }
+    } catch (e) {
+        console.error('Activate premium error:', e);
+    }
+};
+
+function hideBpNewBadge() {
+    localStorage.setItem('bp_seen', '1');
+    var badge = document.getElementById('bpNewBadge');
+    if (badge) badge.style.display = 'none';
+    var mobileBadge = document.getElementById('bpNewBadgeMobile');
+    if (mobileBadge) mobileBadge.style.display = 'none';
+}
+
+(function showBpNewBadgeIfNeeded() {
+    if (!localStorage.getItem('bp_seen')) {
+        var badge = document.getElementById('bpNewBadge');
+        if (badge) badge.style.display = 'inline';
+        var mobileBadge = document.getElementById('bpNewBadgeMobile');
+        if (mobileBadge) mobileBadge.style.display = 'inline';
+    }
+})();

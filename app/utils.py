@@ -12,17 +12,12 @@ import vk_api
 def get_soundcloud_client():
     from flask import current_app
     client_id = current_app.config.get('SOUNDCLOUD_CLIENT_ID')
-    proxy = current_app.config.get('SOUNDCLOUD_PROXY')
-    
-    print(f"DEBUG SC client_id='{client_id}', proxy='{proxy}'")
     
     if not client_id or client_id == 'your_soundcloud_client_id_here' or client_id == '':
         print("SoundCloud: client_id empty or placeholder")
         return None
-        
+    
     session = requests.Session()
-    if proxy:
-        session.proxies = {'http': proxy, 'https': proxy}
     
     return {'client_id': client_id, 'session': session}
 
@@ -32,7 +27,6 @@ def soundcloud_search(query, limit=20):
     import re
     
     client_id = None
-    proxy = None
     
     if 'user_id' in session:
         try:
@@ -40,26 +34,11 @@ def soundcloud_search(query, limit=20):
             user = db.session.get(User, session['user_id'])
             if user:
                 client_id = user.soundcloud_client_id
-                proxy = user.soundcloud_proxy
-                print(f"Using user SC settings: client_id={'set' if client_id else 'none'}, proxy={'set' if proxy else 'none'}")
         except Exception as e:
             print(f"Error getting user SC settings: {e}")
     
-    if not proxy:
-        proxy = current_app.config.get('SOUNDCLOUD_PROXY')
-    warp_enabled = current_app.config.get('WARP_ENABLED', False)
-    warp_proxy = current_app.config.get('WARP_PROXY', 'socks5://127.0.0.1:40000')
-    
-    proxies = None
-    if warp_enabled and warp_proxy:
-        proxies = {'http': warp_proxy, 'https': warp_proxy}
-    elif proxy:
-        proxies = {'http': proxy, 'https': proxy}
-    
     try:
         session_req = requests.Session()
-        if proxies:
-            session_req.proxies = proxies
         session_req.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
@@ -89,7 +68,6 @@ def soundcloud_search(query, limit=20):
                         })
                 
                 if results:
-                    print(f"SoundCloud found {len(results)} tracks")
                     return results
             else:
                 print(f"SoundCloud API status: {resp.status_code}")
@@ -118,7 +96,6 @@ def soundcloud_search(query, limit=20):
                 })
             
             if results:
-                print(f"SoundCloud scraped {len(results)} tracks")
                 return results
                 
     except Exception as e:
@@ -175,7 +152,7 @@ def soundcloud_search(query, limit=20):
     return []
 
 def soundcloud_get_url(track_id, sc_client_id=None, proxy=None):
-    from flask import session as flask_session, current_app
+    from flask import session as flask_session
     
     if 'user_id' in flask_session:
         try:
@@ -183,13 +160,8 @@ def soundcloud_get_url(track_id, sc_client_id=None, proxy=None):
             user = db.session.get(User, flask_session['user_id'])
             if user and user.soundcloud_client_id:
                 sc_client_id = user.soundcloud_client_id
-            if user and user.soundcloud_proxy:
-                proxy = user.soundcloud_proxy
         except:
             pass
-    
-    if not proxy:
-        proxy = current_app.config.get('SOUNDCLOUD_PROXY')
     
     if not sc_client_id:
         print("SoundCloud: no client_id - пользователь не настроил SoundCloud в профиле")
@@ -197,11 +169,8 @@ def soundcloud_get_url(track_id, sc_client_id=None, proxy=None):
     
     track_num = track_id.replace('sc_', '')
     
-    session_req = requests.Session()
-    if proxy:
-        session_req.proxies = {'http': proxy, 'https': proxy}
-    
     try:
+        session_req = requests.Session()
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Referer': 'https://soundcloud.com/'
@@ -210,41 +179,46 @@ def soundcloud_get_url(track_id, sc_client_id=None, proxy=None):
         url = f'https://api-v2.soundcloud.com/tracks/{track_num}?client_id={sc_client_id}'
         resp = session_req.get(url, headers=headers, timeout=15)
         
-        print(f"SoundCloud track info: status={resp.status_code}")
-        
         if resp.status_code == 200:
             data = resp.json()
-            print(f"SoundCloud track data: {data.get('title', 'N/A')}")
             
             media = data.get('media', {})
             transcodings = media.get('transcodings', [])
-            print(f"Found {len(transcodings)} transcodings")
-            
-            for i, t in enumerate(transcodings):
-                preset = t.get('preset', 'unknown')
-                mime_type = t.get('format', {}).get('mime_type', '')
-                print(f"  [{i}] preset={preset}, mime={mime_type}")
             
             for t in transcodings:
                 preset = t.get('preset', '')
                 stream_url = t.get('url', '')
                 if stream_url and preset == 'mp3_1_0':
-                    final_url = stream_url.replace('{client_id}', sc_client_id) + f'?client_id={sc_client_id}'
-                    return {
-                        'url': final_url,
-                        'title': data.get('title'),
-                        'artist': data.get('user', {}).get('username')
-                    }
+                    download_url = stream_url.replace('{client_id}', sc_client_id) + f'&client_id={sc_client_id}'
+                    stream_resp = session_req.get(download_url, headers=headers, timeout=15, allow_redirects=True)
+                    if stream_resp.status_code == 200:
+                        try:
+                            body = stream_resp.json()
+                            actual_url = body.get('url') or download_url
+                        except:
+                            actual_url = stream_resp.url or download_url
+                        return {
+                            'url': actual_url,
+                            'title': data.get('title'),
+                            'artist': data.get('user', {}).get('username')
+                        }
             
             for t in transcodings:
                 stream_url = t.get('url', '')
                 if stream_url and t.get('preset') != 'hls':
-                    final_url = stream_url.replace('{client_id}', sc_client_id) + f'?client_id={sc_client_id}'
-                    return {
-                        'url': final_url,
-                        'title': data.get('title'),
-                        'artist': data.get('user', {}).get('username')
-                    }
+                    download_url = stream_url.replace('{client_id}', sc_client_id) + f'&client_id={sc_client_id}'
+                    stream_resp = session_req.get(download_url, headers=headers, timeout=15, allow_redirects=True)
+                    if stream_resp.status_code == 200:
+                        try:
+                            body = stream_resp.json()
+                            actual_url = body.get('url') or download_url
+                        except:
+                            actual_url = stream_resp.url or download_url
+                        return {
+                            'url': actual_url,
+                            'title': data.get('title'),
+                            'artist': data.get('user', {}).get('username')
+                        }
             
             print("No direct stream URL found, only HLS")
         else:
@@ -254,22 +228,13 @@ def soundcloud_get_url(track_id, sc_client_id=None, proxy=None):
     return None
 
 def soundcloud_resolve_url(url, sc_client_id=None, proxy=None):
-    from flask import current_app
-    
     if not sc_client_id:
         return None
-    if not proxy:
-        proxy = current_app.config.get('SOUNDCLOUD_PROXY')
-    
-    session = requests.Session()
-    if proxy:
-        session.proxies = {'http': proxy, 'https': proxy}
     
     try:
         resolve_url = 'https://api-v2.soundcloud.com/resolve'
         params = {'url': url, 'client_id': sc_client_id}
-        resp = session.get(resolve_url, params=params, timeout=15)
-        
+        resp = requests.get(resolve_url, params=params, timeout=15)
         if resp.status_code in [200, 302]:
             return resp.json()
     except Exception as e:
@@ -280,7 +245,7 @@ def get_yandex_client(token):
     if not token:
         return None
     try:
-        print(f"[YANDEX] Creating client with token: {token[:30]}...")
+        print("[YANDEX] Creating client...")
         client = Client(token)
         # Skip init() to avoid Product class error
         print(f"[YANDEX] Client created (no init)")
@@ -307,10 +272,10 @@ def get_vk_audio(token):
         return None
     try:
         vk_session = vk_api.VkApi(token=token)
+        vk_session.http.headers['Accept-Encoding'] = 'gzip, deflate'
         from vk_api.audio import VkAudio
         return VkAudio(vk_session)
-    except Exception as e:
-        print(f"VK Audio error: {e}")
+    except Exception:
         return None
 
 def send_verification_email(email, username, token):
@@ -406,45 +371,73 @@ class Recommender:
                 except: pass
         
         if 'vk' in services and user and user.vk_token:
-            vk = get_vk_api(user.vk_token)
-            if vk:
+            vk_audio = get_vk_audio(user.vk_token)
+            if vk_audio:
                 try:
                     if liked_service == 'vk' and liked_tracks:
-                        track_ids = [t.track_id.replace('vk_', '') for t in liked_tracks[:10] if t.track_id.startswith('vk_')]
-                        if track_ids:
-                            for track_id in track_ids:
-                                try:
-                                    audio = vk.audio.getById(audios=f"-{track_id}")
-                                    if audio:
-                                        t = audio[0]
-                                        vk_artist = t.get('artist', '') or ''
-                                        recommendations.append({
-                                            'id': f"vk_{t['id']}",
-                                            'title': t['title'],
-                                            'type': 'track',
-                                            'artists': [vk_artist] if vk_artist else [],
-                                            'artist': vk_artist,
-                                            'cover_uri': t.get('album', {}).get('thumb', {}).get('photo_300'),
-                                            'duration': t['duration'] * 1000,
-                                            'service': 'vk'
-                                        })
-                                except: pass
+                        for lt in liked_tracks[:10]:
+                            if lt.track_id.startswith('vk_'):
+                                parts = lt.track_id.replace('vk_', '').split('_')
+                                if len(parts) >= 2:
+                                    try:
+                                        track = vk_audio.get_by_id(int(parts[0]), int(parts[1]))
+                                        if track:
+                                            vk_artist = track.get('artist', '') or ''
+                                            covers = track.get('track_covers') or []
+                                            recommendations.append({
+                                                'id': f"vk_{track['owner_id']}_{track['id']}",
+                                                'title': track['title'],
+                                                'type': 'track',
+                                                'artists': [vk_artist] if vk_artist else [],
+                                                'artist': vk_artist,
+                                                'cover_uri': covers[0] if covers else None,
+                                                'duration': track['duration'] * 1000,
+                                                'service': 'vk'
+                                            })
+                                    except:
+                                        pass
                     else:
-                        recs = vk.audio.getRecommendations(count=10)
-                        if 'items' in recs:
-                            for track in recs['items']:
-                                vk_artist = track.get('artist', '') or ''
-                                recommendations.append({
-                                    'id': f"vk_{track['id']}",
-                                    'title': track['title'],
-                                    'type': 'track',
-                                    'artists': [vk_artist] if vk_artist else [],
-                                    'artist': vk_artist,
-                                    'cover_uri': track.get('album', {}).get('thumb', {}).get('photo_300'),
-                                    'duration': track['duration'] * 1000,
-                                    'service': 'vk'
-                                })
-                except: pass
+                        recs = list(vk_audio.get_recommendations(count=10))
+                        for track in recs:
+                            vk_artist = track.get('artist', '') or ''
+                            covers = track.get('track_covers') or []
+                            recommendations.append({
+                                'id': f"vk_{track['owner_id']}_{track['id']}",
+                                'title': track['title'],
+                                'type': 'track',
+                                'artists': [vk_artist] if vk_artist else [],
+                                'artist': vk_artist,
+                                'cover_uri': covers[0] if covers else None,
+                                'duration': track['duration'] * 1000,
+                                'service': 'vk'
+                            })
+                except:
+                    pass
+        
+        if 'soundcloud' in services and user and user.soundcloud_client_id:
+            try:
+                import requests
+                resp = requests.get(
+                    f'https://api-v2.soundcloud.com/charts?kind=trending&limit=10&client_id={user.soundcloud_client_id}',
+                    timeout=15,
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                )
+                if resp.status_code == 200:
+                    for item in resp.json().get('collection', []):
+                        track = item.get('track', {})
+                        if track and track.get('kind') == 'track':
+                            recommendations.append({
+                                'id': f"sc_{track['id']}",
+                                'title': track.get('title', ''),
+                                'type': 'track',
+                                'artists': [track.get('user', {}).get('username', '')],
+                                'artist': track.get('user', {}).get('username', ''),
+                                'cover_uri': (track.get('artwork_url') or '').replace('-large', '-t500x500'),
+                                'duration': track.get('duration', 0),
+                                'service': 'soundcloud'
+                            })
+            except Exception as e:
+                print(f"SoundCloud recommendations error: {e}")
         
         if not recommendations and user and user.yandex_token:
             try:

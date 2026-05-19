@@ -158,6 +158,27 @@ body {
     overflow: hidden;
     flex-shrink: 0;
     border: 2px solid var(--border);
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+.user-avatar.frame-active {
+    padding: 3px;
+    border: none;
+}
+.user-avatar.frame-active.color-frame {
+    background: var(--frame-bg, var(--accent));
+}
+.user-avatar.frame-active.image-frame {
+    background: var(--frame-bg, var(--accent)) center/cover no-repeat;
+}
+.user-avatar.frame-active img {
+    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.user-avatar.frame-active i {
+    border-radius: 50%;
 }
 
 .user-avatar img {
@@ -511,6 +532,10 @@ body {
 .control-btn:hover {
     color: var(--text);
     background: rgba(255, 255, 255, 0.06);
+}
+
+.control-btn.active {
+    color: var(--accent);
 }
 
 .play-btn {
@@ -1350,6 +1375,19 @@ body {
     color: var(--accent);
 }
 
+.lrc-line {
+    padding: 6px 0;
+    font-size: 15px;
+    transition: all 0.2s;
+    color: var(--text-muted);
+}
+
+.lrc-line.active {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 17px;
+}
+
 .mini-notification {
     position: fixed;
     bottom: 100px;
@@ -2077,4 +2115,137 @@ body {
         max-height: 60vh;
         width: auto !important;
     }
+}
+
+/* Battle Pass Timeline */
+.bp-timeline {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+}
+.bp-timeline::-webkit-scrollbar {
+    height: 4px;
+}
+.bp-timeline::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 2px;
+}
+.bp-level-cell {
+    flex-shrink: 0;
+    width: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    padding: 4px 0;
+    transition: transform 0.2s;
+}
+.bp-level-cell:hover {
+    transform: translateY(-2px);
+}
+.bp-level-cell::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: -28px;
+    right: 28px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    z-index: 0;
+}
+.bp-level-cell:first-child::before { display: none; }
+.bp-level-cell.unlocked::before { background: linear-gradient(90deg, var(--accent), #ffd700); }
+.bp-level-cell.current::before { background: linear-gradient(90deg, var(--accent), #ffd700); }
+.bp-level-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    position: relative;
+    z-index: 1;
+}
+.bp-level-num {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    height: 12px;
+    line-height: 12px;
+}
+.bp-reward-slot {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1.5px solid transparent;
+    transition: all 0.2s;
+    overflow: hidden;
+}
+.bp-reward-slot.free {
+    background: rgba(99,102,241,0.15);
+    border-color: rgba(99,102,241,0.3);
+}
+.bp-reward-slot.premium {
+    background: rgba(255,215,0,0.1);
+    border-color: rgba(255,215,0,0.2);
+}
+.bp-reward-slot.locked {
+    opacity: 0.35;
+}
+.bp-reward-slot.avail {
+    opacity: 1;
+}
+.bp-reward-slot.avail.has-reward {
+    box-shadow: 0 0 12px rgba(99,102,241,0.2);
+}
+.bp-reward-slot.premium.avail.has-reward {
+    box-shadow: 0 0 12px rgba(255,215,0,0.25);
+    border-color: rgba(255,215,0,0.5);
+}
+.bp-reward-slot.claimed {
+    border-color: #22c55e !important;
+    background: rgba(34,197,94,0.15) !important;
+}
+.bp-reward-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+}
+.bp-check {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(34,197,94,0.4);
+}
+.bp-level-cell.current .bp-level-content {
+    filter: drop-shadow(0 0 8px rgba(255,215,0,0.4));
+}
+.bp-level-cell.current .bp-reward-slot.free {
+    border-color: #ffd700;
+    box-shadow: 0 0 16px rgba(255,215,0,0.2);
+}
+.bp-reward-slot i {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+.bp-reward-slot.premium i {
+    color: #ffd700;
+}
+.bp-reward-slot.avail.has-reward i {
+    color: var(--accent);
+}
+.bp-reward-slot.premium.avail.has-reward i {
+    color: #ffd700;
 }

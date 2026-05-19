@@ -60,9 +60,22 @@
     <div class="glass-card" style="margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="margin: 0;"><i class="fas fa-heart" style="color: #ff6b6b; margin-right: 8px;"></i>Лайкнутые</h3>
-            <button onclick="refreshLikedTracks()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Обновить">
-                <i class="fas fa-sync-alt"></i>
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div id="likedSourceSelector" class="search-service-selector" style="display: flex; gap: 4px;">
+                    <button type="button" class="source-btn active" data-source="yandex" onclick="loadLikedTracks('yandex')" title="Яндекс">
+                        <i class="fab fa-yandex"></i>
+                    </button>
+                    <button type="button" class="source-btn" data-source="vk" onclick="loadLikedTracks('vk')" title="VK">
+                        <i class="fab fa-vk"></i>
+                    </button>
+                    <button type="button" class="source-btn" data-source="soundcloud" onclick="loadLikedTracks('soundcloud')" title="SoundCloud">
+                        <i class="fab fa-soundcloud"></i>
+                    </button>
+                </div>
+                <button onclick="refreshLikedTracks()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Обновить">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
         </div>
         <div class="wave-tracks" id="likedTracksContainer" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
             <div style="flex: 1; min-width: 200px; text-align: center; padding: 40px;">
@@ -165,7 +178,7 @@
                 </button>
             </div>
             <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: -32px; position: relative; z-index: 1;">
-                <div class="user-avatar" id="profileAvatar" style="width: 72px; height: 72px; font-size: 24px; border: 3px solid var(--bg-card); cursor: pointer;" onclick="triggerAvatarUpload()" title="Нажмите для смены аватарки">
+                <div class="user-avatar" id="profileAvatar" style="width: 72px; height: 72px; font-size: 24px; cursor: pointer;" onclick="triggerAvatarUpload()" title="Нажмите для смены аватарки">
                     <i class="fas fa-user"></i>
                 </div>
                 <input type="file" id="avatarInput" accept="image/*" style="display: none;">
@@ -205,6 +218,18 @@
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
                         <span style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fab fa-vk" style="color: #4a76a8;"></i> Токен VK
+                            <i id="vkCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
+                        </span>
+                        <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openModal('vkTokenModal')">
+                            <i class="fas fa-question-circle"></i> Как получить
+                        </button>
+                    </label>
+                    <input type="password" id="vk_token" placeholder="Вставьте токен VK">
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
                             <i class="fab fa-soundcloud"></i> SoundCloud
                             <i id="soundcloudCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
                             <i id="soundcloudError" class="fas fa-exclamation-triangle" style="color: #ff6b6b; display: none;" title="Не настроен"></i>
@@ -213,23 +238,28 @@
                             <i class="fas fa-question-circle"></i> Инфо
                         </button>
                     </label>
-                    <div style="font-size: 12px; color: var(--text-muted); padding: 8px; background: var(--bg-elevated); border-radius: 8px;">
-                        <i class="fas fa-info-circle"></i> Настройка через .env файл на сервере. Прокси: <span id="soundcloudProxyStatus">Проверка...</span>
-                    </div>
                 </div>
                 <div class="form-group">
                     <label>SoundCloud Client ID</label>
-                    <input type="text" id="soundcloud_client_id" placeholder="Вставьте Client ID из SoundCloud">
-                </div>
-                <div class="form-group">
-                    <label>SoundCloud Прокси</label>
-                    <input type="text" id="soundcloud_proxy" placeholder="http://ip:port (оставьте пустым если не нужен)">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="soundcloud_client_id" placeholder="Вставьте Client ID из SoundCloud" style="flex: 1;">
+                        <button type="button" class="glass-btn" id="scDiscoverBtn" onclick="discoverScClientId()" title="Найти автоматически">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="scDiscoverStatus" style="font-size: 12px; margin-top: 4px; display: none;"></div>
                 </div>
                 <div class="form-group">
                     <label>Моя волна</label>
                     <div class="source-selector">
                         <button type="button" class="source-btn active" data-source="yandex">
                             <i class="fab fa-yandex"></i> Яндекс
+                        </button>
+                        <button type="button" class="source-btn" data-source="vk">
+                            <i class="fab fa-vk"></i> VK
+                        </button>
+                        <button type="button" class="source-btn" data-source="soundcloud">
+                            <i class="fab fa-soundcloud"></i> SoundCloud
                         </button>
                     </div>
                 </div>
@@ -308,6 +338,69 @@
             
             <h4 style="margin: 24px 0 12px;"><i class="fas fa-history"></i> Недавние треки</h4>
             <div id="recentTracks" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- БОЕВОЙ ПРОПУСК -->
+<div id="battlepass" class="tab-content">
+    <div class="glass-card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 30% 50%,rgba(255,215,0,0.05),transparent 60%);pointer-events:none;"></div>
+        <div id="bpLoading" style="text-align: center; padding: 40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+        </div>
+        <div id="bpContent" style="display: none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                <h3><i class="fas fa-trophy" style="color:#ffd700;"></i> <span id="bpSeasonName">Боевой пропуск</span></h3>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <span id="bpDaysLeft" style="color:var(--text-muted);font-size:13px;"></span>
+                    <span class="header-balance" style="background:var(--bg-elevated);padding:8px 16px;border-radius:20px;">
+                        <i class="fas fa-coins" style="color:var(--accent);"></i>
+                        <span id="bpBalance">0</span>
+                    </span>
+                </div>
+            </div>
+
+            <div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(99,102,241,0.08));border:1px solid rgba(255,215,0,0.2);border-radius:16px;padding:20px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div>
+                        <span style="font-size:28px;font-weight:800;" id="bpLevel">1</span>
+                        <span style="color:var(--text-muted);"> уровень</span>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-primary" id="bpPremiumBtn" onclick="activateBpPremium()" style="display:none;padding:6px 16px;font-size:13px;">
+                            <i class="fas fa-crown"></i> Premium
+                        </button>
+                        <span id="bpPremiumBadge" style="display:none;background:linear-gradient(135deg,#ffd700,#ff8c00);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#000;">
+                            <i class="fas fa-crown"></i> NoverPass
+                        </span>
+                    </div>
+                </div>
+                <div class="progress-bar" style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin-bottom:8px;">
+                    <div id="bpProgressFill" class="progress-fill" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#6366f1,#ffd700);"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
+                    <span id="bpXpText">0 XP</span>
+                    <span id="bpXpNext">0 XP до следующего уровня</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+                    <h4 style="margin:0;"><i class="fas fa-star" style="color:#6366f1;"></i> Free</h4>
+                    <h4 style="margin:0;"><i class="fas fa-crown" style="color:#ffd700;"></i> <span style="color:#ffd700;">NoverPass</span></h4>
+                </div>
+                <div id="bpTimeline" class="bp-timeline" style="overflow-x:auto;padding-bottom:12px;">
+                    <div id="bpTimelineInner" style="display:flex;gap:4px;min-width:100%;"></div>
+                </div>
+            </div>
+
+            <div id="bpLevelDetail" style="display:none;margin-bottom:16px;"></div>
+
+            <h4 style="margin:24px 0 12px;"><i class="fas fa-tasks" style="color:var(--accent);"></i> Задания</h4>
+            <div id="bpQuests" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">Загрузка заданий...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -520,25 +613,62 @@
             </div>
         </div>
         <div style="padding: 8px 0;">
-            <div style="padding: 16px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 16px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i id="scStatusIcon" class="fas fa-check-circle" style="font-size: 24px; color: #2ed573;"></i>
-                    <div>
-                        <div style="font-weight: 600;">Статус: <span id="scStatusText">Настроен</span></div>
-                        <div style="font-size: 12px; color: var(--text-muted);">Поиск и воспроизведение работают</div>
-                    </div>
-                </div>
-            </div>
-            <h4 style="color: var(--accent); margin-bottom: 12px;">Настройка через .env:</h4>
-            <div style="background: var(--bg-elevated); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; margin-bottom: 12px;">
-                SOUNDCLOUD_CLIENT_ID=ваш_id<br>
-                SOUNDCLOUD_PROXY=http://ip:port
-            </div>
-            <p style="color: var(--text-secondary); font-size: 13px;">
-                <i class="fas fa-info-circle"></i> Для работы SoundCloud в России требуется прокси-сервер.
+            <h4 style="color: var(--accent); margin-bottom: 12px;">Автоматический поиск:</h4>
+            <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px;">
+                Вставьте URL вашего профиля SoundCloud <strong>в поле Client ID</strong> и нажмите кнопку <i class="fas fa-search"></i> — client_id найдётся автоматически.
             </p>
+            
+            <h4 style="color: var(--accent); margin-bottom: 12px;">Вручную:</h4>
+            <ol style="margin-left: 20px; margin-bottom: 16px; line-height: 1.8;">
+                <li>Откройте <a href="https://soundcloud.com" target="_blank" style="color: var(--accent);">SoundCloud</a></li>
+                <li>Нажмите F12 → Network</li>
+                <li>В фильтр введите <code>client_id</code></li>
+                <li>Обновите страницу (F5)</li>
+                <li>Скопируйте client_id из любого запроса к api-v2.soundcloud.com</li>
+            </ol>
+            <div style="background: rgba(255, 85, 0, 0.1); border-left: 3px solid #ff5500; padding: 12px; border-radius: 8px; margin-top: 16px;">
+                <p style="margin: 0; color: var(--text-secondary); font-size: 13px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ff5500;"></i>
+                    <strong>Важно:</strong> SoundCloud заблокирован в России. Перед использованием включите <strong>Cloudflare WARP</strong> на сервере — без него API SoundCloud недоступен.
+                </p>
+            </div>
         </div>
         <button class="btn-primary" style="width: 100%;" onclick="closeModal('soundcloudInfoModal')">Закрыть</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА ТЕКСТА ПЕСНИ -->
+<div id="lyricsModal" class="modal">
+    <div class="glass-card modal-content" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h3><i class="fas fa-microphone-alt" style="color: var(--accent);"></i> <span id="lyricsTitle">Текст песни</span></h3>
+            <div class="modal-close" onclick="closeModal('lyricsModal')">
+                <i class="fas fa-xmark"></i>
+            </div>
+        </div>
+        <div id="lyricsLoading" style="display: flex; align-items: center; justify-content: center; padding: 40px; min-height: 200px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+        </div>
+        <div id="lyricsContent" style="padding: 0; text-align: center; min-height: 200px;"></div>
+        <button class="btn-primary" style="width: 100%; margin-top: 12px;" onclick="closeModal('lyricsModal')">Закрыть</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА АРТИСТА -->
+<div id="artistModal" class="modal">
+    <div class="glass-card modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h3><i class="fas fa-user" style="color: var(--accent);"></i> <span id="artistModalName">Исполнитель</span></h3>
+            <div class="modal-close" onclick="closeModal('artistModal')">
+                <i class="fas fa-xmark"></i>
+            </div>
+        </div>
+        <div id="artistContent" style="padding: 8px 0; min-height: 100px;">
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+            </div>
+        </div>
+        <button class="btn-primary" style="width: 100%;" onclick="closeModal('artistModal')">Закрыть</button>
     </div>
 </div>
 

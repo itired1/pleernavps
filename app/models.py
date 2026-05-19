@@ -191,3 +191,66 @@ class SavedQueue(db.Model):
     tracks_data = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class BattlePassSeason(db.Model):
+    __tablename__ = 'battle_pass_seasons'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    max_level = db.Column(db.Integer, default=100)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    levels = db.relationship('BattlePassLevel', backref='season', lazy='dynamic', cascade='all, delete-orphan')
+    user_progress = db.relationship('UserBattlePass', backref='season', lazy='dynamic', cascade='all, delete-orphan')
+
+class BattlePassLevel(db.Model):
+    __tablename__ = 'battle_pass_levels'
+    id = db.Column(db.Integer, primary_key=True)
+    season_id = db.Column(db.Integer, db.ForeignKey('battle_pass_seasons.id'), nullable=False, index=True)
+    level = db.Column(db.Integer, nullable=False)
+    xp_required = db.Column(db.Integer, nullable=False)
+    free_reward_json = db.Column(db.Text)
+    premium_reward_json = db.Column(db.Text)
+
+class UserBattlePass(db.Model):
+    __tablename__ = 'user_battle_pass'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    season_id = db.Column(db.Integer, db.ForeignKey('battle_pass_seasons.id'), nullable=False, index=True)
+    level = db.Column(db.Integer, default=1)
+    xp = db.Column(db.Integer, default=0)
+    has_premium = db.Column(db.Boolean, default=False)
+    claimed_free = db.Column(db.Text, default='[]')
+    claimed_premium = db.Column(db.Text, default='[]')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='battle_pass')
+
+class BattlePassQuest(db.Model):
+    __tablename__ = 'battle_pass_quests'
+    id = db.Column(db.Integer, primary_key=True)
+    season_id = db.Column(db.Integer, db.ForeignKey('battle_pass_seasons.id'), nullable=False, index=True)
+    type = db.Column(db.String(10), nullable=False)  # daily, weekly
+    description = db.Column(db.String(200), nullable=False)
+    xp_reward = db.Column(db.Integer, nullable=False)
+    requirement_type = db.Column(db.String(50), nullable=False)  # listen_count, listen_minutes, like_tracks, add_to_queue, playlists_created
+    requirement_value = db.Column(db.Integer, nullable=False, default=1)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    season = db.relationship('BattlePassSeason', backref='quests')
+
+class UserQuest(db.Model):
+    __tablename__ = 'user_quests'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    quest_id = db.Column(db.Integer, db.ForeignKey('battle_pass_quests.id'), nullable=False)
+    progress = db.Column(db.Integer, default=0)
+    completed = db.Column(db.Boolean, default=False)
+    claimed = db.Column(db.Boolean, default=False)
+    assigned_date = db.Column(db.Date, default=lambda: datetime.utcnow().date())
+
+    user = db.relationship('User', backref='quests')
+    quest = db.relationship('BattlePassQuest', backref='user_progress')

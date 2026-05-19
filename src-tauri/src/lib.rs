@@ -1,0 +1,428 @@
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
+#[cfg(not(target_os = "android"))]
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+#[cfg(not(target_os = "android"))]
+use std::thread;
+#[cfg(not(target_os = "android"))]
+use std::time::Duration;
+use tauri::Manager;
+use tracing::info;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+const DISCORD_APP_ID: &str = "1413290731073966171";
+
+const SETUP_HTML: &str = r##"<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iTired Music</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #050505; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 48px; width: 100%; max-width: 440px; text-align: center; }
+        h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 16px 0 8px; }
+        p { color: rgba(255,255,255,0.5); margin-bottom: 24px; }
+        input { width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff; font-size: 16px; margin-bottom: 16px; }
+        input:focus { outline: none; border-color: #6366f1; }
+        .btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #6366f1, #a855f7); border: none; border-radius: 12px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .error-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: left; }
+        .error-box h3 { color: #ef4444; font-size: 14px; margin-bottom: 8px; }
+        .error-box p { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 8px; }
+        .hidden { display: none; }
+        .success-box { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+        .success-box h3 { color: #22c55e; font-size: 14px; margin-bottom: 8px; }
+        .version { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 24px; }
+        .info { text-align: left; margin-top: 16px; }
+        .info p { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+        .info small { font-size: 11px; color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>iTired Music</h1>
+        <div id="errorBox" class="error-box hidden">
+            <h3>Не удалось подключиться</h3>
+            <p id="errorMsg">Проверьте адрес сервера</p>
+        </div>
+        <div id="successBox" class="success-box hidden">
+            <h3>Подключение установлено!</h3>
+            <p>Перенаправление...</p>
+        </div>
+        <form id="form" onsubmit="connect(event)">
+            <p>Введите адрес сервера друга</p>
+            <input type="url" id="url" placeholder="http://111.88.155.103:5001" required>
+            <button type="submit" class="btn" id="connectBtn">Подключиться</button>
+        </form>
+        <div class="info">
+            <p><strong>Важно для ngrok:</strong></p>
+            <small>Сначала откройте ссылку в браузере и нажмите "Visit Site"</small>
+        </div>
+        <p class="version">Версия: 1.0.2</p>
+    </div>
+    <script>
+        async function checkServer(url) {
+            try { await fetch(url + '/api/health', {method:'GET',mode:'no-cors'}); return true; } catch { return false; }
+        }
+        window.connect = async function(e) {
+            e.preventDefault();
+            const url = document.getElementById('url').value.trim();
+            if (!url) return;
+            document.getElementById('errorBox').classList.add('hidden');
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true; btn.textContent = 'Проверка...';
+            const ok = await checkServer(url);
+            if (ok) {
+                localStorage.setItem('server_url', url);
+                document.getElementById('successBox').classList.remove('hidden');
+                document.getElementById('form').classList.add('hidden');
+                window.location.href = url;
+            } else {
+                document.getElementById('errorMsg').innerHTML = url.includes('ngrok') 
+                    ? 'Откройте <strong>эту же ссылку</strong> в браузере и нажмите Visit Site'
+                    : 'Сервер недоступен';
+                document.getElementById('errorBox').classList.remove('hidden');
+                btn.disabled = false; btn.textContent = 'Подключиться';
+            }
+        };
+        const saved = localStorage.getItem('server_url');
+        if (saved) {
+            window.location.href = saved;
+        } else {
+            window.location.href = 'http://111.88.155.103:5001';
+        }
+    </script>
+</body>
+</html>"##;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppConfig {
+    pub server_url: String,
+    pub username: Option<String>,
+    pub token: Option<String>,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            server_url: "http://111.88.155.103:5001".to_string(),
+            username: None,
+            token: None,
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct TrackInfo {
+    pub title: String,
+    pub artist: String,
+    pub playing: bool,
+    pub album_art: Option<String>,
+}
+
+static CURRENT_TRACK: once_cell::sync::Lazy<Arc<Mutex<TrackInfo>>> =
+    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(TrackInfo::default())));
+
+fn get_config_path() -> PathBuf {
+    directories::ProjectDirs::from("com", "itired", "app")
+        .map(|dirs| dirs.config_dir().join("config.json"))
+        .unwrap_or_else(|| PathBuf::from("config.json"))
+}
+
+fn load_config() -> AppConfig {
+    let config_path = get_config_path();
+    if config_path.exists() {
+        std::fs::read_to_string(&config_path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
+    } else {
+        AppConfig::default()
+    }
+}
+
+fn save_config(config: &AppConfig) -> Result<(), String> {
+    let config_path = get_config_path();
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(
+        &config_path,
+        serde_json::to_string_pretty(config).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())
+}
+
+fn setup_logging() -> Option<tracing_appender::non_blocking::WorkerGuard> {
+    let log_dir = directories::ProjectDirs::from("com", "itired", "app")
+        .map(|dirs| dirs.data_local_dir().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    std::fs::create_dir_all(&log_dir).ok()?;
+
+    let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "itired.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_writer(non_blocking))
+        .with(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    Some(guard)
+}
+
+#[cfg(not(target_os = "android"))]
+fn discord_rpc_loop() {
+    thread::spawn(move || {
+        info!("Discord RPC thread starting...");
+        
+        let mut client = DiscordIpcClient::new(DISCORD_APP_ID);
+
+        if let Err(e) = client.connect() {
+            info!("Failed to connect to Discord: {}", e);
+            thread::sleep(Duration::from_secs(10));
+            let mut retry_client = DiscordIpcClient::new(DISCORD_APP_ID);
+            if let Err(e) = retry_client.connect() {
+                info!("Discord RPC unavailable: {}", e);
+                return;
+            }
+            client = retry_client;
+        }
+
+        info!("Discord RPC connected successfully!");
+
+        let default_activity = activity::Activity::new()
+            .details("iTired Music")
+            .state("Ready to play")
+            .timestamps(activity::Timestamps::new().start(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64));
+
+        if let Err(e) = client.set_activity(default_activity) {
+            info!("Failed to set initial activity: {}", e);
+        }
+
+        loop {
+            thread::sleep(Duration::from_secs(1));
+
+            let track = CURRENT_TRACK.lock().unwrap().clone();
+            let state_str = if track.playing { "Playing" } else { "Paused" };
+            let details = if track.title.is_empty() {
+                "iTired Music".to_string()
+            } else {
+                track.title
+            };
+            let artist = if track.artist.is_empty() {
+                "Unknown Artist".to_string()
+            } else {
+                track.artist
+            };
+            let state_format = format!("{} • {}", artist, state_str);
+
+            let act = activity::Activity::new()
+                .details(&details)
+                .state(&state_format)
+                .timestamps(activity::Timestamps::new().start(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64));
+
+            if client.set_activity(act).is_err() {
+                let mut new_client = DiscordIpcClient::new(DISCORD_APP_ID);
+                if new_client.connect().is_ok() {
+                    let act2 = activity::Activity::new()
+                        .details(&details)
+                        .state(&state_format)
+                        .timestamps(activity::Timestamps::new().start(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64));
+                    let _ = new_client.set_activity(act2);
+                }
+                client = new_client;
+            }
+        }
+    });
+}
+
+#[tauri::command]
+fn get_setup_html() -> String {
+    SETUP_HTML.to_string()
+}
+
+#[tauri::command]
+fn get_server_url() -> String {
+    load_config().server_url
+}
+
+#[tauri::command]
+fn set_server_url(url: String) -> Result<(), String> {
+    let mut config = load_config();
+    config.server_url = url;
+    save_config(&config)
+}
+
+#[tauri::command]
+fn get_config() -> AppConfig {
+    load_config()
+}
+
+#[tauri::command]
+fn save_settings(username: Option<String>, token: Option<String>) -> Result<(), String> {
+    let mut config = load_config();
+    config.username = username;
+    config.token = token;
+    save_config(&config)
+}
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
+fn open_external_link(url: String) -> Result<(), String> {
+    info!("Opening: {}", url);
+    open::that(&url).map_err(|e| format!("Failed: {}", e))
+}
+
+#[tauri::command]
+fn update_discord_status(
+    title: Option<String>,
+    artist: Option<String>,
+    playing: Option<bool>,
+    album_art: Option<String>,
+) -> Result<(), String> {
+    let mut track = CURRENT_TRACK.lock().map_err(|e| e.to_string())?;
+
+    track.title = title.unwrap_or_else(|| "iTired Music".to_string());
+    track.artist = artist.unwrap_or_else(|| "Ready to play".to_string());
+    track.playing = playing.unwrap_or(true);
+    track.album_art = album_art;
+
+    #[cfg(not(target_os = "android"))]
+    info!(
+        "Discord: {} - {} ({})",
+        track.artist,
+        track.title,
+        if track.playing { "Playing" } else { "Paused" }
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+fn navigate_to(window: tauri::WebviewWindow, url: String) -> Result<(), String> {
+    window
+        .eval(&format!("window.location.href = '{}';", url))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn force_close_app(window: tauri::WebviewWindow) -> Result<(), String> {
+    info!("Force closing application");
+    #[cfg(desktop)]
+    window.close().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_notification(title: String, body: String, app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| e.to_string())
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let _guard = setup_logging();
+
+    info!("Starting iTired Music Player v1.0.2");
+    info!("Discord App ID: {}", DISCORD_APP_ID);
+
+    let config = load_config();
+    let server_url = config.server_url.clone();
+    info!("Server URL: {}", server_url);
+
+    #[cfg(not(target_os = "android"))]
+    discord_rpc_loop();
+
+    tauri::Builder::default()
+        .setup(move |app| {
+            #[cfg(not(target_os = "android"))]
+            {
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::TrayIconBuilder;
+
+                let show_i = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
+                let playing_i = MenuItem::with_id(app, "playing", "▶ Сейчас играет", false, None::<&str>)?;
+                let quit_i = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+
+                let menu = Menu::with_items(app, &[&show_i, &playing_i, &quit_i])?;
+
+                let _tray = TrayIconBuilder::new()
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .menu(&menu)
+                    .menu_on_left_click(false)
+                    .tooltip("iTired Music")
+                    .on_menu_event(|app, event| {
+                        match event.id.as_ref() {
+                            "show" => {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                            "quit" => {
+                                app.exit(0);
+                            }
+                            _ => {}
+                        }
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. } = event {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    })
+                    .build(app)?;
+
+                info!("System tray created");
+            }
+
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(desktop)]
+                let _ = window.set_title("iTired Music");
+                let _ = window.eval("window.location.href = 'http://111.88.155.103:5001';");
+            }
+
+            Ok(())
+        })
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            get_server_url,
+            set_server_url,
+            get_app_version,
+            open_external_link,
+            get_config,
+            save_settings,
+            update_discord_status,
+            navigate_to,
+            force_close_app,
+            get_setup_html,
+            show_notification
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
