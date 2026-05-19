@@ -70,10 +70,10 @@ function updateProfileForm(profile) {
     }
     
     if (local.equipped_badge) {
-        updateProfileBadge(local.equipped_badge);
+        updateProfileBadge(local.equipped_badge, local.equipped_badge_data);
     }
     
-    applyFrame(local.equipped_frame);
+    applyFrame(local.equipped_frame, local.equipped_frame_data);
     
     loadActiveBanner();
 }
@@ -111,7 +111,7 @@ function updateAllAvatars(url) {
     });
 }
 
-function updateProfileBadge(badgeId) {
+function updateProfileBadge(badgeId, badgeData) {
     const BADGES_DATA = {
         'badge_vip': { icon: 'fa-crown', color: '#ffd700' },
         'badge_early': { icon: 'fa-rocket', color: '#f97316' },
@@ -122,9 +122,11 @@ function updateProfileBadge(badgeId) {
     
     let badgeHtml = '';
     if (badgeId) {
-        const data = BADGES_DATA[badgeId];
+        let data = BADGES_DATA[badgeId];
         if (data) {
             badgeHtml = '<i class="fas ' + data.icon + '" style="color: ' + data.color + '; font-size: 16px;"></i>';
+        } else if (badgeData && badgeData.image) {
+            badgeHtml = '<img src="' + badgeData.image + '" style="width:20px;height:20px;object-fit:cover;border-radius:4px;">';
         } else {
             const imageMap = {
                 'badge_animemix1': '/static/shop/banners/banner_8585.gif',
@@ -174,22 +176,24 @@ const FRAMES_DATA = {
     'frame_anime2': { image: '/static/shop/banners/banner_3106.gif' },
 };
 
-function applyFrame(frameId) {
+function applyFrame(frameId, frameData) {
     var avatarIds = ['profileAvatar', 'sidebarAvatar', 'headerUserAvatar'];
     avatarIds.forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.classList.remove('frame-active', 'color-frame', 'image-frame');
         el.style.removeProperty('--frame-bg');
-        if (frameId && FRAMES_DATA[frameId]) {
-            el.classList.add('frame-active');
-            var data = FRAMES_DATA[frameId];
-            if (data.image) {
-                el.classList.add('image-frame');
-                el.style.setProperty('--frame-bg', 'url(' + data.image + ')');
-            } else {
-                el.classList.add('color-frame');
-                el.style.setProperty('--frame-bg', data.color);
+        if (frameId) {
+            var data = FRAMES_DATA[frameId] || frameData;
+            if (data) {
+                el.classList.add('frame-active');
+                if (data.image) {
+                    el.classList.add('image-frame');
+                    el.style.setProperty('--frame-bg', 'url(' + data.image + ')');
+                } else {
+                    el.classList.add('color-frame');
+                    el.style.setProperty('--frame-bg', data.color);
+                }
             }
         }
     });

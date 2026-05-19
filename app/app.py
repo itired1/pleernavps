@@ -444,6 +444,17 @@ def api_profile():
                     vk_token_error = f'Ошибка VK: {str(e)[:50]}'
     
     if user:
+        import json as _json
+        badge_data = None
+        frame_data = None
+        if user.equipped_badge:
+            inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=user.equipped_badge, item_type='badge').first()
+            if inv and inv.data:
+                badge_data = _json.loads(inv.data)
+        if user.equipped_frame:
+            inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=user.equipped_frame, item_type='frame').first()
+            if inv and inv.data:
+                frame_data = _json.loads(inv.data)
         return jsonify({
             'local': {
                 'id': user.id,
@@ -458,9 +469,10 @@ def api_profile():
                 'current_source': user.current_source or 'yandex',
                 'created_at': user.created_at.isoformat(),
                 'is_admin': user.is_admin,
-        'equipped_badge': user.equipped_badge,
-        'equipped_frame': user.equipped_frame,
+                'equipped_badge': user.equipped_badge,
+                'equipped_badge_data': badge_data,
                 'equipped_frame': user.equipped_frame,
+                'equipped_frame_data': frame_data,
                 'equipped_theme': user.equipped_theme
             },
             'yandex': yandex_info,
