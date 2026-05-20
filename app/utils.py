@@ -7,6 +7,7 @@ import requests
 from collections import Counter
 from flask import current_app
 from yandex_music import Client
+from yandex_music.exceptions import UnauthorizedError
 import vk_api
 
 def get_soundcloud_client():
@@ -247,9 +248,11 @@ def get_yandex_client(token):
     try:
         print("[YANDEX] Creating client...")
         client = Client(token)
-        # Skip init() to avoid Product class error
-        print(f"[YANDEX] Client created (no init)")
+        print(f"[YANDEX] Client init OK")
         return client
+    except UnauthorizedError:
+        print(f"[YANDEX] Token invalid/expired")
+        return None
     except Exception as e:
         print(f"[YANDEX] Client creation FAILED: {type(e).__name__}: {e}")
         import traceback
@@ -358,8 +361,10 @@ class Recommender:
                     print(f"Yandex recommendations error: {e}")
                 
                 try:
-                    mixes = client.playlists_for_day()
-                    for mix in mixes[:5]:
+                    mixes = client.playlists_for_day() if hasattr(client, 'playlists_for_day') else []
+                    if not mixes:
+                        mixes = []
+                    for mix in (mixes[:5] if isinstance(mixes, list) else []):
                         recommendations.append({
                             'id': f"yandex_{mix.kind}",
                             'title': mix.title,

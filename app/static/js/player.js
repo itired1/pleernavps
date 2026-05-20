@@ -695,7 +695,7 @@ window.updateQueueUI = function() {
             '</div>' +
             '<div class="queue-playing-icon" style="padding:4px;"><i class="fas fa-volume-high"></i></div>' +
             '<button class="queue-item-remove" onclick="event.stopPropagation(); removeFromQueue(' + index + ')" style="padding: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; border-radius: 6px;">' +
-            '<i class="fas fatimes"></i>' +
+            '<i class="fas fa-times"></i>' +
             '</button>' +
             '</div>';
     });
@@ -863,15 +863,24 @@ async function playTrackById(trackId, trackData) {
                     hlsPlayer.loadSource(trackInfo.url);
                     hlsPlayer.attachMedia(audioPlayer);
                     hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-                        audioPlayer.play();
+                        audioPlayer.play().catch(function(err) {
+                            console.error('HLS play error:', err);
+                            showNotification('Ошибка HLS воспроизведения', 'error');
+                        });
                     });
                 } else {
                     audioPlayer.src = trackInfo.url;
-                    audioPlayer.play();
+                    audioPlayer.play().catch(function(err) {
+                        console.error('Play error:', err);
+                        showNotification('Ошибка воспроизведения: ' + err.message, 'error');
+                    });
                 }
             } else {
                 audioPlayer.src = trackInfo.url;
-                audioPlayer.play();
+                audioPlayer.play().catch(function(err) {
+                    console.error('Play error:', err);
+                    showNotification('Ошибка воспроизведения: ' + err.message, 'error');
+                });
             }
             
             currentTrack = window.currentTrack = trackInfo;
@@ -899,7 +908,7 @@ async function playTrackById(trackId, trackData) {
         }
     } catch (error) {
         console.error('Play track error:', error);
-        showNotification('Ошибка воспроизведения', 'error');
+        showNotification(error.message || 'Ошибка воспроизведения', 'error');
     }
 }
 
@@ -1036,7 +1045,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateQueueUI();
     updateShuffleButton();
     updateRepeatButton();
-    
+});
+
 window.addEventListener('beforeunload', function() {
     saveQueueState();
 });
@@ -1076,6 +1086,7 @@ window.findOnSoundCloud = async function() {
     }
 };
 
+window.showArtistTracks = function() {
     var track = window.currentTrack;
     if (!track) return;
     
@@ -1118,7 +1129,6 @@ window.findOnSoundCloud = async function() {
         document.getElementById('artistContent').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Ошибка загрузки</p></div>';
     });
 };
-});
 
 // Volume normalization (uses native audio element volume)
 window.setGain = function(gain) {

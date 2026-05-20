@@ -14,12 +14,15 @@ const apiCall = async function(endpoint, options = {}) {
         }
     }
     
+    var fetchOpts = {
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+        credentials: 'include'
+    };
+    if (options.method) fetchOpts.method = options.method;
+    if (options.body) fetchOpts.body = options.body;
+    if (options.cache) fetchOpts.cache = options.cache;
     try {
-        const response = await fetch('/api/' + endpoint, {
-            headers: { 'Content-Type': 'application/json', ...options.headers },
-            credentials: 'include',
-            ...options
-        });
+        const response = await fetch('/api/' + endpoint, fetchOpts);
         
         if (response.status === 401 && !window.location.pathname.startsWith('/login')) {
             window.location.href = '/login';
@@ -30,7 +33,7 @@ const apiCall = async function(endpoint, options = {}) {
         
         if (!response.ok) throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
         
-        if (!options.method && !options.body && data && !data.error) {
+        if (options.cache !== false && !options.method && !options.body && data && !data.error) {
             localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
         }
         

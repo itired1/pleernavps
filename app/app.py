@@ -484,6 +484,41 @@ def api_profile():
         })
     return jsonify({'error': 'User not found'}), 404
 
+@app.route('/api/validate-tokens')
+@login_required
+def api_validate_tokens():
+    user = db.session.get(User, session['user_id'])
+    result = {'yandex': {'token_set': bool(user.yandex_token) if user else False, 'valid': None, 'error': None}, 'vk': {'token_set': bool(user.vk_token) if user else False, 'valid': None, 'error': None}, 'soundcloud': {'client_id_set': bool(user.soundcloud_client_id) if user else False}}
+    if user and user.yandex_token:
+        try:
+            client = get_yandex_client(user.yandex_token)
+            if client:
+                try:
+                    client.account_status()
+                    result['yandex']['valid'] = True
+                except Exception as e:
+                    result['yandex']['valid'] = False
+                    if 'Unauthorized' in str(e) or '401' in str(e):
+                        result['yandex']['error'] = 'Токен Яндекс.Музыки истёк. Обновите в профиле.'
+                    else:
+                        result['yandex']['error'] = f'Ошибка: {str(e)[:50]}'
+        except Exception:
+            result['yandex']['valid'] = False
+            result['yandex']['error'] = 'Ошибка проверки токена'
+    if user and user.vk_token:
+        vk = get_vk_api(user.vk_token)
+        if vk:
+            try:
+                vk.users.get()[0]
+                result['vk']['valid'] = True
+            except Exception as e:
+                result['vk']['valid'] = False
+                if 'Unauthorized' in str(e) or '401' in str(e) or 'access' in str(e).lower():
+                    result['vk']['error'] = 'Токен VK истёк. Обновите в профиле.'
+                else:
+                    result['vk']['error'] = f'Ошибка VK: {str(e)[:50]}'
+    return jsonify(result)
+
 @app.route('/api/stats')
 @login_required
 def get_user_stats():
@@ -1157,11 +1192,11 @@ def radio_tracks():
             if station_id.startswith('yandex:'):
                 station_id = station_id.replace('yandex:', '')
             
-            tracks_data = client.rotor_station_track_list(station_id, queue=[])
+            tracks_data = client.rotor_station_tracks(station_id, queue=[])
             
             tracks = []
-            if tracks_data and hasattr(tracks_data, 'tracks'):
-                for item in tracks_data.tracks:
+            if tracks_data and hasattr(tracks_data, 'sequence'):
+                for item in tracks_data.sequence:
                     track = item.track if hasattr(item, 'track') else item
                     if track:
                         artists = []
@@ -2030,6 +2065,60 @@ def play_track(track_id):
     
     return jsonify({'error': 'Трек не найден', 'code': 'NOT_FOUND'}), 404
 
+_device_auth_store = {}
+
+@app.route('/api/yandex/device-auth/start', methods=['POST'])
+@login_required
+def yandex_device_auth_start():
+    from yandex_music import Client
+    client = Client()
+    try:
+        dc = client.request_device_code()
+        device_id = str(uuid.uuid4())
+        _device_auth_store[device_id] = {
+            'device_code': dc.device_code,
+            'expires_at': time.time() + dc.expires_in,
+            'poll_interval': dc.interval or 5
+        }
+        return jsonify({
+            'success': True,
+            'device_id': device_id,
+            'verification_url': dc.verification_url,
+            'user_code': dc.user_code,
+            'expires_in': dc.expires_in
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/yandex/device-auth/poll', methods=['POST'])
+@login_required
+def yandex_device_auth_poll():
+    data = request.get_json() or {}
+    device_id = data.get('device_id')
+    if not device_id or device_id not in _device_auth_store:
+        return jsonify({'success': False, 'error': 'Invalid device_id'}), 400
+    entry = _device_auth_store[device_id]
+    if time.time() > entry['expires_at']:
+        del _device_auth_store[device_id]
+        return jsonify({'success': False, 'error': 'Code expired', 'code': 'EXPIRED'})
+    from yandex_music import Client
+    from yandex_music import exceptions as ym_exc
+    client = Client()
+    try:
+        token = client.poll_device_token(entry['device_code'])
+        del _device_auth_store[device_id]
+        user = db.session.get(User, session['user_id'])
+        if user:
+            user.yandex_token = token.access_token
+            db.session.commit()
+        return jsonify({'success': True, 'token': token.access_token, 'refresh_token': token.refresh_token, 'expires_in': token.expires_in})
+    except ym_exc.UnauthorizedError:
+        return jsonify({'success': False, 'error': 'Waiting for authorization', 'code': 'PENDING'})
+    except ym_exc.DeviceAuthError:
+        return jsonify({'success': False, 'error': 'Waiting for authorization', 'code': 'PENDING'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/soundcloud/discover-client-id', methods=['POST'])
 @login_required
 def discover_sc_client_id():
@@ -2125,7 +2214,7 @@ def similar_tracks():
                 try:
                     similar = client.tracks_similar(int(yandex_id))
                     if similar:
-                        for track in similar[:5]:
+                        for track in (similar.similar_tracks if hasattr(similar, 'similar_tracks') else similar)[:5]:
                             t = track.track if hasattr(track, 'track') else track
                             if t and hasattr(t, 'id'):
                                 result.append({
@@ -2235,7 +2324,7 @@ def artist_tracks():
             from utils import get_yandex_client
             client = get_yandex_client(user.yandex_token)
             if client:
-                search = client.search(artist, search_type='track', page=0, limit_per_page=5)
+                search = client.search(artist, type_='track', page=0)
                 if search and search.tracks:
                     for t in search.tracks[:5]:
                         all_tracks.append({

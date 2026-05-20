@@ -209,9 +209,14 @@
                             <i class="fab fa-yandex"></i> Токен Яндекс.Музыки
                             <i id="yandexCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
                         </span>
-                        <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openModal('yandexTokenModal')">
-                            <i class="fas fa-question-circle"></i> Как получить
-                        </button>
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="startYandexDeviceAuth()">
+                                <i class="fas fa-magic"></i> Получить
+                            </button>
+                            <button type="button" class="glass-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openModal('yandexTokenModal')">
+                                <i class="fas fa-question-circle"></i>
+                            </button>
+                        </span>
                     </label>
                     <input type="password" id="yandex_token" placeholder="Вставьте токен">
                 </div>

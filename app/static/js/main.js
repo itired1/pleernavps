@@ -50,6 +50,29 @@ async function initApp() {
     }
     
     try {
+        var tokenStatus = await apiCall('validate-tokens', {cache: false});
+        if (tokenStatus.yandex) {
+            if (tokenStatus.yandex.valid === false) {
+                showNotification('⚠ ' + (tokenStatus.yandex.error || 'Токен Яндекс истёк'), 'error', 'fa-exclamation-triangle');
+            } else if (!tokenStatus.yandex.token_set) {
+                showNotification('Токен Яндекс.Музыки не настроен', 'warning', 'fa-exclamation-triangle');
+            }
+        }
+        if (tokenStatus.vk) {
+            if (tokenStatus.vk.valid === false) {
+                showNotification('⚠ ' + (tokenStatus.vk.error || 'Токен VK истёк'), 'error', 'fa-exclamation-triangle');
+            } else if (!tokenStatus.vk.token_set) {
+                showNotification('Токен VK не настроен', 'warning', 'fa-exclamation-triangle');
+            }
+        }
+        if (tokenStatus.soundcloud && !tokenStatus.soundcloud.client_id_set) {
+            showNotification('SoundCloud Client ID не настроен', 'warning', 'fa-exclamation-triangle');
+        }
+    } catch (e) {
+        console.error('Token validation error:', e);
+    }
+    
+    try {
         await loadDashboard();
     } catch (e) {
         console.error('Dashboard load error:', e);
@@ -1322,3 +1345,55 @@ function hideBpNewBadge() {
         if (mobileBadge) mobileBadge.style.display = 'inline';
     }
 })();
+
+window.startYandexDeviceAuth = async function() {
+    try {
+        var resp = await apiCall('yandex/device-auth/start', {method: 'POST', body: '{}'});
+        if (!resp.success) {
+            showNotification(resp.error || 'Ошибка', 'error');
+            return;
+        }
+        var codeStr = resp.user_code;
+        var url = resp.verification_url;
+        var deviceId = resp.device_id;
+        var expiresIn = resp.expires_in;
+
+        var modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = '<div class="modal" style="max-width:400px;text-align:center;padding:24px;">' +
+            '<h3 style="margin-bottom:16px;">Авторизация Яндекс</h3>' +
+            '<p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px;">1. Открой <a href="' + url + '" target="_blank" style="color:var(--accent);">' + url + '</a></p>' +
+            '<p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px;">2. Введи код:</p>' +
+            '<div style="font-size:32px;font-weight:800;letter-spacing:8px;background:var(--bg-tertiary);padding:12px 20px;border-radius:12px;display:inline-block;margin-bottom:16px;font-family:monospace;">' + codeStr + '</div>' +
+            '<p style="margin-bottom:16px;color:var(--text-secondary);font-size:12px;">Код действителен ' + expiresIn + ' сек</p>' +
+            '<div id="deviceAuthStatus" style="color:var(--text-muted);font-size:13px;">Ожидание авторизации...</div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;">' +
+            '<button class="glass-btn" onclick="this.closest(\'.modal-overlay\').remove()">Отмена</button>' +
+            '</div></div>';
+        document.body.appendChild(modal);
+
+        var pollInterval = setInterval(async function() {
+            try {
+                var pollResp = await apiCall('yandex/device-auth/poll', {method: 'POST', body: JSON.stringify({device_id: deviceId})});
+                if (pollResp.success && pollResp.token) {
+                    clearInterval(pollInterval);
+                    document.getElementById('yandex_token').value = pollResp.token;
+                    document.getElementById('deviceAuthStatus').textContent = '✅ Токен получен! Сохрани профиль.';
+                    document.getElementById('deviceAuthStatus').style.color = '#2ed573';
+                    setTimeout(function() { modal.remove(); }, 2000);
+                    showNotification('Токен Яндекс получен! Нажми Сохранить.', 'success');
+                } else if (pollResp.code === 'EXPIRED') {
+                    clearInterval(pollInterval);
+                    document.getElementById('deviceAuthStatus').textContent = '❌ Код истёк, попробуй снова';
+                    document.getElementById('deviceAuthStatus').style.color = '#ff6b6b';
+                }
+            } catch (e) {
+                console.error('Poll error:', e);
+            }
+        }, 3000);
+    } catch (e) {
+        console.error('Device auth error:', e);
+        showNotification('Ошибка запуска авторизации', 'error');
+    }
+};
