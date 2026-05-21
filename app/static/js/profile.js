@@ -42,25 +42,9 @@ function updateProfileForm(profile) {
     const yandexCheck = document.getElementById('yandexCheck');
     const vkCheck = document.getElementById('vkCheck');
     const soundcloudCheck = document.getElementById('soundcloudCheck');
-    const discordClientId = document.getElementById('discord_client_id');
-    const discordCheck = document.getElementById('discordCheck');
-    const discordError = document.getElementById('discordError');
+    const discordToggle = document.getElementById('discordRpcToggle');
     
-    if (displayName) displayName.value = local.display_name || '';
-    if (bio) bio.value = local.bio || '';
-    if (yandexToken) yandexToken.value = local.yandex_token_set ? '***' : '';
-    if (vkToken) vkToken.value = local.vk_token_set ? '***' : '';
-    if (soundcloudClientId) soundcloudClientId.value = local.soundcloud_client_id_set ? '***' : '';
-    if (discordClientId) discordClientId.value = local.discord_client_id || '';
-    
-    if (yandexCheck) yandexCheck.style.display = local.yandex_token_set ? 'inline' : 'none';
-    if (vkCheck) vkCheck.style.display = local.vk_token_set ? 'inline' : 'none';
-    if (soundcloudCheck) soundcloudCheck.style.display = local.soundcloud_client_id_set ? 'inline' : 'none';
-    if (discordCheck) discordCheck.style.display = local.discord_client_id ? 'inline' : 'none';
-    if (discordError) discordError.style.display = !local.discord_client_id ? 'inline' : 'none';
-    if (discordClientId && local.discord_client_id) {
-        window.discordRPC.setClientId(local.discord_client_id);
-    }
+    if (discordToggle) discordToggle.checked = localStorage.getItem('discord_rpc_enabled') === 'true';
     
     if (local.current_source) {
         document.querySelectorAll('#profile .source-btn').forEach(function(btn) {
@@ -258,7 +242,6 @@ async function saveProfile() {
         yandex_token: document.getElementById('yandex_token')?.value || '',
         vk_token: document.getElementById('vk_token')?.value || '',
         soundcloud_client_id: document.getElementById('soundcloud_client_id')?.value || '',
-        discord_client_id: document.getElementById('discord_client_id')?.value || '',
         current_source: activeSource?.dataset.source || 'yandex'
     };
     
