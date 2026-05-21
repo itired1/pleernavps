@@ -466,6 +466,7 @@ def api_profile():
                 'yandex_token_set': bool(user.yandex_token),
                 'vk_token_set': bool(user.vk_token),
                 'soundcloud_client_id_set': bool(user.soundcloud_client_id),
+                'discord_client_id': user.discord_client_id or '',
                 'current_source': user.current_source or 'yandex',
                 'created_at': user.created_at.isoformat(),
                 'is_admin': user.is_admin,
@@ -996,6 +997,8 @@ def profile_page():
             return jsonify({'success': True, 'message': 'Токен VK сохранён', 'source': 'vk'})
         if 'soundcloud_client_id' in data:
             user.soundcloud_client_id = data['soundcloud_client_id'] or None
+        if 'discord_client_id' in data:
+            user.discord_client_id = data['discord_client_id'] or None
         
         db.session.commit()
         return jsonify({'success': True, 'message': 'Профиль обновлён'})

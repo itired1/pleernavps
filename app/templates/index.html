@@ -255,6 +255,18 @@
                     <div id="scDiscoverStatus" style="font-size: 12px; margin-top: 4px; display: none;"></div>
                 </div>
                 <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fab fa-discord" style="color: #5865f2;"></i> Discord RPC
+                        <i id="discordCheck" class="fas fa-check" style="color: #2ed573; display: none;"></i>
+                        <i id="discordError" class="fas fa-exclamation-triangle" style="color: #ff6b6b; display: none;"></i>
+                    </label>
+                    <input type="text" id="discord_client_id" placeholder="Client ID из Discord Developer Portal" style="flex: 1;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        Создай приложение на <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--accent);">discord.com/developers</a>,
+                        скопируй <strong>Application ID</strong> (Client ID). Для иконки приложения загрузи её в Rich Presence Assets.
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Моя волна</label>
                     <div class="source-selector">
                         <button type="button" class="source-btn active" data-source="yandex">

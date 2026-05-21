@@ -21,6 +21,7 @@ class User(db.Model):
     soundcloud_proxy = db.Column(db.String(500))
     current_source = db.Column(db.String(20), default='yandex')
     discord_webhook = db.Column(db.String(500))
+    discord_client_id = db.Column(db.String(100))
     discord_enabled = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     email_verified = db.Column(db.Boolean, default=False)
