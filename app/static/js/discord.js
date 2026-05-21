@@ -1,6 +1,6 @@
 // Discord Rich Presence — браузер + Tauri
 // Client ID: замени на свой из https://discord.com/developers/applications
-const DISCORD_CLIENT_ID = '1352185386340196437';
+const DISCORD_CLIENT_ID = '1479783995435647107';
 
 class DiscordRPC {
     constructor() {
