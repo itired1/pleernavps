@@ -8,6 +8,8 @@ let artistName = '';
 let trackTitle = '';
 let syncMode = false;
 let syncLines = [];
+let karaokeEnabled = false;
+let prefetchedLyricsPromise = null;
 
 function getTrackKey() {
     const track = window.currentTrack;
@@ -63,6 +65,22 @@ function formatTime(seconds) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
 }
 
+function prefetchLyrics() {
+    const track = window.currentTrack;
+    if (!track) return;
+    let artist = '';
+    if (track.artists && Array.isArray(track.artists)) {
+        artist = track.artists.join(', ');
+    } else if (track.artists) {
+        artist = track.artists;
+    } else if (track.artist) {
+        artist = track.artist;
+    }
+    const title = track.title || '';
+    if (!artist || !title) return;
+    prefetchedLyricsPromise = fetch(`/api/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`).then(function(r) { return r.json(); }).catch(function() { return null; });
+}
+
 async function showLyrics() {
     const track = window.currentTrack;
     if (!track) {
@@ -104,8 +122,15 @@ async function showLyrics() {
     }
     
     try {
-        const response = await fetch(`/api/lyrics?artist=${encodeURIComponent(artistName)}&title=${encodeURIComponent(trackTitle)}`);
-        const data = await response.json();
+        var data;
+        if (prefetchedLyricsPromise) {
+            data = await prefetchedLyricsPromise;
+            prefetchedLyricsPromise = null;
+        }
+        if (!data || !data.lyrics) {
+            const response = await fetch(`/api/lyrics?artist=${encodeURIComponent(artistName)}&title=${encodeURIComponent(trackTitle)}`);
+            data = await response.json();
+        }
         
         loading.style.display = 'none';
         
@@ -134,16 +159,72 @@ function renderSyncedLyrics(hasTimings) {
     
     let html = '<div style="margin-bottom: 16px; text-align: center;">';
     html += `<button class="btn-primary" onclick="startSyncMode()" style="margin-right: 8px;"><i class="fas fa-edit"></i> Редактировать</button>`;
-    html += `<button class="glass-btn" onclick="deleteSync()"><i class="fas fa-trash"></i> Удалить</button>`;
+    html += `<button class="glass-btn" onclick="deleteSync()" style="margin-right: 8px;"><i class="fas fa-trash"></i> Удалить</button>`;
+    html += `<button class="glass-btn" id="karaokeToggle" onclick="toggleKaraoke()" style="${karaokeEnabled ? 'background:var(--accent);color:white;' : ''}"><i class="fas fa-microphone-alt"></i> Караоке</button>`;
     html += '</div>';
-    html += '<div class="lyrics-display">';
+    html += '<div class="lyrics-display' + (karaokeEnabled ? ' karaoke-mode' : '') + '">';
     
     currentLyrics.forEach((line, i) => {
-        html += `<div class="lyrics-text" data-index="${i}" id="lyric-${i}">${escapeHtml(line.text)}</div>`;
+        if (karaokeEnabled) {
+            const words = line.text.split(/(\s+)/);
+            let wordsHtml = '';
+            words.forEach((word, j) => {
+                if (word.trim()) {
+                    wordsHtml += `<span class="karaoke-word" data-word-index="${j}" data-line-index="${i}">${escapeHtml(word)}</span>`;
+                } else {
+                    wordsHtml += escapeHtml(word);
+                }
+            });
+            html += `<div class="lyrics-text" data-index="${i}" id="lyric-${i}">${wordsHtml}</div>`;
+        } else {
+            html += `<div class="lyrics-text" data-index="${i}" id="lyric-${i}">${escapeHtml(line.text)}</div>`;
+        }
     });
     
     html += '</div>';
     content.innerHTML = html;
+}
+
+function toggleKaraoke() {
+    karaokeEnabled = !karaokeEnabled;
+    if (currentLyrics.length > 0) {
+        renderSyncedLyrics(true);
+        if (currentLyricsIndex >= 0) {
+            const el = document.getElementById(`lyric-${currentLyricsIndex}`);
+            if (el) el.classList.add('active');
+        }
+    }
+}
+
+function updateKaraokeWordProgress(lineIndex, currentTime) {
+    const line = currentLyrics[lineIndex];
+    if (!line || line.time === null) return;
+    
+    const lineStart = line.time;
+    const nextLine = currentLyrics[lineIndex + 1];
+    const lineEnd = nextLine ? nextLine.time : lineStart + 5;
+    const lineDuration = lineEnd - lineStart;
+    
+    if (lineDuration <= 0) return;
+    
+    const progress = Math.min(1, Math.max(0, (currentTime - lineStart) / lineDuration));
+    
+    const el = document.getElementById(`lyric-${lineIndex}`);
+    if (!el) return;
+    
+    const words = el.querySelectorAll('.karaoke-word');
+    const activeWordIndex = Math.floor(progress * words.length);
+    
+    words.forEach((word, i) => {
+        if (i < activeWordIndex) {
+            word.classList.add('active');
+            word.classList.remove('current');
+        } else if (i === activeWordIndex) {
+            word.classList.add('active', 'current');
+        } else {
+            word.classList.remove('active', 'current');
+        }
+    });
 }
 
 function renderPlainLyrics() {
@@ -283,7 +364,11 @@ function updateLyricsSync() {
     if (newIndex !== currentLyricsIndex) {
         if (currentLyricsIndex >= 0) {
             const oldEl = document.getElementById(`lyric-${currentLyricsIndex}`);
-            if (oldEl) oldEl.classList.remove('active');
+            if (oldEl) {
+                oldEl.classList.remove('active');
+                const oldWords = oldEl.querySelectorAll('.karaoke-word');
+                oldWords.forEach(w => w.classList.remove('active', 'current'));
+            }
         }
         
         currentLyricsIndex = newIndex;
@@ -295,6 +380,10 @@ function updateLyricsSync() {
                 newEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
+    }
+    
+    if (karaokeEnabled && currentLyricsIndex >= 0) {
+        updateKaraokeWordProgress(currentLyricsIndex, currentTime);
     }
 }
 
@@ -315,3 +404,4 @@ window.addSyncTime = addSyncTime;
 window.saveSync = saveSync;
 window.cancelSync = cancelSync;
 window.deleteSync = deleteSync;
+window.toggleKaraoke = toggleKaraoke;

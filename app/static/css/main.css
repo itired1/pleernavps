@@ -1436,6 +1436,38 @@ body {
     font-size: 17px;
 }
 
+.lyrics-display.karaoke-mode .lyrics-text {
+    line-height: 1.8;
+}
+
+.karaoke-word {
+    transition: color 0.15s ease;
+    color: var(--text-muted);
+    position: relative;
+}
+
+.karaoke-word.active {
+    color: var(--text);
+}
+
+.karaoke-word.current {
+    color: var(--accent);
+    text-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+.lyrics-display.karaoke-mode .lyrics-text.active .karaoke-word {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.lyrics-display.karaoke-mode .lyrics-text.active .karaoke-word.active {
+    color: var(--text);
+}
+
+.lyrics-display.karaoke-mode .lyrics-text.active .karaoke-word.current {
+    color: var(--accent);
+    text-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+}
+
 .mini-notification {
     position: fixed;
     bottom: 100px;

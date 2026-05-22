@@ -388,11 +388,31 @@ window.leaveRoom = function() {
 window.shareRoom = function() {
     if (!window.currentRoom) return;
     const url = window.location.origin + '?room=' + window.currentRoom;
-    navigator.clipboard.writeText(url).then(() => {
-        showNotification('Ссылка скопирована!', 'success');
-    }).catch(() => {
-        prompt('Скопируйте код комнаты:', window.currentRoom);
-    });
+    
+    const modalContent = document.getElementById('roomModalContent');
+    if (modalContent) {
+        const existing = document.getElementById('roomShareSection');
+        if (existing) existing.remove();
+        
+        const shareDiv = document.createElement('div');
+        shareDiv.id = 'roomShareSection';
+        shareDiv.style.cssText = 'margin:12px 0;padding:12px;background:var(--bg-tertiary);border-radius:8px;';
+        shareDiv.innerHTML = `
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Пригласить по ссылке:</div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="shareLinkInput" value="${url}" readonly style="flex:1;padding:8px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px;" onclick="this.select()">
+                <button onclick="navigator.clipboard.writeText('${url}').then(()=>showNotification('Ссылка скопирована!','success'))" class="glass-btn" style="padding:8px 12px;" title="Копировать"><i class="fas fa-copy"></i></button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-info-circle"></i> По этой ссылке могут зайти как зарегистрированные пользователи, так и гости</div>
+        `;
+        modalContent.insertBefore(shareDiv, modalContent.querySelector('button:last-child'));
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            showNotification('Ссылка скопирована!', 'success');
+        }).catch(() => {
+            prompt('Скопируйте код комнаты:', window.currentRoom);
+        });
+    }
 };
 
 window.playRoomPlaylistItem = function(index) {
@@ -463,14 +483,51 @@ window.playRoomPlaylistItem = function(index) {
     }
 };
 
-document.addEventListener('DOMContentLoaded', function() {
+async function checkLoggedIn() {
+    try {
+        const resp = await fetch('/api/profile');
+        return resp.ok;
+    } catch {
+        return false;
+    }
+}
+
+async function guestJoin(roomCode, guestName) {
+    try {
+        const resp = await fetch('/api/room/guest-join', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({room_code: roomCode, guest_name: guestName})
+        });
+        if (!resp.ok) {
+            const err = await resp.json();
+            showNotification(err.error || 'Ошибка входа как гость', 'error');
+            return;
+        }
+        await initSocket();
+        joinRoom(roomCode);
+    } catch (e) {
+        console.error('Guest join error:', e);
+        showNotification('Ошибка сети', 'error');
+    }
+}
+
+window.guestJoin = guestJoin;
+
+document.addEventListener('DOMContentLoaded', async function() {
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('room');
     if (roomCode) {
-        initSocket();
-        setTimeout(() => {
-            joinRoom(roomCode);
-        }, 1000);
+        const loggedIn = await checkLoggedIn();
+        if (loggedIn) {
+            initSocket();
+            setTimeout(() => joinRoom(roomCode), 1000);
+        } else {
+            const name = prompt('Введите ваше имя для входа в комнату как гость:', 'Гость');
+            if (name) {
+                guestJoin(roomCode, name || 'Гость');
+            }
+        }
     }
 });
 

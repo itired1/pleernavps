@@ -218,7 +218,6 @@ if (avatarInput) {
             if (result.success) {
                 showNotification('Аватарка загружена!', 'success');
                 updateAllAvatars(result.avatar_url);
-                loadProfileData();
             } else {
                 showNotification(result.message || 'Ошибка загрузки', 'error');
             }
@@ -258,7 +257,12 @@ async function saveProfile() {
         
         if (result.success) {
             showNotification('Профиль сохранён', 'success');
-            loadProfileData();
+            // Update UI immediately without full profile reload
+            var displayName = data.display_name || '';
+            var sidebarName = document.getElementById('sidebarUsername');
+            var headerName = document.getElementById('headerUserName');
+            if (sidebarName) sidebarName.textContent = displayName || 'Пользователь';
+            if (headerName) headerName.textContent = displayName || 'Пользователь';
         } else {
             showNotification(result.message || 'Ошибка сохранения', 'error');
         }
@@ -498,7 +502,11 @@ window.discoverScClientId = async function() {
             statusEl.style.color = '#2ed573';
             statusEl.textContent = 'Client ID найден и сохранён!';
             showNotification('SoundCloud Client ID сохранён!', 'success');
-            loadProfileData();
+            var sidebarName = document.getElementById('sidebarUsername');
+            var headerName = document.getElementById('headerUserName');
+            var displayName = document.getElementById('display_name')?.value || '';
+            if (sidebarName) sidebarName.textContent = displayName || 'Пользователь';
+            if (headerName) headerName.textContent = displayName || 'Пользователь';
         } else {
             statusEl.style.color = '#ff6b6b';
             statusEl.textContent = result.message || 'Ошибка';

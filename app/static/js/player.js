@@ -885,6 +885,8 @@ async function playTrackById(trackId, trackData) {
             
             currentTrack = window.currentTrack = trackInfo;
             
+            if (typeof prefetchLyrics === 'function') prefetchLyrics();
+            
             if (window.currentSourceTracks && window.currentSourceTracks.length > 1) {
                 queue = [...window.currentSourceTracks];
                 currentPlaylist = [...window.currentSourceTracks];

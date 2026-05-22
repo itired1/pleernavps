@@ -133,6 +133,8 @@ threading.Timer(300, clear_expired_cache).start()
 
 rooms = {}
 room_codes = {}
+guest_users = {}
+guest_id_counter = [0]
 
 log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
@@ -3126,39 +3128,51 @@ def equip_theme():
     
     return jsonify({'success': True, 'equipped_theme': user.equipped_theme})
 
+def _resolve_user():
+    user_id = session.get('user_id')
+    guest_id = session.get('guest_id')
+    if user_id:
+        user = db.session.get(User, user_id)
+        if user:
+            return user_id, user.display_name or user.username, user.avatar_url or ''
+    if guest_id and guest_id in guest_users:
+        return guest_id, guest_users[guest_id]['name'], ''
+    return None, None, None
+
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')
+    guest_id = session.get('guest_id')
+    if guest_id and guest_id in guest_users:
+        guest_users[guest_id]['sid'] = request.sid
 
 @socketio.on('disconnect')
 def handle_disconnect():
     for room_code, room in list(rooms.items()):
-        for user_id in list(room['users'].keys()):
-            if room['users'][user_id]['sid'] == request.sid:
+        for uid in list(room['users'].keys()):
+            if room['users'][uid]['sid'] == request.sid:
                 leave_room(room_code)
-                del room['users'][user_id]
-                emit('user_left', {'user_id': user_id}, room=room_code)
+                del room['users'][uid]
+                emit('user_left', {'user_id': uid}, room=room_code)
                 if len(room['users']) == 0:
                     del rooms[room_code]
-                    if room_code in room_codes:
-                        del room_codes[room_code]
+                    for rc in list(room_codes.keys()):
+                        if room_codes[rc] == room_code:
+                            del room_codes[rc]
+                if uid < 0 and uid in guest_users:
+                    del guest_users[uid]
                 break
 
 @socketio.on('create_room')
 def handle_create_room(data):
-    user_id = session.get('user_id')
-    if not user_id:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid < 0:
         emit('room_error', {'message': 'Не авторизован'})
-        return
-    
-    user = db.session.get(User, user_id)
-    if not user:
-        emit('room_error', {'message': 'Пользователь не найден'})
         return
     
     room_code = ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=6))
     rooms[room_code] = {
-        'host': user_id,
+        'host': uid,
         'users': {},
         'current_track': None,
         'is_playing': False,
@@ -3166,23 +3180,21 @@ def handle_create_room(data):
         'playlist': []
     }
     
-    rooms[room_code]['users'][user_id] = {
+    rooms[room_code]['users'][uid] = {
         'sid': request.sid,
-        'username': user.display_name or user.username,
-        'avatar': user.avatar_url
+        'username': uname,
+        'avatar': uavatar
     }
     
-    room_codes[user_id] = room_code
+    room_codes[uid] = room_code
     join_room(room_code)
     
     users_list = [{
-        'id': user_id,
+        'id': uid,
         'socket_id': request.sid,
-        'username': user.display_name or user.username,
-        'avatar': user.avatar_url or ''
+        'username': uname,
+        'avatar': uavatar
     }]
-    
-    print(f"[ROOM] Creating room {room_code}, host_sid={request.sid}, users_list={users_list}")
     
     emit('room_created', {
         'room_code': room_code,
@@ -3193,40 +3205,35 @@ def handle_create_room(data):
 
 @socketio.on('join_room')
 def handle_join_room(data):
-    user_id = session.get('user_id')
-    if not user_id:
+    uid, uname, uavatar = _resolve_user()
+    if not uid:
         emit('room_error', {'message': 'Не авторизован'})
         return
     
     room_code = data.get('room_code', '').upper()
-    
     if room_code not in rooms:
         emit('room_error', {'message': 'Комната не найдена'})
         return
     
-    user = db.session.get(User, user_id)
-    if not user:
-        return
-    
-    rooms[room_code]['users'][user_id] = {
+    rooms[room_code]['users'][uid] = {
         'sid': request.sid,
-        'username': user.display_name or user.username,
-        'avatar': user.avatar_url
+        'username': uname,
+        'avatar': uavatar
     }
     
-    room_codes[user_id] = room_code
+    room_codes[uid] = room_code
     join_room(room_code)
     
     host_user_id = rooms[room_code]['host']
     host_sid = rooms[room_code]['users'].get(host_user_id, {}).get('sid', '')
     
     users_list = []
-    for uid, u in rooms[room_code]['users'].items():
+    for k, v in rooms[room_code]['users'].items():
         users_list.append({
-            'id': uid,
-            'socket_id': u.get('sid', ''),
-            'username': u.get('username', ''),
-            'avatar': u.get('avatar', '')
+            'id': k,
+            'socket_id': v.get('sid', ''),
+            'username': v.get('username', ''),
+            'avatar': v.get('avatar', '')
         })
     
     emit('room_joined', {
@@ -3240,45 +3247,41 @@ def handle_join_room(data):
     })
     
     emit('user_joined', {
-        'user_id': user_id,
+        'user_id': uid,
         'socket_id': request.sid,
-        'username': user.display_name or user.username,
-        'avatar': user.avatar_url
+        'username': uname,
+        'avatar': uavatar
     }, room=room_code, include_self=False)
 
 @socketio.on('leave_room')
 def handle_leave_room(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code in rooms:
         user_sid = request.sid
-        if user_id in rooms[room_code]['users']:
-            del rooms[room_code]['users'][user_id]
+        if uid in rooms[room_code]['users']:
+            del rooms[room_code]['users'][uid]
         
-        emit('user_left', {'user_id': user_id, 'socket_id': user_sid}, room=room_code)
+        emit('user_left', {'user_id': uid, 'socket_id': user_sid}, room=room_code)
         
         if len(rooms[room_code]['users']) == 0:
             del rooms[room_code]
-        elif rooms[room_code]['host'] == user_id:
-            new_host = list(rooms[room_code]['users'].keys())[0]
-            rooms[room_code]['host'] = new_host
-            new_host_sid = rooms[room_code]['users'].get(new_host, {}).get('sid', '')
-            emit('host_changed', {'new_host': new_host_sid, 'new_host_id': new_host}, room=room_code)
-    
+        elif rooms[room_code]['host'] == uid:
+            new_uid = list(rooms[room_code]['users'].keys())[0]
+            rooms[room_code]['host'] = new_uid
     leave_room(room_code)
-    del room_codes[user_id]
-    emit('room_left')
+    del room_codes[uid]
 
 @socketio.on('play_track')
 def handle_play_track(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
@@ -3295,16 +3298,16 @@ def handle_play_track(data):
         'track': track,
         'current_time': current_time,
         'track_index': track_index,
-        'user_id': user_id
+        'user_id': uid
     }, room=room_code, include_self=False)
 
 @socketio.on('pause_track')
 def handle_pause_track(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
@@ -3312,20 +3315,18 @@ def handle_pause_track(data):
     rooms[room_code]['is_playing'] = False
     rooms[room_code]['current_time'] = current_time
     
-    print(f"[ROOM] Pause: user={user_id}, room={room_code}, time={current_time}")
     emit('track_paused', {
         'current_time': current_time,
-        'user_id': user_id
+        'user_id': uid
     }, room=room_code)
-    print(f"[ROOM] Pause event sent to room {room_code}")
 
 @socketio.on('sync_time')
 def handle_sync_time(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
@@ -3338,11 +3339,11 @@ def handle_sync_time(data):
 
 @socketio.on('seek_sync')
 def handle_seek_sync(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
@@ -3355,16 +3356,16 @@ def handle_seek_sync(data):
 
 @socketio.on('queue_sync')
 def handle_queue_sync(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
     room = rooms[room_code]
-    if room['host'] != user_id:
+    if room['host'] != uid:
         return
     
     queue = data.get('queue', [])
@@ -3386,11 +3387,11 @@ def handle_queue_sync(data):
 
 @socketio.on('add_to_room_playlist')
 def handle_add_to_playlist(data):
-    user_id = session.get('user_id')
-    if not user_id or user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return
     
@@ -3402,30 +3403,72 @@ def handle_add_to_playlist(data):
         }, room=room_code)
 
 @app.route('/api/room/current')
-@login_required
 def get_current_room():
-    user_id = session['user_id']
-    if user_id in room_codes:
-        room_code = room_codes[user_id]
-        if room_code in rooms:
-            room = rooms[room_code]
-            return jsonify({
-                'in_room': True,
-                'room_code': room_code,
-                'is_host': room['host'] == user_id,
-                'users': [{'id': uid, **u} for uid, u in room['users'].items()],
-                'playlist': room.get('playlist', []),
-                'current_track': room.get('current_track'),
-                'is_playing': room.get('is_playing', False),
-                'current_time': room.get('current_time', 0)
-            })
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
+        return jsonify({'in_room': False})
+    room_code = room_codes[uid]
+    if room_code in rooms:
+        room = rooms[room_code]
+        return jsonify({
+            'in_room': True,
+            'room_code': room_code,
+            'is_host': room['host'] == uid,
+            'users': [{'id': uid, **u} for uid, u in room['users'].items()],
+            'playlist': room.get('playlist', []),
+            'current_track': room.get('current_track'),
+            'is_playing': room.get('is_playing', False),
+            'current_time': room.get('current_time', 0)
+        })
     return jsonify({'in_room': False})
 
+@app.route('/api/room/guest-join', methods=['POST'])
+def room_guest_join():
+    data = request.get_json()
+    room_code = data.get('room_code', '').upper()
+    guest_name = data.get('guest_name', 'Гость').strip() or 'Гость'
+    
+    if room_code not in rooms:
+        return jsonify({'success': False, 'error': 'Комната не найдена'}), 404
+    
+    guest_id_counter[0] += 1
+    guest_id = -guest_id_counter[0]
+    
+    guest_users[guest_id] = {
+        'name': guest_name,
+        'room_code': room_code,
+        'sid': None
+    }
+    
+    session['guest_id'] = guest_id
+    session['guest_name'] = guest_name
+    
+    return jsonify({
+        'success': True,
+        'guest_id': guest_id,
+        'guest_name': guest_name,
+        'room_code': room_code
+    })
+
+@app.route('/api/room/generate-link', methods=['POST'])
+def room_generate_link():
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
+        return jsonify({'success': False, 'error': 'Не в комнате'}), 400
+    
+    room_code = room_codes[uid]
+    link = request.host_url + '?room=' + room_code
+    
+    return jsonify({
+        'success': True,
+        'link': link,
+        'room_code': room_code
+    })
+
 @app.route('/api/room/status')
-@login_required
 def room_status():
-    user_id = session['user_id']
-    if user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return jsonify({'in_room': False, 'message': 'Не в комнате'})
     
     room_code = room_codes[user_id]
@@ -3446,18 +3489,17 @@ def room_status():
     })
 
 @app.route('/api/room/sync', methods=['POST'])
-@login_required
 def sync_room_queue():
-    user_id = session['user_id']
-    if user_id not in room_codes:
+    uid, uname, uavatar = _resolve_user()
+    if not uid or uid not in room_codes:
         return jsonify({'error': 'Не в комнате'}), 400
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return jsonify({'error': 'Комната не найдена'}), 404
     
     room = rooms[room_code]
-    if room['host'] != user_id:
+    if room['host'] != uid:
         return jsonify({'error': 'Только ведущий может синхронизировать'}), 403
     
     data = request.get_json()
@@ -3486,22 +3528,24 @@ def sync_room_queue():
 @login_required
 def poll_room():
     user_id = session['user_id']
-    if user_id not in room_codes:
-        return jsonify({'in_room': False})
+    if uid not in room_codes:
+        return jsonify({'in_room': False, 'message': 'Не в комнате'})
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
-        return jsonify({'in_room': False})
+        return jsonify({'in_room': False, 'message': 'Комната не найдена'})
     
     room = rooms[room_code]
     return jsonify({
         'in_room': True,
         'room_code': room_code,
+        'is_host': room['host'] == uid,
+        'users_count': len(room['users']),
+        'playlist_length': len(room.get('playlist', [])),
         'current_track': room.get('current_track'),
         'is_playing': room.get('is_playing', False),
         'current_time': room.get('current_time', 0),
-        'queue': room.get('playlist', []),
-        'is_host': room['host'] == user_id
+        'queue': room.get('playlist', [])
     })
 
 @app.route('/api/playlist/add', methods=['POST'])

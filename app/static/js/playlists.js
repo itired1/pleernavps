@@ -399,7 +399,16 @@ document.getElementById('createPlaylistForm')?.addEventListener('submit', async 
             showNotification('Плейлист создан!', 'success');
             closeModal('createPlaylistModal');
             this.reset();
-            loadPlaylists();
+            // Add to local list immediately instead of full reload
+            currentPlaylists.unshift({
+                id: result.playlist_id || result.id,
+                title: name,
+                description: description || '',
+                is_public: !!isPublic,
+                track_count: 0,
+                cover_uri: ''
+            });
+            displayPlaylists();
             document.getElementById('playlistsTabBtn')?.click();
         } else {
             showNotification(result?.message || 'Ошибка создания', 'error');

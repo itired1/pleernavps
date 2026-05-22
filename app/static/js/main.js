@@ -530,6 +530,19 @@ window.performSearch = async function() {
     }
     query = query.value.trim();
     
+    // Check sessionStorage cache (30s TTL)
+    var cacheKey = 'search_' + query;
+    var cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            var parsed = JSON.parse(cached);
+            if (Date.now() - parsed.ts < 30000) {
+                displaySearchDropdown(parsed.data);
+                return;
+            }
+        } catch(e) {}
+    }
+    
     showSearchLoading();
     
     try {
@@ -539,6 +552,7 @@ window.performSearch = async function() {
             apiUrl += '&services=' + service;
         }
         var results = await apiCall(apiUrl);
+        sessionStorage.setItem(cacheKey, JSON.stringify({ts: Date.now(), data: results}));
         displaySearchDropdown(results);
     } catch (error) {
         console.error('Search error:', error);
@@ -1124,7 +1138,22 @@ window.loadBattlePass = async function() {
     if (loading) loading.style.display = 'block';
     if (content) content.style.display = 'none';
     try {
-        var data = await apiCall('battle-pass/status');
+        // Check sessionStorage cache (2 min TTL)
+        var bpCacheKey = 'battle_pass_status';
+        var cached = sessionStorage.getItem(bpCacheKey);
+        var data;
+        if (cached) {
+            try {
+                var parsed = JSON.parse(cached);
+                if (Date.now() - parsed.ts < 120000) {
+                    data = parsed.data;
+                }
+            } catch(e) {}
+        }
+        if (!data) {
+            data = await apiCall('battle-pass/status');
+            sessionStorage.setItem(bpCacheKey, JSON.stringify({ts: Date.now(), data: data}));
+        }
         if (!data.active) {
             if (loading) loading.innerHTML = '<div style="color: var(--text-muted);">Нет активного сезона</div>';
             return;

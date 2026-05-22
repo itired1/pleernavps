@@ -80,13 +80,28 @@ function initShop() {
     
     container.innerHTML = '<p style="text-align:center;padding:40px;">Загрузка...</p>';
     
-    Promise.all([
-        fetch('/api/currency/balance', { credentials: 'include' }).then(r => r.json()).catch(() => ({ balance: 0 })),
-        fetch('/api/shop/inventory', { credentials: 'include' }).then(r => r.json()).catch(() => [])
-    ])
+    var cachedInv = sessionStorage.getItem('shop_inventory');
+    var cachedBal = sessionStorage.getItem('user_balance');
+    var cachedTs = sessionStorage.getItem('shop_cache_ts');
+    var useCache = cachedInv && cachedBal && cachedTs && (Date.now() - parseInt(cachedTs) < 60000);
+    
+    var balPromise, invPromise;
+    if (useCache) {
+        balPromise = Promise.resolve(JSON.parse(cachedBal));
+        invPromise = Promise.resolve(JSON.parse(cachedInv));
+    } else {
+        balPromise = fetch('/api/currency/balance', { credentials: 'include' }).then(r => r.json()).catch(() => ({ balance: 0 }));
+        invPromise = fetch('/api/shop/inventory', { credentials: 'include' }).then(r => r.json()).catch(() => []);
+    }
+    
+    Promise.all([balPromise, invPromise])
     .then(([balanceData, inventoryData]) => {
         userBalance = balanceData?.balance || 0;
         userInventory = inventoryData || [];
+        
+        sessionStorage.setItem('user_balance', JSON.stringify(balanceData));
+        sessionStorage.setItem('shop_inventory', JSON.stringify(inventoryData));
+        sessionStorage.setItem('shop_cache_ts', String(Date.now()));
         
         const be = document.getElementById('userBalance');
         if (be) be.textContent = userBalance;

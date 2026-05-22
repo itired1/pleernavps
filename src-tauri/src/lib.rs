@@ -17,7 +17,7 @@ use tracing::info;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-const DISCORD_APP_ID: &str = "1413290731073966171";
+const DISCORD_APP_ID: &str = "1479783995435647107";
 
 const SETUP_HTML: &str = r##"<!DOCTYPE html>
 <html lang="ru">
