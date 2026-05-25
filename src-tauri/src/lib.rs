@@ -99,7 +99,7 @@ const SETUP_HTML: &str = r##"<!DOCTYPE html>
         if (saved) {
             window.location.href = saved;
         } else {
-            window.location.href = 'http://111.88.155.103:5001';
+            window.location.href = 'http://localhost:5001';
         }
     </script>
 </body>
@@ -115,7 +115,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            server_url: "http://111.88.155.103:5001".to_string(),
+            server_url: "http://localhost:5001".to_string(),
             username: None,
             token: None,
         }
@@ -402,7 +402,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(desktop)]
                 let _ = window.set_title("iTired Music");
-                let _ = window.eval("window.location.href = 'http://111.88.155.103:5001';");
+                let _ = window.eval("window.location.href = 'http://localhost:5001';");
             }
 
             Ok(())

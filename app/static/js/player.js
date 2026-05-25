@@ -1032,6 +1032,51 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextBtn = document.getElementById('nextBtn');
     if (nextBtn) nextBtn.addEventListener('click', nextTrack);
     
+    // Mobile swipe gestures for track switching
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var touchEndX = 0;
+    var touchEndY = 0;
+    var swiping = false;
+
+    document.addEventListener('touchstart', function(e) {
+        var playerGlass = document.querySelector('.player-glass');
+        if (!playerGlass || !playerGlass.contains(e.target)) return;
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        swiping = false;
+    }, {passive: true});
+
+    document.addEventListener('touchmove', function(e) {
+        if (touchStartX === 0) return;
+        if (e.touches.length !== 1) return;
+        var deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+        var deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+        if (deltaX > 10 || deltaY > 10) swiping = true;
+    }, {passive: true});
+
+    document.addEventListener('touchend', function(e) {
+        if (!swiping || touchStartX === 0) {
+            touchStartX = 0;
+            return;
+        }
+        var deltaX = e.changedTouches[0].clientX - touchStartX;
+        var deltaY = e.changedTouches[0].clientY - touchStartY;
+        
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            if (deltaX < 0 && typeof window.nextTrack === 'function') {
+                window.nextTrack();
+            } else if (deltaX > 0 && typeof window.previousTrack === 'function') {
+                window.previousTrack();
+            }
+        }
+        
+        touchStartX = 0;
+        touchStartY = 0;
+        swiping = false;
+    }, {passive: true});
+    
     const volumeSlider = document.getElementById('volumeSlider');
     if (volumeSlider) {
         volumeSlider.addEventListener('input', function(e) { changeVolume(e.target.value); });
@@ -1040,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const progressBar = document.getElementById('progressBar');
     if (progressBar) progressBar.addEventListener('click', seekTrack);
+    if (progressBar) progressBar.addEventListener('touchstart', seekTrack, {passive: true});
     
     const likeBtn = document.getElementById('playerLikeBtn');
     if (likeBtn) likeBtn.addEventListener('click', togglePlayerLike);

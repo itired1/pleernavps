@@ -1349,7 +1349,7 @@ window.activateBp = async function() {
     try {
         var r = await apiCall('battle-pass/activate', {method: 'POST', body: JSON.stringify({})});
         if (r.success) {
-            location.reload();
+            if (typeof loadBattlePass === 'function') loadBattlePass();
         } else {
             alert(r.message);
         }
