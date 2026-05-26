@@ -24,8 +24,6 @@ def get_soundcloud_client():
 
 def soundcloud_search(query, limit=20):
     from flask import session, current_app
-    import requests
-    import re
     
     client_id = None
     
@@ -103,7 +101,10 @@ def soundcloud_search(query, limit=20):
         print(f"SoundCloud error: {e}")
     
     try:
-        url = f'https://music.youtube.com/youtubei/v1/search?key=AIzaSyA8IX1nV9RyD7qW4W9S7a5vJnD3YJlT7o'
+        yt_key = current_app.config.get('YOUTUBE_API_KEY', '')
+        if not yt_key:
+            return []
+        url = f'https://music.youtube.com/youtubei/v1/search?key={yt_key}'
         headers = {
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0'
@@ -373,7 +374,8 @@ class Recommender:
                             'cover_uri': f"https://{mix.cover.uri.replace('%%', '300x300')}" if mix.cover and mix.cover.uri else None,
                             'service': 'yandex'
                         })
-                except: pass
+                except Exception as e:
+                    print(f"[RECOMMENDER] Yandex mixes error: {e}")
         
         if 'vk' in services and user and user.vk_token:
             vk_audio = get_vk_audio(user.vk_token)
@@ -421,7 +423,6 @@ class Recommender:
         
         if 'soundcloud' in services and user and user.soundcloud_client_id:
             try:
-                import requests
                 resp = requests.get(
                     f'https://api-v2.soundcloud.com/charts?kind=trending&limit=10&client_id={user.soundcloud_client_id}',
                     timeout=15,

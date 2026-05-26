@@ -225,6 +225,7 @@ class UserBattlePass(db.Model):
     has_premium = db.Column(db.Boolean, default=False)
     claimed_free = db.Column(db.Text, default='[]')
     claimed_premium = db.Column(db.Text, default='[]')
+    last_daily_bonus = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='battle_pass')

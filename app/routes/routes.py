@@ -44,7 +44,6 @@ def discord_rpc():
     
     if user and user.discord_enabled and user.discord_webhook:
         try:
-            import requests
             state = data.get('state', 'iTired Music')
             details = data.get('details', '')
             
@@ -172,11 +171,11 @@ def register():
     
     num1, op, num2 = generate_captcha()
     return render_template('auth.html', mode='register',
-        captcha_num1=num1, captcha_num2=num2, captcha_op=op)
+        captcha_num1=session.get('captcha_num1'), captcha_num2=session.get('captcha_num2'), captcha_op=session.get('captcha_operator'))
 
 @app.route('/api/captcha/refresh')
 def refresh_captcha():
-    generate_captcha()
+    num1, op, num2 = generate_captcha()
     return jsonify({
         'num1': session.get('captcha_num1'),
         'num2': session.get('captcha_num2'),
@@ -227,17 +226,16 @@ def api_profile():
                     vk_token_error = f'Ошибка VK: {str(e)[:50]}'
     
     if user:
-        import json as _json
         badge_data = None
         frame_data = None
         if user.equipped_badge:
             inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=user.equipped_badge, item_type='badge').first()
             if inv and inv.data:
-                badge_data = _json.loads(inv.data)
+                badge_data = json.loads(inv.data)
         if user.equipped_frame:
             inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=user.equipped_frame, item_type='frame').first()
             if inv and inv.data:
-                frame_data = _json.loads(inv.data)
+                frame_data = json.loads(inv.data)
         return jsonify({
             'local': {
                 'id': user.id,
@@ -303,49 +301,6 @@ def api_validate_tokens():
                     result['vk']['error'] = f'Ошибка VK: {str(e)[:50]}'
     return jsonify(result)
 
-@app.route('/api/stats')
-@login_required
-def get_user_stats():
-    user_id = session['user_id']
-    from models import ListeningHistory, LikedTrack, Playlist
-    
-    total_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).count()
-    
-    total_seconds = db.session.query(db.func.sum(ListeningHistory.duration_seconds)).filter_by(user_id=user_id).filter(ListeningHistory.duration_seconds > 0).scalar() or 0
-    total_hours = round(total_seconds / 3600, 1)
-    
-    top_artists = db.session.query(
-        ListeningHistory.artist_name,
-        db.func.count(ListeningHistory.id).label('count')
-    ).filter(
-        ListeningHistory.user_id == user_id,
-        ListeningHistory.artist_name.isnot(None)
-    ).group_by(ListeningHistory.artist_name).order_by(db.desc('count')).limit(10).all()
-    
-    liked_count = db.session.query(LikedTrack).filter_by(user_id=user_id).count()
-    playlist_count = db.session.query(Playlist).filter_by(user_id=user_id).count()
-    
-    recent_tracks = db.session.query(ListeningHistory).filter_by(user_id=user_id).order_by(ListeningHistory.played_at.desc()).limit(20).all()
-    recent = []
-    import json
-    for t in recent_tracks:
-        track_info = json.loads(t.track_data) if t.track_data else {}
-        recent.append({
-            'track_id': t.track_id,
-            'title': track_info.get('title', ''),
-            'artist': t.artist_name,
-            'played_at': t.played_at.isoformat() if t.played_at else None
-        })
-    
-    return jsonify({
-        'total_tracks': total_tracks,
-        'total_hours': total_hours,
-        'liked_count': liked_count,
-        'playlist_count': playlist_count,
-        'top_artists': [{'name': a[0], 'count': a[1]} for a in top_artists],
-        'recent_tracks': recent
-    })
-
 @app.route('/api/listen', methods=['POST'])
 @login_required
 def record_listen():
@@ -358,7 +313,6 @@ def record_listen():
     duration = data.get('duration', 0)
     title = data.get('title', '')
     
-    import json
     print(f"[LISTEN] track_id={track_id}, duration={duration}, title={title}, artist={artist}")
     
     if duration and duration > 0:
@@ -397,7 +351,7 @@ def add_battle_pass_xp(user_id, xp_amount):
         return
     ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
     if not ubp:
-        ubp = UserBattlePass(user_id=user_id, season_id=season.id)
+        ubp = UserBattlePass(user_id=user_id, season_id=season.id, level=1, xp=0)
         db.session.add(ubp)
     ubp.xp = (ubp.xp or 0) + xp_amount
     max_lvl = season.max_level or 100
@@ -429,7 +383,6 @@ def battle_pass_status():
         db.session.commit()
     levels = db.session.query(BattlePassLevel).filter_by(season_id=season.id).order_by(BattlePassLevel.level).all()
     now = datetime.utcnow()
-    import json
     return jsonify({
         'active': True,
         'season': {
@@ -445,7 +398,8 @@ def battle_pass_status():
             'xp': ubp.xp,
             'xp_to_next': (db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=ubp.level).first().xp_required) if ubp.level < season.max_level else 0,
             'activated': ubp.has_premium,
-            'claimed_free': json.loads(ubp.claimed_free or '[]')
+            'claimed_free': json.loads(ubp.claimed_free or '[]'),
+            'daily_bonus_claimed': ubp.last_daily_bonus == now.date() if ubp.last_daily_bonus else False
         },
         'levels': [{
             'level': l.level,
@@ -460,7 +414,6 @@ def battle_pass_claim():
     user_id = session['user_id']
     data = request.get_json()
     level_num = data.get('level')
-    import json
     season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
     if not season:
         return jsonify({'success': False, 'message': 'Нет активного сезона'})
@@ -496,7 +449,6 @@ def battle_pass_claim():
     ubp.claimed_free = json.dumps(claimed)
     reward = json.loads(lvl.free_reward_json)
     item_id = f"bp_{reward['type']}_{level_num}"
-    import random
     existing_inv = db.session.query(UserInventory).filter_by(user_id=user_id, item_id=item_id).first()
     if not existing_inv:
         inv = UserInventory(
@@ -541,7 +493,6 @@ def battle_pass_restore_rewards():
     ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
     if not ubp:
         return jsonify({'success': False, 'message': 'Нет прогресса'})
-    import json
     claimed = json.loads(ubp.claimed_free or '[]')
     restored = 0
     for level_num in claimed:
@@ -643,6 +594,38 @@ def update_quest_progress(user_id, req_type, amount=1):
         if uq.progress >= q.requirement_value:
             uq.completed = True
     db.session.commit()
+
+@app.route('/api/battle-pass/daily-bonus', methods=['POST'])
+@login_required
+def battle_pass_daily_bonus():
+    user_id = session['user_id']
+    season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
+    if not season:
+        return jsonify({'success': False, 'message': 'Нет активного сезона'})
+    ubp = db.session.query(UserBattlePass).filter_by(user_id=user_id, season_id=season.id).first()
+    if not ubp:
+        ubp = UserBattlePass(user_id=user_id, season_id=season.id, level=1, xp=0)
+        db.session.add(ubp)
+        db.session.flush()
+    today = datetime.utcnow().date()
+    if ubp.last_daily_bonus == today:
+        return jsonify({'success': False, 'message': 'Бонус уже получен сегодня'})
+    if ubp.level >= season.max_level:
+        return jsonify({'success': False, 'message': 'Максимальный уровень'})
+    xp_amount = ubp.level * 100
+    ubp.xp = (ubp.xp or 0) + xp_amount
+    max_lvl = season.max_level or 100
+    while ubp.level < max_lvl:
+        lvl_rec = db.session.query(BattlePassLevel).filter_by(season_id=season.id, level=ubp.level).first()
+        if not lvl_rec: break
+        if ubp.xp >= lvl_rec.xp_required:
+            ubp.xp -= lvl_rec.xp_required
+            ubp.level += 1
+        else: break
+    if ubp.xp < 0: ubp.xp = 0
+    ubp.last_daily_bonus = today
+    db.session.commit()
+    return jsonify({'success': True, 'xp_given': xp_amount, 'new_level': ubp.level, 'new_xp': ubp.xp})
 
 @app.route('/api/battle-pass/init-season', methods=['POST'])
 def init_battle_pass_season():
@@ -801,7 +784,8 @@ def home():
                     })
                 liked = client.users_likes_tracks()
                 total_liked = len(liked.tracks) if liked and liked.tracks else 0
-            except: pass
+            except Exception as e:
+                print(f"[HOME] Yandex likes error: {e}")
     
     if 'vk' in services and user and user.vk_token:
         vk = get_vk_api(user.vk_token)
@@ -819,13 +803,15 @@ def home():
                             'cover_uri': None,
                             'service': 'vk'
                         })
-            except: pass
+            except Exception as e:
+                print(f"[HOME] VK playlists error: {e}")
             try:
                 audio = get_vk_audio(user.vk_token)
                 if audio:
                     vk_tracks = list(audio.get())
                     total_liked += len(vk_tracks)
-            except: pass
+            except Exception as e:
+                print(f"[HOME] VK tracks error: {e}")
     
     user_playlists = db.session.query(Playlist).filter_by(user_id=session['user_id']).order_by(Playlist.created_at.desc()).limit(10).all()
     for p in user_playlists:
@@ -993,13 +979,7 @@ def stats():
     services = session.get('active_sources', ['yandex'])
     total_playlists = 0
     total_liked = 0
-    total_listening_seconds = 0
-    
-    # Get listening history stats
-    history = db.session.query(ListeningHistory).filter_by(user_id=user.id).all()
-    for h in history:
-        if h.duration_seconds:
-            total_listening_seconds += h.duration_seconds
+    total_listening_seconds = db.session.query(db.func.coalesce(db.func.sum(ListeningHistory.duration_seconds), 0)).filter_by(user_id=user.id).scalar() or 0
     
     # Convert to readable format
     hours = total_listening_seconds // 3600
@@ -1011,7 +991,8 @@ def stats():
             try:
                 total_playlists = len(client.users_playlists_list())
                 total_liked = len(client.users_likes_tracks())
-            except: pass
+            except Exception as e:
+                print(f"[STATS] Yandex error: {e}")
     
     return jsonify({
         'total_playlists': total_playlists,
@@ -1320,7 +1301,6 @@ def liked_tracks():
             
             liked = client.users_likes_tracks()
             if liked and liked.tracks:
-                import random
                 track_ids = []
                 for item in liked.tracks:
                     track = item.track if hasattr(item, 'track') and item.track else item
@@ -1374,7 +1354,6 @@ def liked_tracks():
             audio = get_vk_audio(user.vk_token)
             if audio:
                 audio_list = list(audio.get())
-                import random
                 random.shuffle(audio_list)
                 for t in audio_list[:11]:
                     vk_artist = t.get('artist', '') or ''
@@ -1392,7 +1371,6 @@ def liked_tracks():
             favorites = db.session.query(LikedTrack).filter_by(user_id=user.id).filter(
                 LikedTrack.track_id.like('vk_%')
             ).order_by(LikedTrack.liked_at.desc()).all()
-            import random
             random.shuffle(favorites)
             for f in favorites[:11]:
                 if f.track_data:
@@ -1404,7 +1382,6 @@ def liked_tracks():
         favorites = db.session.query(LikedTrack).filter_by(user_id=user.id).filter(
             LikedTrack.track_id.like('sc_%')
         ).order_by(LikedTrack.liked_at.desc()).all()
-        import random
         random.shuffle(favorites)
         for f in favorites[:11]:
             if f.track_data:
@@ -1487,7 +1464,6 @@ def save_queue():
     tracks = data.get('tracks', [])
     name = data.get('name', 'Очередь')
     
-    import json
     saved_queue = SavedQueue(
         user_id=session['user_id'],
         name=name,
@@ -1503,7 +1479,6 @@ def save_queue():
 def get_saved_queues():
     queues = db.session.query(SavedQueue).filter_by(user_id=session['user_id']).order_by(SavedQueue.updated_at.desc()).all()
     result = []
-    import json
     for q in queues:
         tracks = json.loads(q.tracks_data) if q.tracks_data else []
         result.append({
@@ -1522,7 +1497,6 @@ def get_saved_queue(queue_id):
     if not queue or queue.user_id != session['user_id']:
         return jsonify({'error': 'Очередь не найдена'}), 404
     
-    import json
     tracks = json.loads(queue.tracks_data) if queue.tracks_data else []
     return jsonify({
         'id': queue.id,
@@ -1713,7 +1687,6 @@ def add_track_to_playlist(playlist_id):
             track_data=json.dumps(track)
         )
         db.session.add(pt)
-        playlist.track_count = (playlist.track_count or 0) + 1
         db.session.commit()
         return jsonify({'success': True})
     
@@ -1784,7 +1757,6 @@ def play_track(track_id):
         })
     
     elif track_id.startswith('dz_'):
-        import requests
         dz_id = track_id.replace('dz_', '')
         
         url = f'https://api.deezer.com/track/{dz_id}'
@@ -1792,18 +1764,17 @@ def play_track(track_id):
         
         if resp.status_code == 200:
             track = resp.json()
-        return jsonify({
-            'url': track.get('preview', ''),
-            'title': track.get('title', ''),
-            'artist': track.get('artist', {}).get('name', ''),
-            'cover': track.get('album', {}).get('cover_medium', ''),
-            'service': 'deezer',
-            'duration': track.get('duration', 0) * 1000
-        })
+            return jsonify({
+                'url': track.get('preview', ''),
+                'title': track.get('title', ''),
+                'artist': track.get('artist', {}).get('name', ''),
+                'cover': track.get('album', {}).get('cover_medium', ''),
+                'service': 'deezer',
+                'duration': track.get('duration', 0) * 1000
+            })
         return jsonify({'error': 'Трек не найден'}), 404
     
     elif track_id.startswith('yt_'):
-        import requests
         video_id = track_id.replace('yt_', '')
         
         try:
@@ -2838,7 +2809,7 @@ def equip_theme():
     user = db.session.get(User, session['user_id'])
     
     if theme_id:
-        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=theme_id, data__contains='theme').first()
+        inv = db.session.query(UserInventory).filter_by(user_id=user.id, item_id=theme_id, item_type='theme').first()
         if not inv:
             return jsonify({'success': False, 'message': 'Тема не куплена'}), 400
     
@@ -2928,7 +2899,7 @@ def room_status():
     if not uid or uid not in room_codes:
         return jsonify({'in_room': False, 'message': 'Не в комнате'})
     
-    room_code = room_codes[user_id]
+    room_code = room_codes[uid]
     if room_code not in rooms:
         return jsonify({'in_room': False, 'message': 'Комната не найдена'})
     
@@ -2936,7 +2907,7 @@ def room_status():
     return jsonify({
         'in_room': True,
         'room_code': room_code,
-        'is_host': room['host'] == user_id,
+        'is_host': room['host'] == uid,
         'users_count': len(room['users']),
         'playlist_length': len(room.get('playlist', [])),
         'current_track': room.get('current_track'),
@@ -2985,10 +2956,10 @@ def sync_room_queue():
 @login_required
 def poll_room():
     user_id = session['user_id']
-    if uid not in room_codes:
+    if user_id not in room_codes:
         return jsonify({'in_room': False, 'message': 'Не в комнате'})
     
-    room_code = room_codes[uid]
+    room_code = room_codes[user_id]
     if room_code not in rooms:
         return jsonify({'in_room': False, 'message': 'Комната не найдена'})
     
@@ -2996,7 +2967,7 @@ def poll_room():
     return jsonify({
         'in_room': True,
         'room_code': room_code,
-        'is_host': room['host'] == uid,
+        'is_host': room['host'] == user_id,
         'users_count': len(room['users']),
         'playlist_length': len(room.get('playlist', [])),
         'current_track': room.get('current_track'),

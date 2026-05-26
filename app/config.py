@@ -25,8 +25,8 @@ class Config:
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'itiredmp3@gmail.com')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'ozbg ahqs jack lerf')
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
     MAIL_DEFAULT_SENDER = ('iTired', MAIL_USERNAME)
 
     # Google OAuth
@@ -36,6 +36,9 @@ class Config:
 
     # SoundCloud
     SOUNDCLOUD_CLIENT_ID = os.getenv('SOUNDCLOUD_CLIENT_ID', '')
+
+    # YouTube
+    YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', '')
 
     # Discord Rich Presence (Webhook для статуса)
     DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL', '')

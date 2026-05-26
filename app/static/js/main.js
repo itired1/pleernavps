@@ -1195,6 +1195,18 @@ window.loadBattlePass = async function() {
         document.getElementById('bpXpText').textContent = data.user.xp + ' XP';
         document.getElementById('bpXpNext').textContent = data.user.xp_to_next > 0 ? data.user.xp + ' / ' + data.user.xp_to_next + ' XP' : 'Максимальный уровень!';
 
+        var dailyBtn = document.getElementById('bpDailyBtn');
+        var dailyLabel = document.getElementById('bpDailyLabel');
+        if (dailyBtn && dailyLabel) {
+            if (data.user.daily_bonus_claimed) {
+                dailyBtn.classList.add('claimed');
+                dailyLabel.textContent = 'Бонус получен';
+            } else {
+                dailyBtn.classList.remove('claimed');
+                dailyLabel.textContent = 'Ежедневный бонус';
+            }
+        }
+
         var claimedFree = data.user.claimed_free || [];
         var userLevel = data.user.level;
 
@@ -1215,17 +1227,17 @@ window.loadBattlePass = async function() {
             if (lvl.level <= userLevel) cell.classList.add('unlocked');
 
             var content = document.createElement('div');
-            content.className = 'bp-level-content';
+            content.className = 'bp-cell-content';
 
             var num = document.createElement('div');
-            num.className = 'bp-level-num';
+            num.className = 'bp-cell-num';
             if (lvl.level % 10 === 0 || lvl.level === 1 || lvl.level === data.season.max_level) {
                 num.textContent = lvl.level;
             }
             content.appendChild(num);
 
             var freeSlot = document.createElement('div');
-            freeSlot.className = 'bp-reward-slot free' + (isFreeAvail ? ' avail' : ' locked') + (isFreeClaimed ? ' claimed' : '') + (lvl.free_reward ? ' has-reward' : '');
+            freeSlot.className = 'bp-reward-slot' + (isFreeAvail ? ' avail' : ' locked') + (isFreeClaimed ? ' claimed' : '') + (lvl.free_reward ? ' has-reward' : '');
             freeSlot.title = lvl.free_reward ? (lvl.free_reward.name || 'Награда') : 'Нет награды';
             if (lvl.free_reward && lvl.free_reward.image) {
                 var img = document.createElement('img');
@@ -1258,12 +1270,12 @@ function showBpLevelDetail(lvl, isFreeClaimed, isFreeAvail) {
     var detail = document.getElementById('bpLevelDetail');
     if (!detail) return;
     detail.style.display = 'block';
-    var html = '<div class="glass-card" style="padding:16px;border:1px solid rgba(255,215,0,0.2);">';
+    var html = '<div class="bp-detail-card">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
     html += '<h4 style="margin:0;"><i class="fas fa-trophy" style="color:#ffd700;"></i> Уровень ' + lvl.level + '</h4>';
     html += '<span style="font-size:12px;color:var(--text-muted);">' + lvl.xp_required + ' XP</span>';
     html += '</div>';
-    html += '<div style="text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);">';
+    html += '<div style="text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);">';
     if (lvl.free_reward && lvl.free_reward.image) {
         html += '<img src="' + lvl.free_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
     } else {
@@ -1292,28 +1304,29 @@ function loadBattlePassQuests() {
         var html = '';
         data.quests.forEach(function(q) {
             var pct = q.requirement_value > 0 ? Math.min(100, Math.round((q.progress / q.requirement_value) * 100)) : 0;
-            var typeLabel = q.type === 'daily' ? 'Ежедневно' : 'Еженедельно';
             var typeIcon = q.type === 'daily' ? 'fa-sun' : 'fa-calendar-week';
             var isDone = q.completed && !q.claimed;
             var isClaimed = q.claimed;
-            html += '<div class="glass-card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;' + (isClaimed ? ' opacity: 0.5;' : '') + '">';
-            html += '<div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center;"><i class="fas ' + typeIcon + '" style="color: var(--accent);"></i></div>';
-            html += '<div style="flex: 1; min-width: 0;">';
-            html += '<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">';
-            html += '<span style="font-size: 14px; font-weight: 600;">' + q.description + '</span>';
-            html += '<span style="font-size: 12px; color: #ffd700; white-space: nowrap;"><i class="fas fa-star"></i> +' + q.xp_reward + ' XP</span>';
+            html += '<div class="bp-quest-card' + (isClaimed ? ' claimed' : '') + '">';
+            html += '<div class="bp-quest-icon"><i class="fas ' + typeIcon + '"></i></div>';
+            html += '<div class="bp-quest-body">';
+            html += '<div class="bp-quest-top">';
+            html += '<span class="bp-quest-desc">' + q.description + '</span>';
+            html += '<span class="bp-quest-xp"><i class="fas fa-star"></i> +' + q.xp_reward + ' XP</span>';
             html += '</div>';
-            html += '<div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">';
-            html += '<div class="progress-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"><div class="progress-fill" style="height: 100%; width: ' + pct + '%; border-radius: 3px; background: var(--accent);"></div></div>';
-            html += '<span style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">' + q.progress + '/' + q.requirement_value + '</span>';
+            html += '<div class="bp-quest-bar-wrap">';
+            html += '<div class="bp-quest-bar"><div class="bp-quest-fill" style="width:' + pct + '%;"></div></div>';
+            html += '<span class="bp-quest-count">' + q.progress + '/' + q.requirement_value + '</span>';
+            html += '</div></div>';
+            html += '<div class="bp-quest-action">';
             if (isDone) {
-                html += '<button class="btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="claimQuest(' + q.id + ')"><i class="fas fa-gift"></i></button>';
+                html += '<button class="btn-primary" onclick="claimQuest(' + q.id + ')"><i class="fas fa-gift"></i></button>';
             } else if (isClaimed) {
-                html += '<span style="font-size: 12px; color: #22c55e;"><i class="fas fa-check"></i></span>';
+                html += '<span class="bp-quest-done"><i class="fas fa-check-circle"></i></span>';
             } else {
-                html += '<span style="font-size: 11px; color: var(--text-muted);">' + typeLabel + '</span>';
+                html += '<span class="bp-quest-type">' + (q.type === 'daily' ? 'Ежедневно' : 'Еженедельно') + '</span>';
             }
-            html += '</div></div></div>';
+            html += '</div></div>';
         });
         container.innerHTML = html;
     }).catch(function(e) {
@@ -1330,6 +1343,22 @@ window.claimQuest = function(questId) {
         }
     }).catch(function(e) {
         console.error('Claim quest error:', e);
+    });
+};
+
+window.claimDailyBonus = function() {
+    var btn = document.getElementById('bpDailyBtn');
+    if (btn && btn.classList.contains('claimed')) return;
+    apiCall('battle-pass/daily-bonus', {method: 'POST', body: '{}'}).then(function(r) {
+        if (r.success) {
+            loadBattlePass();
+            var label = document.getElementById('bpDailyLabel');
+            if (label) label.textContent = 'Бонус получен';
+        } else {
+            alert(r.message);
+        }
+    }).catch(function(e) {
+        console.error('Daily bonus error:', e);
     });
 };
 

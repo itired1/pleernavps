@@ -43,6 +43,15 @@ BP_QUEST_TEMPLATES = [
 ]
 
 
+MAX_CACHE_SIZE = 500
+
+def _trim_cache():
+    if len(track_cache) > MAX_CACHE_SIZE:
+        now = time.time()
+        expired = [k for k, v in track_cache.items() if v.get('expires', 0) < now]
+        for k in expired[:len(track_cache) - MAX_CACHE_SIZE]:
+            del track_cache[k]
+
 def get_cached_track(track_id, token, max_retries=3):
     cache_key = f"track:{track_id}"
 
@@ -85,6 +94,7 @@ def get_cached_track(track_id, token, max_retries=3):
                                 'service': 'yandex'
                             }
                             track_cache[cache_key] = {**result, 'expires': time.time() + 1800}
+                            _trim_cache()
                             return result
                         else:
                             print(f"[YANDEX] No download URL for track {track_num}, info={info}")
@@ -112,6 +122,7 @@ def get_cached_track(track_id, token, max_retries=3):
                                     'service': 'vk'
                                 }
                                 track_cache[cache_key] = {**result, 'expires': time.time() + 1800}
+                                _trim_cache()
                                 return result
                         except Exception:
                             pass
@@ -175,6 +186,7 @@ def add_currency(user_id, amount, reason):
 
 
 def generate_captcha():
+    from flask import session
     num1 = random.randint(1, 20)
     num2 = random.randint(1, 20)
     operators = ['+', '-', '*']
@@ -190,6 +202,11 @@ def generate_captcha():
     else:
         answer = num1 + num2
 
+    session['captcha_num1'] = num1
+    session['captcha_num2'] = num2
+    session['captcha_operator'] = op
+    session['captcha_answer'] = answer
+
     return num1, op, num2
 
 
@@ -199,6 +216,11 @@ def init_db(app):
         try:
             from sqlalchemy import text
             db.session.execute(text('ALTER TABLE users ADD COLUMN yandex_uid VARCHAR(50)'))
+            db.session.commit()
+        except:
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE user_battle_pass ADD COLUMN last_daily_bonus DATE'))
             db.session.commit()
         except:
             pass
