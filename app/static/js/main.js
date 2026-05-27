@@ -1272,10 +1272,10 @@ function showBpLevelDetail(lvl, isFreeClaimed, isFreeAvail) {
     detail.style.display = 'block';
     var html = '<div class="bp-detail-card">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    html += '<h4 style="margin:0;"><i class="fas fa-trophy" style="color:#ffd700;"></i> Уровень ' + lvl.level + '</h4>';
+    html += '<h4 style="margin:0;"><i class="fas fa-trophy"></i> Уровень ' + lvl.level + '</h4>';
     html += '<span style="font-size:12px;color:var(--text-muted);">' + lvl.xp_required + ' XP</span>';
     html += '</div>';
-    html += '<div style="text-align:center;padding:12px;border-radius:12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);">';
+    html += '<div style="text-align:center;padding:12px;border-radius:12px;background:var(--bg-app);border:1px solid var(--border-color, rgba(255,255,255,0.06));">';
     if (lvl.free_reward && lvl.free_reward.image) {
         html += '<img src="' + lvl.free_reward.image + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-bottom:8px;">';
     } else {
@@ -1285,7 +1285,7 @@ function showBpLevelDetail(lvl, isFreeClaimed, isFreeAvail) {
     if (isFreeAvail && !isFreeClaimed && lvl.free_reward) {
         html += '<button class="btn-primary" style="margin-top:8px;padding:4px 12px;font-size:12px;" onclick="doBpClaim(' + lvl.level + ')"><i class="fas fa-gift"></i> Забрать</button>';
     } else if (isFreeClaimed) {
-        html += '<div style="margin-top:8px;font-size:12px;color:#22c55e;"><i class="fas fa-check-circle"></i> Получено</div>';
+        html += '<div style="margin-top:8px;font-size:12px;color:var(--success, #22c55e);"><i class="fas fa-check-circle"></i> Получено</div>';
     } else {
         html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-lock"></i> Уровень ' + lvl.level + '</div>';
     }
@@ -1307,7 +1307,7 @@ function loadBattlePassQuests() {
             var typeIcon = q.type === 'daily' ? 'fa-sun' : 'fa-calendar-week';
             var isDone = q.completed && !q.claimed;
             var isClaimed = q.claimed;
-            html += '<div class="bp-quest-card' + (isClaimed ? ' claimed' : '') + '">';
+            html += '<div class="bp-quest-card' + (isClaimed ? ' claimed' : '') + '" data-quest-id="' + q.id + '">';
             html += '<div class="bp-quest-icon"><i class="fas ' + typeIcon + '"></i></div>';
             html += '<div class="bp-quest-body">';
             html += '<div class="bp-quest-top">';
@@ -1335,13 +1335,18 @@ function loadBattlePassQuests() {
 }
 
 window.claimQuest = function(questId) {
+    var card = document.querySelector('.bp-quest-card[data-quest-id="' + questId + '"]');
+    if (card) {
+        card.classList.add('claimed');
+        card.querySelector('.bp-quest-action').innerHTML = '<span class="bp-quest-done"><i class="fas fa-check-circle"></i></span>';
+    }
     apiCall('battle-pass/claim-quest', {method: 'POST', body: JSON.stringify({quest_id: questId})}).then(function(r) {
-        if (r.success) {
+        if (!r.success) {
             loadBattlePass();
-        } else {
             alert(r.message);
         }
     }).catch(function(e) {
+        loadBattlePass();
         console.error('Claim quest error:', e);
     });
 };
@@ -1349,27 +1354,53 @@ window.claimQuest = function(questId) {
 window.claimDailyBonus = function() {
     var btn = document.getElementById('bpDailyBtn');
     if (btn && btn.classList.contains('claimed')) return;
+    btn.classList.add('claimed');
+    var label = document.getElementById('bpDailyLabel');
+    if (label) label.textContent = 'Бонус получен';
+    // Optimistic XP update
+    var xpText = document.getElementById('bpXpText');
+    if (xpText) {
+        var cur = parseInt(xpText.textContent) || 0;
+        var lvl = parseInt(document.getElementById('bpLevel').textContent) || 1;
+        xpText.textContent = (cur + lvl * 100) + ' XP';
+    }
     apiCall('battle-pass/daily-bonus', {method: 'POST', body: '{}'}).then(function(r) {
         if (r.success) {
-            loadBattlePass();
-            var label = document.getElementById('bpDailyLabel');
-            if (label) label.textContent = 'Бонус получен';
+            document.getElementById('bpLevel').textContent = r.new_level;
+            document.getElementById('bpXpText').textContent = r.new_xp + ' XP';
+            sessionStorage.removeItem('battle_pass_status');
         } else {
+            loadBattlePass();
             alert(r.message);
         }
     }).catch(function(e) {
+        loadBattlePass();
         console.error('Daily bonus error:', e);
     });
 };
 
 function doBpClaim(levelNum) {
+    var cell = document.querySelector('.bp-level-cell[data-level="' + levelNum + '"]');
+    if (cell) {
+        var slot = cell.querySelector('.bp-reward-slot');
+        if (slot) slot.classList.add('claimed');
+        var existingCheck = slot.querySelector('.bp-check');
+        if (!existingCheck) {
+            var check = document.createElement('div');
+            check.className = 'bp-check';
+            check.innerHTML = '<i class="fas fa-check"></i>';
+            slot.appendChild(check);
+        }
+    }
+    var detail = document.getElementById('bpLevelDetail');
+    if (detail) detail.style.display = 'none';
     apiCall('battle-pass/claim', {method: 'POST', body: JSON.stringify({level: levelNum})}).then(function(r) {
-        if (r.success) {
+        if (!r.success) {
             loadBattlePass();
-        } else {
             alert(r.message);
         }
     }).catch(function(e) {
+        loadBattlePass();
         console.error('Claim error:', e);
     });
 }

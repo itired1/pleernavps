@@ -20,6 +20,21 @@ import time
 import threading
 from flask import current_app
 
+_migrated = False
+
+def _ensure_bp_migration():
+    global _migrated
+    if _migrated:
+        return
+    try:
+        from sqlalchemy import text
+        db.session.execute(text('ALTER TABLE user_battle_pass ADD COLUMN last_daily_bonus DATE'))
+        db.session.commit()
+    except:
+        pass
+    _migrated = True
+
+
 @app.route('/api/health')
 def health_check():
     return jsonify({
@@ -372,6 +387,7 @@ def add_battle_pass_xp(user_id, xp_amount):
 @app.route('/api/battle-pass/status')
 @login_required
 def battle_pass_status():
+    _ensure_bp_migration()
     user_id = session['user_id']
     season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
     if not season:
@@ -598,6 +614,7 @@ def update_quest_progress(user_id, req_type, amount=1):
 @app.route('/api/battle-pass/daily-bonus', methods=['POST'])
 @login_required
 def battle_pass_daily_bonus():
+    _ensure_bp_migration()
     user_id = session['user_id']
     season = db.session.query(BattlePassSeason).filter_by(is_active=True).first()
     if not season:
