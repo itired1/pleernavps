@@ -37,3 +37,7 @@ build/
 *.exe
 photo_*.jpg
 photo_*.png
+
+cert.pfx
+cert.pem
+key.pem

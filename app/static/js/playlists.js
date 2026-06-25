@@ -55,6 +55,10 @@ async function loadPlaylistsForModal(track) {
 }
 
 window.addTrackToPlaylist = async function(playlistId, track) {
+    // Optimistic: close modal and show notification immediately
+    closeAddToPlaylistModal();
+    showNotification('Добавлено в плейлист!', 'success');
+    
     try {
         const result = await apiCall('playlists/' + playlistId + '/tracks', {
             method: 'POST',
@@ -62,8 +66,8 @@ window.addTrackToPlaylist = async function(playlistId, track) {
         });
         
         if (result && result.success) {
-            showNotification('Добавлено в плейлист!', 'success');
-            closeAddToPlaylistModal();
+            loadPlaylists();
+            loadPlaylistTracks(playlistId);
         } else {
             showNotification(result?.error || 'Ошибка', 'error');
         }

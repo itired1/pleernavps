@@ -83,7 +83,7 @@ function initShop() {
     var cachedInv = sessionStorage.getItem('shop_inventory');
     var cachedBal = sessionStorage.getItem('user_balance');
     var cachedTs = sessionStorage.getItem('shop_cache_ts');
-    var useCache = cachedInv && cachedBal && cachedTs && (Date.now() - parseInt(cachedTs) < 60000);
+    var useCache = cachedInv && cachedBal && cachedTs && (Date.now() - parseInt(cachedTs) < 15000);
     
     var balPromise, invPromise;
     if (useCache) {
@@ -228,6 +228,16 @@ window.buyItem = async function(itemId) {
         return;
     }
     
+    // Optimistic: update balance and inventory immediately
+    userBalance -= item.price;
+    userInventory.push({ id: 'opt_' + Date.now(), item_id: item.id, item_type: item.type, data: item.data });
+    const be = document.getElementById('userBalance');
+    if (be) be.textContent = userBalance;
+    const he = document.getElementById('headerBalance');
+    if (he) he.textContent = userBalance;
+    displayShopItems(currentCategory);
+    showNotification('Покупка совершена!', 'success');
+    
     try {
         const result = await fetch('/api/shop/buy', {
             method: 'POST',
@@ -235,27 +245,16 @@ window.buyItem = async function(itemId) {
             credentials: 'include',
             body: JSON.stringify({ item_id: itemId })
         });
-        
         const data = await result.json();
-        
-        if (data && data.success) {
-            showNotification('Покупка совершена!', 'success');
-            
-            fetch('/api/currency/balance', { credentials: 'include' })
-                .then(r => r.json())
-                .then(b => {
-                    userBalance = b?.balance || 0;
-                    const be = document.getElementById('userBalance');
-                    if (be) be.textContent = userBalance;
-                });
-            
+        if (!data || !data.success) {
             initShop();
-            loadInventory();
-        } else {
             showNotification(data?.message || 'Ошибка', 'error');
+        } else {
+            sessionStorage.removeItem('shop_inventory');
+            sessionStorage.removeItem('shop_cache_ts');
         }
     } catch (error) {
-        console.error(error);
+        initShop();
         showNotification('Ошибка покупки', 'error');
     }
 };
@@ -311,20 +310,25 @@ window.loadInventory = function() {
 };
 
 window.equipItem = function(inventoryId) {
-    fetch('/api/shop/equip/' + inventoryId, {
-        method: 'POST',
-        credentials: 'include'
-    })
-    .then(r => r.json())
-    .then(data => {
+    showNotification('Применяем...', 'info');
+    // Fire all requests in parallel for speed
+    Promise.all([
+        fetch('/api/shop/equip/' + inventoryId, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+        new Promise(function(r) {
+            loadInventory();
+            if (typeof window.loadProfile === 'function') window.loadProfile();
+            setTimeout(r, 100);
+        })
+    ]).then(function(results) {
+        var data = results[0];
         if (data.success) {
             showNotification(data.message || 'Готово!', 'success');
-            loadInventory();
         } else {
             showNotification(data.message || 'Ошибка', 'error');
         }
-    })
-    .catch(() => showNotification('Ошибка', 'error'));
+    }).catch(function() {
+        showNotification('Ошибка', 'error');
+    });
 };
 
 // Category chips

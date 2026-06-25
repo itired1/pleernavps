@@ -4,24 +4,16 @@
   "version": "1.0.2",
   "identifier": "com.itired.music",
   "build": {
-    "frontendDist": "../app",
-    "devUrl": "http://localhost:5001"
+    "frontendDist": "../mobile-mock"
   },
   "app": {
     "windows": [
       {
-        "title": "iTired Music",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "resizable": true,
-        "fullscreen": false,
-        "center": true
+        "title": "iTired Music"
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* https://* ws://localhost:* wss://*; img-src 'self' data: https:;"
+      "csp": null
     }
   },
   "bundle": {
@@ -33,25 +25,6 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "resources": [],
-    "copyright": "Copyright 2024 iTired",
-    "category": "Music",
-    "shortDescription": "Music streaming platform",
-    "longDescription": "iTired - Music streaming platform with Yandex Music and VK integration",
-    "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": "",
-      "nsis": {
-        "languages": ["Russian", "English"],
-        "displayLanguageSelector": true
-      }
-    }
-  },
-  "plugins": {
-    "shell": {
-      "open": true
-    }
+    ]
   }
 }

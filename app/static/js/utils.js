@@ -1,3 +1,10 @@
+const getArtistText = function(track) {
+    if (!track) return '';
+    if (track.artists && Array.isArray(track.artists)) return track.artists.join(', ');
+    if (track.artists && typeof track.artists === 'string') return track.artists;
+    return track.artist || '';
+};
+
 const apiCall = async function(endpoint, options = {}) {
     const cacheTime = 5 * 60 * 1000;
     const cacheKey = 'api_cache_' + endpoint;
@@ -10,7 +17,7 @@ const apiCall = async function(endpoint, options = {}) {
                 if (Date.now() - timestamp < cacheTime) {
                     return data;
                 }
-            } catch (e) {}
+            } catch (e) { console.error('Cache parse error:', e); }
         }
     }
     
@@ -44,17 +51,17 @@ const apiCall = async function(endpoint, options = {}) {
             try {
                 const { data } = JSON.parse(cached);
                 return data;
-            } catch (e) {}
+            } catch (e) { console.error('Cache parse error (fallback):', e); }
         }
         console.error('API Error:', error);
         throw error;
     }
 };
 
-window.clearApiCache = function() {
+window.clearApiCache = function(silent) {
     const keys = Object.keys(localStorage).filter(k => k.startsWith('api_cache_'));
     keys.forEach(k => localStorage.removeItem(k));
-    showNotification('Кэш очищен', 'info');
+    if (!silent) showNotification('Кэш очищен', 'info');
 };
 
 const showNotification = function(message, type = 'info', icon = null) {
@@ -123,7 +130,11 @@ const closeModal = function(modalId) {
 };
 
 const logout = function() {
-    fetch('/logout').then(() => window.location.href = '/login');
+    fetch('/logout').then(function() {
+        window.location.href = '/login';
+    }).catch(function() {
+        window.location.href = '/login';
+    });
 };
 
 const escapeHtml = function(str) {
@@ -158,6 +169,7 @@ window.logout = logout;
 window.escapeHtml = escapeHtml;
 window.toggleTheme = toggleTheme;
 window.applySavedTheme = applySavedTheme;
+window.getArtistText = getArtistText;
 
 window.openBannerSelector = async function() {
     openModal('bannerSelectorModal');
@@ -215,28 +227,23 @@ window.selectBanner = async function(inventoryId, alreadyEquipped) {
         return;
     }
     
+    showNotification('Баннер устанавливается...', 'info');
+    closeModal('bannerSelectorModal');
+    if (typeof loadProfile === 'function') loadProfile();
+    
     try {
         const result = await apiCall('shop/equip/' + inventoryId, {
             method: 'POST'
         });
         
-        if (result && result.success) {
-            showNotification('Баннер установлен!', 'success');
-            closeModal('bannerSelectorModal');
-            
-            const bannerImg = document.querySelector('.profile-banner');
-            if (bannerImg) {
-                const invItem = (await apiCall('shop/inventory') || []).find(i => i.id === inventoryId);
-                if (invItem && invItem.data && invItem.data.image) {
-                    bannerImg.style.backgroundImage = 'url(' + invItem.data.image + ')';
-                    bannerImg.style.backgroundSize = 'cover';
-                    bannerImg.style.backgroundPosition = 'center';
-                }
-            }
-        } else {
+        if (!result || !result.success) {
+            if (typeof loadProfile === 'function') loadProfile();
             showNotification(result?.message || 'Ошибка установки', 'error');
+        } else {
+            showNotification('Баннер установлен!', 'success');
         }
     } catch (error) {
+        if (typeof loadProfile === 'function') loadProfile();
         showNotification('Ошибка установки баннера', 'error');
     }
 };

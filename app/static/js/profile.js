@@ -1,14 +1,6 @@
 async function loadProfileData() {
     try {
-        // Clear caches before loading profile
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('api_cache_')) {
-                keysToRemove.push(key);
-            }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        clearApiCache(true);
         
         const profile = await apiCall('profile');
         if (profile) updateProfileForm(profile);
@@ -73,13 +65,7 @@ function updateProfileForm(profile) {
 
 async function loadActiveBanner() {
     try {
-        // Clear caches
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('api_cache_')) {
-                localStorage.removeItem(key);
-            }
-        }
+        clearApiCache(true);
         
         const response = await apiCall('shop/active-banner');
         if (response && response.image) {
@@ -217,7 +203,7 @@ if (avatarInput) {
             
             if (result.success) {
                 showNotification('Аватарка загружена!', 'success');
-                updateAllAvatars(result.avatar_url);
+                if (typeof loadProfile === 'function') loadProfile();
             } else {
                 showNotification(result.message || 'Ошибка загрузки', 'error');
             }
@@ -257,12 +243,7 @@ async function saveProfile() {
         
         if (result.success) {
             showNotification('Профиль сохранён', 'success');
-            // Update UI immediately without full profile reload
-            var displayName = data.display_name || '';
-            var sidebarName = document.getElementById('sidebarUsername');
-            var headerName = document.getElementById('headerUserName');
-            if (sidebarName) sidebarName.textContent = displayName || 'Пользователь';
-            if (headerName) headerName.textContent = displayName || 'Пользователь';
+            if (typeof window.loadProfile === 'function') window.loadProfile();
         } else {
             showNotification(result.message || 'Ошибка сохранения', 'error');
         }
@@ -308,15 +289,7 @@ window.openProfileCustomize = async function() {
     document.getElementById('profileCustomizeContent').style.display = 'none';
     
     try {
-        // Clear caches before loading
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('api_cache_')) {
-                keysToRemove.push(key);
-            }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        clearApiCache(true);
         
         const inventory = await apiCall('shop/inventory');
         const profile = await apiCall('profile');

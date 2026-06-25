@@ -30,71 +30,48 @@ async function initApp() {
         setTimeout(initAudioPlayer, 100);
     }
     
-    // Load balance on start
-    try {
-        console.log('Loading balance...');
-        const balance = await apiCall('currency/balance');
-        console.log('Balance:', balance);
-        if (balance && balance.balance !== undefined) {
-            userBalance = balance.balance;
-            updateBalanceDisplay();
-        }
-    } catch (e) {
-        console.error('Balance error:', e);
-    }
-    
-    try {
-        await loadProfile();
-    } catch (e) {
-        console.error('Profile load error:', e);
-    }
-    
-    try {
-        var tokenStatus = await apiCall('validate-tokens', {cache: false});
-        if (tokenStatus.yandex) {
-            if (tokenStatus.yandex.valid === false) {
-                showNotification('⚠ ' + (tokenStatus.yandex.error || 'Токен Яндекс истёк'), 'error', 'fa-exclamation-triangle');
-            } else if (!tokenStatus.yandex.token_set) {
-                showNotification('Токен Яндекс.Музыки не настроен', 'warning', 'fa-exclamation-triangle');
-            }
-        }
-        if (tokenStatus.vk) {
-            if (tokenStatus.vk.valid === false) {
-                showNotification('⚠ ' + (tokenStatus.vk.error || 'Токен VK истёк'), 'error', 'fa-exclamation-triangle');
-            } else if (!tokenStatus.vk.token_set) {
-                showNotification('Токен VK не настроен', 'warning', 'fa-exclamation-triangle');
-            }
-        }
-        if (tokenStatus.soundcloud && !tokenStatus.soundcloud.client_id_set) {
-            showNotification('SoundCloud Client ID не настроен', 'warning', 'fa-exclamation-triangle');
-        }
-    } catch (e) {
-        console.error('Token validation error:', e);
-    }
-    
-    try {
-        await loadDashboard();
-    } catch (e) {
-        console.error('Dashboard load error:', e);
-    }
-    
-    try {
-        loadMyWave();
-    } catch (e) {
-        console.error('My Wave load error:', e);
-    }
-    
-    try {
-        loadLikedTracks('yandex');
-    } catch (e) {
-        console.error('Liked tracks load error:', e);
-    }
-    
-    try {
-        await loadNotifications();
-    } catch (e) {
-        console.error('Notifications load error:', e);
-    }
+    await Promise.allSettled([
+        (async function() {
+            try {
+                var balance = await apiCall('currency/balance');
+                if (balance && balance.balance !== undefined) {
+                    userBalance = balance.balance;
+                    updateBalanceDisplay();
+                }
+            } catch (e) { console.error('Balance error:', e); }
+        })(),
+        loadProfile(),
+        (async function() {
+            try {
+                var tokenStatus = await apiCall('validate-tokens', {cache: false});
+                if (tokenStatus.yandex) {
+                    if (tokenStatus.yandex.valid === false) {
+                        showNotification('⚠ ' + (tokenStatus.yandex.error || 'Токен Яндекс истёк'), 'error', 'fa-exclamation-triangle');
+                    } else if (!tokenStatus.yandex.token_set) {
+                        showNotification('Токен Яндекс.Музыки не настроен', 'warning', 'fa-exclamation-triangle');
+                    }
+                }
+                if (tokenStatus.vk) {
+                    if (tokenStatus.vk.valid === false) {
+                        showNotification('⚠ ' + (tokenStatus.vk.error || 'Токен VK истёк'), 'error', 'fa-exclamation-triangle');
+                    } else if (!tokenStatus.vk.token_set) {
+                        showNotification('Токен VK не настроен', 'warning', 'fa-exclamation-triangle');
+                    }
+                }
+                if (tokenStatus.soundcloud && !tokenStatus.soundcloud.client_id_set) {
+                    showNotification('SoundCloud Client ID не настроен', 'warning', 'fa-exclamation-triangle');
+                }
+            } catch (e) { console.error('Token validation error:', e); }
+        })(),
+        loadDashboard().catch(function(e) { console.error('Dashboard load error:', e); }),
+        (async function() {
+            try { loadMyWave(); } catch (e) { console.error('My Wave load error:', e); }
+        })(),
+        (async function() {
+            try { loadLikedTracks('yandex'); } catch (e) { console.error('Liked tracks load error:', e); }
+        })(),
+        loadNotifications().catch(function(e) { console.error('Notifications load error:', e); })
+    ]);
     
     setupGlobalEventListeners();
     hideLoadingScreen();
@@ -172,7 +149,7 @@ window.playMyWave = async function() {
             const duration = durationMs ? formatDuration(durationMs) : '';
             const trackId = track.id || '';
             
-            html += '<div class="track-item" data-track-id="' + trackId + '" onclick="playTrack(\'' + trackId + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
+            html += '<div class="track-item" data-track-id="' + trackId + '" onclick="playTrack(this.dataset.trackId)" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
                 '<div class="track-item-cover">' + coverHtml + '</div>' +
                 '<div class="track-item-info">' +
                 '<div class="track-item-title">' + escapeHtml(track.title || 'Неизвестно') + '</div>' +
@@ -250,7 +227,7 @@ function displayLikedTracks(tracks) {
     }
     
     let html = '';
-    tracks.slice(0, 10).forEach(function(track) {
+    tracks.slice(0, 10).forEach(function(track, index) {
         let artistsText = '';
         if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
             artistsText = track.artists.join(', ');
@@ -261,64 +238,29 @@ function displayLikedTracks(tracks) {
         }
         let coverUrl = track.cover_uri || '';
         if (coverUrl && coverUrl.includes('%%')) {
-            coverUrl = coverUrl.replace('%%', '200x200');
+            coverUrl = coverUrl.replace('%%', '56x56');
         }
         
         const serviceIcon = track.service === 'yandex' 
-            ? '<i class="fab fa-yandex" style="color: #ff3333;"></i>' 
+            ? '<i class="fab fa-yandex" style="color: #ff3333; font-size: 10px;"></i>' 
             : track.service === 'vk' 
-            ? '<i class="fab fa-vk" style="color: #4a76a8;"></i>' 
-            : '<i class="fas fa-music"></i>';
+            ? '<i class="fab fa-vk" style="color: #4a76a8; font-size: 10px;"></i>' 
+            : '<i class="fas fa-music" style="font-size: 10px;"></i>';
         
-        const cover = coverUrl ? '<div style="width: 180px; height: 180px; overflow: hidden; border-radius: 12px;"><img src="' + coverUrl + '" alt="" style="width: 180px; height: 180px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<div style=width:180px;height:180px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));border-radius:12px;display:flex;align-items:center;justify-content:center;><i class=fas fa-music fa-2x style=color:#fff;></i></div>\'"></div>' : '<div style="width: 180px; height: 180px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music fa-2x" style="color: #fff;"></i></div>';
+        const cover = coverUrl
+            ? '<div class="liked-track-cover"><img src="' + coverUrl + '" alt="" style="width: 48px; height: 48px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<div class=liked-track-cover style=background:linear-gradient(135deg,var(--accent),var(--accent-hover));display:flex;align-items:center;justify-content:center;border:none;><i class=fas fa-music style=color:#fff;></i></div>\'"></div>'
+            : '<div class="liked-track-cover" style="background: linear-gradient(135deg, var(--accent), var(--accent-hover)); display: flex; align-items: center; justify-content: center;"><i class="fas fa-music" style="color: #fff;"></i></div>';
         
-        html += '<div class="wave-track-card" onclick="playTrack(\'' + track.id + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
-            '<div style="position: relative;">' + cover +
-            '<div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">' + serviceIcon + '</div>' +
-            '<div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: #fff;"></i></div>' +
+        html += '<div class="liked-track-row" data-track-id="' + track.id + '" onclick="playTrack(this.dataset.trackId)">' +
+            '<span class="liked-track-num">' + (index + 1) + '</span>' +
+            cover +
+            '<div class="liked-track-info">' +
+            '<span class="liked-track-title">' + escapeHtml(track.title || 'Неизвестно') + '</span>' +
+            '<span class="liked-track-artist">' + escapeHtml(artistsText) + '</span>' +
             '</div>' +
-            '<h4 style="margin: 8px 0 4px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(track.title || 'Неизвестно') + '</h4>' +
-            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</p>' +
+            '<span class="liked-track-service">' + serviceIcon + '</span>' +
             '</div>';
-    });
-    container.innerHTML = html;
-}
 
-window.refreshWave = async function() {
-    const source = document.querySelector('#waveSourceSelector .source-btn.active')?.dataset.source || 'all';
-    await window.changeWaveSource(source);
-};
-
-function displayWaveTracks(tracks) {
-    const container = document.getElementById('waveTracksContainer');
-    if (!container) return;
-    
-    window.currentSource = 'wave';
-    window.currentSourceTracks = tracks;
-    
-    if (!tracks.length) {
-        container.innerHTML = '<div style="flex: 1; text-align: center; padding: 40px;"><i class="fas fa-music" style="font-size: 2rem; color: var(--text-muted);"></i><p style="margin-top: 12px; color: var(--text-muted);">Настройте токены для воспроизведения</p></div>';
-        return;
-    }
-    
-    let html = '';
-    tracks.slice(0, 10).forEach(function(track) {
-        const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
-        const serviceIcon = track.service === 'yandex' 
-            ? '<i class="fab fa-yandex" style="color: #ff3333;"></i>' 
-            : track.service === 'vk' 
-            ? '<i class="fab fa-vk" style="color: #4a76a8;"></i>' 
-            : '';
-        const cover = track.cover_uri ? '<img src="' + track.cover_uri + '" alt="" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px;">' : '<div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-music fa-2x" style="color: #fff;"></i></div>';
-        
-        html += '<div class="wave-track-card" onclick="playTrack(\'' + track.id + '\')" style="min-width: 180px; flex-shrink: 0; cursor: pointer;">' +
-            '<div style="position: relative;">' + cover +
-            '<div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">' + serviceIcon + '</div>' +
-            '<div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: #fff;"></i></div>' +
-            '</div>' +
-            '<h4 style="margin: 8px 0 4px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(track.title || 'Неизвестно') + '</h4>' +
-            '<p style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(artistsText) + '</p>' +
-            '</div>';
     });
     container.innerHTML = html;
 }
@@ -414,14 +356,25 @@ async function loadProfile() {
             });
             
             if (local.avatar_url) {
-                var avatarHtml = '<img src="' + local.avatar_url + '" alt="">';
                 ['sidebarAvatar', 'headerUserAvatar'].forEach(function(id) {
                     var el = document.getElementById(id);
-                    if (el) el.innerHTML = avatarHtml;
+                    if (el) {
+                        el.innerHTML = '';
+                        var img = document.createElement('img');
+                        img.src = local.avatar_url;
+                        img.alt = '';
+                        el.appendChild(img);
+                    }
                 });
             }
             if (typeof applyFrame === 'function') {
                 applyFrame(local.equipped_frame);
+            }
+            if (local.equipped_theme && typeof applyCustomTheme === 'function') {
+                apiCall('themes').then(function(themes) {
+                    var theme = themes.customThemes.find(function(t) { return t.id == local.equipped_theme; });
+                    if (theme) applyCustomTheme(theme.id);
+                }).catch(function() {});
             }
         }
     } catch (error) {
@@ -814,6 +767,57 @@ function setupGlobalEventListeners() {
     }
 }
 
+// Pull-to-refresh for mobile
+(function initPullToRefresh() {
+    var touchStartY = 0;
+    var touchCurrentY = 0;
+    var pulling = false;
+    var threshold = 80;
+    var indicator = document.createElement('div');
+    indicator.id = 'pullToRefreshIndicator';
+    indicator.innerHTML = '<i class="fas fa-arrow-down"></i> Потяните для обновления';
+    var indicatorIcon = indicator.querySelector('i');
+    
+    document.addEventListener('touchstart', function(e) {
+        if (window.scrollY === 0 || document.querySelector('.tab-content.active')?.scrollTop <= 0) {
+            touchStartY = e.touches[0].clientY;
+            pulling = true;
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (!pulling) return;
+        touchCurrentY = e.touches[0].clientY;
+        var diff = touchCurrentY - touchStartY;
+        if (diff > 0 && (window.scrollY === 0 || document.querySelector('.tab-content.active')?.scrollTop <= 0)) {
+            if (diff > 20 && !indicator.parentNode) {
+                document.body.appendChild(indicator);
+            }
+            if (indicator.parentNode) {
+                indicator.classList.toggle('visible', diff > 20);
+                indicator.classList.toggle('ready', diff > threshold);
+                if (indicatorIcon) indicatorIcon.style.transform = diff > threshold ? 'rotate(180deg)' : '';
+                indicator.innerHTML = diff > threshold ? '<i class="fas fa-arrow-up"></i> Отпустите для обновления' : '<i class="fas fa-arrow-down"></i> Потяните для обновления';
+            }
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!pulling) return;
+        pulling = false;
+        var diff = touchCurrentY - touchStartY;
+        if (diff > threshold && indicator.parentNode) {
+            indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обновление...';
+            setTimeout(function() {
+                if (indicator.parentNode) indicator.parentNode.removeChild(indicator);
+                window.location.reload();
+            }, 600);
+        } else {
+            if (indicator.parentNode) indicator.parentNode.removeChild(indicator);
+        }
+    }, { passive: true });
+})();
+
 async function loadFavorites() {
     var container = document.getElementById('favoritesList');
     if (!container) return;
@@ -889,28 +893,31 @@ window.clearHistory = async function() {
     }
 };
 
-window.toggleFavorite = async function(trackId, trackData) {
-    try {
-        var isLiked = await fetch('/api/favorites/' + trackId + '/check').then(function(r) { return r.json(); });
-        
-        if (isLiked.liked) {
-            await fetch('/api/favorites/' + trackId, { method: 'DELETE' });
-            showNotification('Удалено из избранного', 'success');
-        } else {
-            await fetch('/api/favorites/' + trackId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ track_data: trackData || {} })
-            });
-            showNotification('Добавлено в избранное', 'success');
-        }
-        
-        document.querySelectorAll('[data-track-id="' + trackId + '"] .like-btn').forEach(function(btn) {
-            updateLikeButton(btn, !isLiked.liked);
-        });
-    } catch (error) {
-        console.error('Toggle favorite error:', error);
+window.toggleFavorite = function(trackId, trackData) {
+    var btn = document.querySelector('[data-track-id="' + trackId + '"] .like-btn');
+    var wasLiked = btn ? btn.classList.contains('liked') : false;
+    
+    // Optimistic: toggle immediately
+    if (btn) updateLikeButton(btn, !wasLiked);
+    
+    var method = wasLiked ? 'DELETE' : 'POST';
+    var opts = { method: method };
+    if (method === 'POST') {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify({ track_data: trackData || {} });
     }
+    
+    fetch('/api/favorites/' + trackId, opts)
+    .then(function(r) {
+        if (!r.ok) throw new Error('Request failed');
+        showNotification(wasLiked ? 'Удалено из избранного' : 'Добавлено в избранное', 'success');
+        if (typeof loadLikedTracks === 'function') loadLikedTracks();
+    })
+    .catch(function(err) {
+        // Revert on error
+        if (btn) updateLikeButton(btn, wasLiked);
+        console.error('Toggle favorite error:', err);
+    });
 };
 
 function updateLikeButton(btn, isLiked) {
@@ -1161,8 +1168,10 @@ window.loadBattlePass = async function() {
         if (loading) loading.style.display = 'none';
         if (content) content.style.display = 'block';
 
-        document.getElementById('bpSeasonName').textContent = data.season.name;
-        document.getElementById('bpDaysLeft').textContent = 'Осталось ' + data.season.days_left + ' дн.';
+        var seasonNameEl = document.getElementById('bpSeasonName');
+        if (seasonNameEl) seasonNameEl.textContent = data.season.name;
+        var daysLeftEl = document.getElementById('bpDaysLeft');
+        if (daysLeftEl) daysLeftEl.textContent = 'Осталось ' + data.season.days_left + ' дн.';
 
         var bpBalance = document.getElementById('bpBalance');
         if (bpBalance) {
@@ -1186,14 +1195,18 @@ window.loadBattlePass = async function() {
             if (r.success && r.restored > 0) console.log('Restored', r.restored, 'rewards');
         }).catch(function(){});
 
-        document.getElementById('bpLevel').textContent = data.user.level;
+        var levelEl = document.getElementById('bpLevel');
+        if (levelEl) levelEl.textContent = data.user.level;
         var pct = 0;
         if (data.user.xp_to_next > 0) {
             pct = Math.min(100, Math.round((data.user.xp / data.user.xp_to_next) * 100));
         }
-        document.getElementById('bpProgressFill').style.width = pct + '%';
-        document.getElementById('bpXpText').textContent = data.user.xp + ' XP';
-        document.getElementById('bpXpNext').textContent = data.user.xp_to_next > 0 ? data.user.xp + ' / ' + data.user.xp_to_next + ' XP' : 'Максимальный уровень!';
+        var fillEl = document.getElementById('bpProgressFill');
+        if (fillEl) fillEl.style.width = pct + '%';
+        var xpText = document.getElementById('bpXpText');
+        if (xpText) xpText.textContent = data.user.xp + ' XP';
+        var xpNext = document.getElementById('bpXpNext');
+        if (xpNext) xpNext.textContent = data.user.xp_to_next > 0 ? data.user.xp + ' / ' + data.user.xp_to_next + ' XP' : 'Максимальный уровень!';
 
         var dailyBtn = document.getElementById('bpDailyBtn');
         var dailyLabel = document.getElementById('bpDailyLabel');
@@ -1341,7 +1354,10 @@ window.claimQuest = function(questId) {
         card.querySelector('.bp-quest-action').innerHTML = '<span class="bp-quest-done"><i class="fas fa-check-circle"></i></span>';
     }
     apiCall('battle-pass/claim-quest', {method: 'POST', body: JSON.stringify({quest_id: questId})}).then(function(r) {
-        if (!r.success) {
+        if (r.success) {
+            sessionStorage.removeItem('battle_pass_status');
+            loadBattlePass();
+        } else {
             loadBattlePass();
             alert(r.message);
         }
@@ -1395,7 +1411,10 @@ function doBpClaim(levelNum) {
     var detail = document.getElementById('bpLevelDetail');
     if (detail) detail.style.display = 'none';
     apiCall('battle-pass/claim', {method: 'POST', body: JSON.stringify({level: levelNum})}).then(function(r) {
-        if (!r.success) {
+        if (r.success) {
+            sessionStorage.removeItem('battle_pass_status');
+            loadBattlePass();
+        } else {
             loadBattlePass();
             alert(r.message);
         }
@@ -1409,6 +1428,7 @@ window.activateBp = async function() {
     try {
         var r = await apiCall('battle-pass/activate', {method: 'POST', body: JSON.stringify({})});
         if (r.success) {
+            sessionStorage.removeItem('battle_pass_status');
             if (typeof loadBattlePass === 'function') loadBattlePass();
         } else {
             alert(r.message);

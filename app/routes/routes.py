@@ -70,8 +70,8 @@ def discord_rpc():
             }
             
             requests.post(user.discord_webhook, json={"embeds": [embed]})
-        except:
-            pass
+        except Exception:
+            logging.warning(f"Failed to send Discord webhook for user {user.id}")
     
     return jsonify({'ok': True})
 
@@ -2166,12 +2166,13 @@ def stream_soundcloud(track_id):
 @login_required
 def get_friends():
     user_id = session['user_id']
-    friends = db.session.query(Friend).filter(
-        ((Friend.user_id == user_id) | (Friend.friend_id == user_id)) & (Friend.status == 'accepted')
+    rows = db.session.query(Friend).filter(
+        (Friend.user_id == user_id) | (Friend.friend_id == user_id)
     ).all()
     result = []
-    for f in friends:
-        friend_id = f.friend_id if f.user_id == user_id else f.user_id
+    for f in rows:
+        is_outgoing = f.user_id == user_id
+        friend_id = f.friend_id if is_outgoing else f.user_id
         friend_user = db.session.get(User, friend_id)
         if friend_user:
             result.append({
@@ -2179,9 +2180,34 @@ def get_friends():
                 'friend_id': friend_id,
                 'username': friend_user.username,
                 'display_name': friend_user.display_name or friend_user.username,
-                'avatar_url': friend_user.avatar_url
+                'avatar_url': friend_user.avatar_url,
+                'status': f.status,
+                'direction': 'outgoing' if is_outgoing else 'incoming',
+                'taste_match': getattr(f, 'taste_match', 0) or 0
             })
     return jsonify(result)
+
+@app.route('/api/friends/add/<int:user_id>', methods=['POST'])
+@login_required
+def send_friend_request(user_id):
+    current_user = db.session.get(User, session['user_id'])
+    target = db.session.get(User, user_id)
+    if not target:
+        return jsonify({'success': False, 'message': 'Пользователь не найден'}), 404
+    if current_user.id == target.id:
+        return jsonify({'success': False, 'message': 'Нельзя добавить себя'}), 400
+    existing = db.session.query(Friend).filter(
+        ((Friend.user_id == current_user.id) & (Friend.friend_id == target.id)) |
+        ((Friend.user_id == target.id) & (Friend.friend_id == current_user.id))
+    ).first()
+    if existing:
+        if existing.status == 'accepted':
+            return jsonify({'success': False, 'message': 'Уже в друзьях'}), 400
+        return jsonify({'success': False, 'message': 'Запрос уже отправлен'}), 400
+    friend = Friend(user_id=current_user.id, friend_id=target.id, status='pending')
+    db.session.add(friend)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Запрос отправлен'})
 
 @app.route('/api/friends/accept/<int:friend_id>', methods=['POST'])
 @login_required

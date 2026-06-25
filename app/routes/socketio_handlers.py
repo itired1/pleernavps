@@ -6,6 +6,17 @@ from flask_socketio import emit, join_room, leave_room
 import random
 import string
 
+def _resolve_user():
+    user_id = session.get('user_id')
+    guest_id = session.get('guest_id')
+    if user_id:
+        user = db.session.get(User, user_id)
+        if user:
+            return user_id, user.display_name or user.username, user.avatar_url or ''
+    if guest_id and guest_id in guest_users:
+        return guest_id, guest_users[guest_id]['name'], ''
+    return None, None, None
+
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')

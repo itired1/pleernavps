@@ -1,6 +1,20 @@
 def test_send_friend_request(authed_client, second_user_id, app):
-    resp = authed_client.get(f'/api/user/{second_user_id}')
+    resp = authed_client.post(f'/api/friends/add/{second_user_id}')
     assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success'] is True
+
+
+def test_send_friend_duplicate(authed_client, second_user_id, app):
+    resp = authed_client.post(f'/api/friends/add/{second_user_id}')
+    assert resp.status_code == 200
+    resp2 = authed_client.post(f'/api/friends/add/{second_user_id}')
+    assert resp2.status_code == 400
+
+
+def test_send_friend_self(authed_client, app):
+    resp = authed_client.post('/api/friends/add/1')
+    assert resp.status_code == 400
 
 
 def test_friend_search(authed_client):

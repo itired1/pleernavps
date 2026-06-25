@@ -129,13 +129,16 @@ window.viewFriendProfile = async function(userId) {
 };
 
 window.addFriend = async function(userId) {
+    // Optimistic: show notification and update profile button immediately
+    showNotification('Запрос отправлен', 'success');
+    viewFriendProfile(userId);
+    
     try {
         const result = await apiCall('friends/add/' + userId, { method: 'POST' });
-        if (result && result.success) {
-            showNotification('Запрос отправлен', 'success');
-            viewFriendProfile(userId);
-        } else {
+        if (!result || !result.success) {
             showNotification(result?.message || 'Ошибка', 'error');
+        } else {
+            loadFriends();
         }
     } catch (error) {
         console.error('Add friend error:', error);
@@ -144,17 +147,21 @@ window.addFriend = async function(userId) {
 };
 
 window.acceptFriend = async function(userId) {
+    showNotification('Запрос принят', 'success');
+    // Remove from local pending list immediately
+    friendsList = friendsList.filter(function(f) { return !(f.id === userId && f.status === 'pending'); });
+    displayFriendsList();
+    closeModal('userProfileModal');
+    
     try {
         const result = await apiCall('friends/accept/' + userId, { method: 'POST' });
-        if (result && result.success) {
-            showNotification('Запрос принят', 'success');
+        if (!result || !result.success) {
             loadFriends();
-            closeModal('userProfileModal');
-        } else {
             showNotification(result?.message || 'Ошибка', 'error');
         }
     } catch (error) {
         console.error('Accept friend error:', error);
+        loadFriends();
         showNotification('Ошибка', 'error');
     }
 };

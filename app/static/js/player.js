@@ -1,12 +1,10 @@
 let audioPlayer = null;
 window.currentTrack = null;
-let currentPlaylist = [];
-let queue = [];
+window.currentPlaylist = [];
+window.queue = [];
 let currentTrackIndex = 0;
 let isShuffle = false;
-let isRepeat = false;
 let repeatMode = 'off';
-let bypassCensorship = true;
 let listenHistory = [];
 window.currentSource = null;
 window.currentSourceTracks = [];
@@ -48,7 +46,7 @@ function loadQueueState() {
                 repeatMode = state.repeatMode || 'off';
                 if (state.autoplay !== undefined) autoplayEnabled = state.autoplay;
                 
-                initAutoplayBtn();
+                updateAutoplayBtn();
                 
                 if (state.currentTrack) {
                     currentTrack = window.currentTrack = state.currentTrack;
@@ -129,7 +127,7 @@ function updateQueueDisplay() {
     }
     
     html += '</div>';
-    html += '<button onclick="queue=[];updateQueueDisplay();" class="glass-btn" style="width: 100%; margin-top: 12px; padding: 10px;"><i class="fas fa-trash"></i> Очистить очередь</button>';
+    html += '<button onclick="window.queue=[];updateQueueDisplay();" class="glass-btn" style="width: 100%; margin-top: 12px; padding: 10px;"><i class="fas fa-trash"></i> Очистить очередь</button>';
     
     container.innerHTML = html;
 }
@@ -248,10 +246,7 @@ function initAudioPlayer() {
         }
     });
     
-    initWebAudio();
-}
-
-function initWebAudio() {
+    updateProgress();
 }
 
 function updateProgress() {
@@ -290,7 +285,7 @@ function handleTrackEnd() {
         audioPlayer.currentTime = 0;
         audioPlayer.play().catch(console.error);
     } else if (repeatMode === 'all') {
-        crossfadeToNext(nextTrack);
+        crossfadeToNext(window.nextTrack);
     } else if (currentTrackIndex >= queue.length - 1) {
         if (autoplayEnabled && currentTrack && currentTrack.service && currentTrack.id) {
             fetchSimilarTrack(currentTrack.service, currentTrack.id);
@@ -298,7 +293,7 @@ function handleTrackEnd() {
             window.refreshWave();
         }
     } else {
-        crossfadeToNext(nextTrack);
+        crossfadeToNext(window.nextTrack);
     }
 }
 
@@ -354,14 +349,6 @@ window.toggleAutoplay = function() {
     saveQueueState();
     return autoplayEnabled;
 };
-
-function initAutoplayBtn() {
-    var btn = document.getElementById('autoplayBtn');
-    if (btn) {
-        btn.classList.toggle('active', autoplayEnabled);
-        btn.title = autoplayEnabled ? 'Автоплей вкл' : 'Автоплей выкл';
-    }
-}
 
 function updateAutoplayBtn() {
     var btn = document.getElementById('autoplayBtn');
@@ -1017,8 +1004,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initAudioPlayer, 100);
     
     loadQueueState();
-    initAutoplayBtn();
-    
+    updateAutoplayBtn();
+
     const playBtn = document.getElementById('playPauseBtn');
     console.log('playBtn found:', !!playBtn);
     if (playBtn) {

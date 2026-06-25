@@ -1,5 +1,4 @@
 // Discord Rich Presence — браузер + Tauri
-// Client ID: замени на свой из https://discord.com/developers/applications
 const DISCORD_CLIENT_ID = '1479783995435647107';
 
 class DiscordRPC {
@@ -22,6 +21,11 @@ class DiscordRPC {
 
     set enabled(val) {
         localStorage.setItem('discord_rpc_enabled', val ? 'true' : 'false');
+        fetch('/api/profile/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({discord_enabled: !!val})
+        }).catch(function() {});
         if (!val) this.disconnect();
     }
 
@@ -62,7 +66,7 @@ class DiscordRPC {
                 const data = JSON.parse(event.data);
                 if (data.cmd === 'DISPATCH' && data.evt === 'READY') {
                     console.log('Discord RPC: Подключено');
-                    this.updateActivity();
+                    this._sendActivity();
                 }
             } catch {}
         };
@@ -75,7 +79,7 @@ class DiscordRPC {
             }
         };
 
-        this.ws.onerror = () => {};
+        this.ws.onerror = function() {};
 
         this.heartbeatInterval = setInterval(() => {
             if (this.ws) this.ws.send(JSON.stringify({ cmd: 'HEARTBEAT', args: {} }));
@@ -91,13 +95,15 @@ class DiscordRPC {
         this.connecting = false;
     }
 
-    async updateTrack(title, artist, playing = true, albumArt = null) {
+    async updateTrack(title, artist, playing, albumArt) {
         this.title = title || 'iTired Music';
         this.artist = artist || '';
         this.playing = playing !== false;
         this.albumArt = albumArt;
 
-        if (playing) this.startTimestamp = Date.now();
+        if (playing) {
+            this.startTimestamp = Date.now();
+        }
 
         if (window.__TAURI__) {
             try {
@@ -109,13 +115,21 @@ class DiscordRPC {
             return;
         }
 
-        this.updateActivity();
+        this._sendActivity();
     }
 
-    updateActivity() {
-        if (!this.enabled || !this.ws || !this.playing) return;
+    _sendActivity() {
+        if (!this.enabled || !this.ws) return;
 
         var smallIcon = localStorage.getItem('discord_small_icon') || 'itired_icon';
+
+        if (!this.playing) {
+            this.ws.send(JSON.stringify({
+                cmd: 'SET_ACTIVITY', args: { pid: 0, activity: null }
+            }));
+            return;
+        }
+
         var activity = {
             state: this.artist,
             details: this.title,
@@ -135,7 +149,7 @@ class DiscordRPC {
         }));
     }
 
-    setTrack(title, artist, playing = true, albumArt = null) {
+    setTrack(title, artist, playing, albumArt) {
         this.updateTrack(title, artist, playing, albumArt);
     }
 
@@ -152,19 +166,16 @@ window.discordRPC = new DiscordRPC();
 
 document.addEventListener('DOMContentLoaded', function() {
     window.discordRPC.init();
+    var toggle = document.getElementById('discordRpcToggle');
+    if (toggle) {
+        toggle.checked = window.discordRPC.enabled;
+    }
 });
 
-document.addEventListener('player-play', function() {
-    var t = window.currentTrack;
-    if (t) window.discordRPC.setTrack(
-        t.title, t.artists ? (Array.isArray(t.artists) ? t.artists.join(', ') : t.artists) : '',
-        true, t.cover_uri
-    );
-});
-
-document.addEventListener('player-pause', function() {
-    var t = window.currentTrack;
-    if (t) window.discordRPC.setTrack(t.title, t.artist || '', false);
+document.addEventListener('player-track-changed', function(e) {
+    var d = e.detail;
+    window.discordRPC.setTrack(d.title, d.artist, d.playing, d.cover_uri);
+    if (window.desktopNotificationsEnabled) showDesktopNotification('Now Playing', d.artist + ' - ' + d.title);
 });
 
 async function showDesktopNotification(title, body) {
@@ -172,11 +183,6 @@ async function showDesktopNotification(title, body) {
         try { await window.__TAURI__.invoke('show_notification', { title, body }); } catch {}
     }
 }
-
-document.addEventListener('player-track-changed', function(e) {
-    var d = e.detail;
-    if (window.desktopNotificationsEnabled) showDesktopNotification('Now Playing', d.artist + ' - ' + d.title);
-});
 
 window.toggleDiscordRpc = function() {
     var toggle = document.getElementById('discordRpcToggle');
@@ -186,7 +192,14 @@ window.toggleDiscordRpc = function() {
     if (enabled) {
         window.discordRPC.connect();
         var t = window.currentTrack;
-        if (t) window.discordRPC.setTrack(t.title, t.artist || '', true, t.cover_uri);
+        if (t) {
+            window.discordRPC.setTrack(
+                t.title,
+                t.artists ? (Array.isArray(t.artists) ? t.artists.join(', ') : t.artists) : (t.artist || ''),
+                true,
+                t.cover_uri
+            );
+        }
     } else {
         window.discordRPC.clear();
         window.discordRPC.disconnect();

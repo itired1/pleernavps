@@ -1,16 +1,23 @@
 {
   "name": "iTired Music",
   "short_name": "iTired",
-  "description": "Музыкальная платформа с Яндекс.Музыкой и VK",
+  "description": "Музыкальная платформа с Яндекс.Музыкой, VK и SoundCloud",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f0f1a",
   "theme_color": "#6366f1",
+  "scope": "/",
+  "lang": "ru-RU",
+  "dir": "ltr",
+  "categories": ["music", "entertainment", "social"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/static/icons/icon-512.png",
@@ -19,5 +26,25 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["music", "entertainment"]
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Поиск музыки",
+      "short_name": "Поиск",
+      "description": "Искать треки на всех сервисах",
+      "url": "/?tab=search"
+    },
+    {
+      "name": "Мои плейлисты",
+      "short_name": "Плейлисты",
+      "description": "Созданные плейлисты",
+      "url": "/?tab=playlists"
+    },
+    {
+      "name": "Магазин",
+      "short_name": "Магазин",
+      "description": "Баннеры, значки, рамки и темы",
+      "url": "/?tab=shop"
+    }
+  ]
 }

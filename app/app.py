@@ -39,5 +39,5 @@ if __name__ == '__main__':
     import atexit
     from helpers import cleanup_old_history
     atexit.register(cleanup_old_history)
-    print("Starting iTired server...")
+    print("Starting iTired server on http://0.0.0.0:5001")
     socketio.run(app, debug=True, host='0.0.0.0', port=5001)

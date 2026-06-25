@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<title>iTired Music</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <div class="pages">
+    <div id="loadingScreen">
+      <div class="splash-logo-wrap">
+        <div class="splash-icon">
+          <span class="splash-note">♪</span>
+          <div class="splash-ring"></div>
+          <div class="splash-ring splash-ring-delay"></div>
+        </div>
+      </div>
+      <h1 class="splash-title">iTired</h1>
+      <p class="splash-subtitle">Music for the soul</p>
+      <div class="splash-loader">
+        <div class="splash-dot"></div>
+        <div class="splash-dot"></div>
+        <div class="splash-dot"></div>
+      </div>
+      <p class="splash-version">v1.0.0</p>
+    </div>
+
+    <div class="auth-page" id="pageLogin">
+      <div class="auth-container">
+        <div class="auth-logo">♪</div>
+        <h1 class="auth-title">iTired</h1>
+        <p class="auth-subtitle">Sign in to continue</p>
+        <form class="auth-form" onsubmit="return doLogin(event)">
+          <input class="auth-input" id="loginInput" type="text" placeholder="Username or email" required autocomplete="username">
+          <input class="auth-input" id="passwordInput" type="password" placeholder="Password" required autocomplete="current-password">
+          <div class="auth-error" id="loginError"></div>
+          <button class="auth-btn" type="submit">Sign In</button>
+        </form>
+        <p class="auth-link">Don't have an account? <a href="#" onclick="showRegister()">Sign up</a></p>
+      </div>
+    </div>
+
+    <div class="auth-page" id="pageRegister">
+      <div class="auth-container">
+        <div class="auth-logo">♪</div>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-subtitle">Join iTired Music</p>
+        <form class="auth-form" onsubmit="return doRegister(event)">
+          <input class="auth-input" id="regUsername" type="text" placeholder="Username" required autocomplete="username">
+          <input class="auth-input" id="regEmail" type="email" placeholder="Email" required autocomplete="email">
+          <input class="auth-input" id="regPassword" type="password" placeholder="Password (min 4 chars)" required autocomplete="new-password">
+          <div class="auth-error" id="registerError"></div>
+          <button class="auth-btn" type="submit">Create Account</button>
+        </form>
+        <p class="auth-link">Already have an account? <a href="#" onclick="showLogin()">Sign in</a></p>
+      </div>
+    </div>
+
+    <div class="app-main" style="display:none;height:100%">
+      <div class="page active" id="pageHome">
+        <div class="header">
+          <p class="greeting">Good evening</p>
+          <h1>Welcome back</h1>
+          <p>What do you want to listen to?</p>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Recently Played</h2><a href="#">See all</a></div>
+          <div class="track-list" id="recentTracks"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Made for You</h2><a href="#">See all</a></div>
+          <div class="scroll-x" id="madeForYouCards"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Popular Playlists</h2><a href="#">See all</a></div>
+          <div class="scroll-x" id="playlistCards"></div>
+        </div>
+      </div>
+
+      <div class="page" id="pageSearch">
+        <div class="search-wrap">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input id="searchInput" type="text" placeholder="What do you want to hear?" oninput="handleSearch()">
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Browse Genres</h2></div>
+          <div class="genres" id="genreGrid"></div>
+        </div>
+        <div class="section" id="searchResultsSection">
+          <div class="section-header"><h2 id="searchResultTitle">Results</h2></div>
+          <div class="track-list" id="searchResults"></div>
+        </div>
+      </div>
+
+      <div class="page" id="pageLibrary">
+        <h1 class="page-title">Your Library</h1>
+        <div class="lib-section" id="libraryItems">
+          <div class="lib-item" onclick="switchPage('home')">
+            <div class="lib-icon" style="background:#e1705522">❤️</div>
+            <div><h4>Liked Songs</h4><p id="favCount">0 favorites</p></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>My Playlists</h2><button class="btn-sm" onclick="createPlaylist()">+ New</button></div>
+          <div class="track-list" id="myPlaylistsSection"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Listening History</h2><button class="btn-sm" onclick="clearHistory()">Clear</button></div>
+          <div class="track-list" id="historyList"></div>
+        </div>
+      </div>
+
+      <div class="page" id="pageProfile">
+        <div class="profile-header">
+          <div class="profile-avatar" style="background:linear-gradient(135deg,#6c5ce7,#e84393)">👤</div>
+          <h2>iTired User</h2>
+          <p>user@email.com</p>
+          <div class="profile-stats" id="profileStats"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Edit Profile</h2></div>
+          <div style="padding:0 16px 8px">
+            <input class="auth-input" id="profileName" type="text" placeholder="Display name" style="margin-bottom:8px">
+            <textarea class="auth-input" id="profileBio" placeholder="Bio" rows="2" style="resize:none;margin-bottom:8px"></textarea>
+            <button class="auth-btn" onclick="saveProfile()" style="font-size:14px;padding:10px">Save</button>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Quick Links</h2></div>
+          <div class="profile-menu" style="padding:0 16px 8px;box-shadow:none;background:transparent">
+            <div class="profile-menu-item" onclick="switchPage('library')"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg><span>My Library</span><span class="arrow">›</span></div>
+            <div class="profile-menu-item" onclick="switchPage('home')"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span><span class="arrow">›</span></div>
+            <div class="profile-menu-item logout" onclick="doLogout()"><svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg><span>Sign Out</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Battle Pass Page -->
+      <div class="page" id="pageBp">
+        <div class="bp-header">
+          <div class="bp-icon">🏆</div>
+          <h1 class="page-title" style="padding:0">Battle Pass</h1>
+          <p style="color:var(--text2);font-size:13px" id="bpSeasonName">Season 1</p>
+        </div>
+        <div class="section">
+          <div class="bp-level-display">
+            <div class="bp-level-num" id="bpLevel">1</div>
+            <div class="bp-progress-wrap">
+              <div class="bp-progress-bar" id="bpProgressBar" style="width:0%"></div>
+            </div>
+            <div class="bp-xp-text" id="bpXpText">0 / 100 XP</div>
+          </div>
+          <div style="display:flex;gap:8px;padding:0 16px 8px">
+            <button class="btn-sm" onclick="claimBpReward('free')" id="claimFreeBtn" style="flex:1">Claim Free</button>
+            <button class="btn-sm" onclick="claimBpReward('premium')" id="claimPremiumBtn" style="flex:1;background:linear-gradient(135deg,#fdcb6e,#e17055);color:#fff">Claim Premium</button>
+          </div>
+        </div>
+        <div class="section" id="bpRewardsSection">
+          <div class="section-header"><h2>Rewards</h2></div>
+          <div class="bp-rewards" id="bpRewards"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Daily Quests</h2></div>
+          <div class="bp-quests" id="bpDailyQuests"></div>
+          <div class="section-header" style="margin-top:12px"><h2>Weekly Quests</h2></div>
+          <div class="bp-quests" id="bpWeeklyQuests"></div>
+        </div>
+        <div class="section">
+          <button class="btn-sm" onclick="claimDailyBonus()" id="dailyBonusBtn" style="width:100%;padding:12px">🎁 Daily Bonus (+20 XP, +5 coins)</button>
+        </div>
+      </div>
+
+      <!-- Shop Page -->
+      <div class="page" id="pageShop">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0">
+          <h1 class="page-title" style="padding:0">Shop</h1>
+          <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);padding:6px 14px;border-radius:20px">
+            <span style="font-size:16px">🪙</span>
+            <span style="font-weight:700;font-size:16px" id="shopBalance">0</span>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>Items</h2></div>
+          <div class="shop-grid" id="shopItems"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><h2>My Inventory</h2></div>
+          <div class="shop-grid" id="shopInventory"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="nav">
+      <button class="nav-item active" onclick="switchPage('home')">
+        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" onclick="switchPage('search')">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <span>Search</span>
+      </button>
+      <button class="nav-item" onclick="switchPage('library')">
+        <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>
+        <span>Library</span>
+      </button>
+      <button class="nav-item" onclick="switchPage('bp')">
+        <svg viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2z"/></svg>
+        <span>Battle</span>
+      </button>
+      <button class="nav-item" onclick="switchPage('shop')">
+        <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.17 14.75l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.86-7.01L19.42 4h-.01l-1.1 2-2.76 5H8.53l-.13-.27L6.16 6l-.95-2-.94-2H1v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25z"/></svg>
+        <span>Shop</span>
+      </button>
+    </nav>
+
+    <!-- Mini Player -->
+    <div class="mini-player" onclick="openPlayer()" id="miniPlayer">
+      <div class="mini-cover">🎵</div>
+      <div class="mini-info">
+        <h4 id="miniTitle">Blinding Lights</h4>
+        <p id="miniArtist">The Weeknd</p>
+      </div>
+      <div class="mini-controls">
+        <button class="mini-prev" onclick="event.stopPropagation();prevTrack()">
+          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button class="mini-play-btn" onclick="event.stopPropagation();togglePlayMini()">
+          <svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>
+        </button>
+        <button class="mini-next" onclick="event.stopPropagation();nextTrack()">
+          <svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+        </button>
+      </div>
+      <div class="mini-progress"><div class="mini-progress-bar" id="miniProgressBar"></div></div>
+    </div>
+
+    <!-- Full Player -->
+    <div class="player-overlay" id="fullPlayer">
+      <button class="player-close" onclick="closePlayer()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <div class="player-cover" id="playerCover">🎵</div>
+      <div class="player-info">
+        <h2 id="playerTitle">Blinding Lights</h2>
+        <p id="playerArtist">The Weeknd</p>
+      </div>
+      <div class="player-controls-row">
+        <button id="playerShuffleBtn" onclick="toggleShuffle()" class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        </button>
+        <button onclick="prevTrack()" class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button class="play-btn-lg" onclick="togglePlay()">
+          <svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>
+        </button>
+        <button onclick="nextTrack()" class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+        </button>
+        <button id="playerRepeatBtn" onclick="toggleRepeat()" class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+        </button>
+      </div>
+      <div class="player-progress">
+        <input type="range" min="0" max="1000" value="0" id="seekBar" oninput="seekTo(this.value)" class="seek-bar">
+        <div class="player-time">
+          <span id="currentTime">0:00</span>
+          <span id="totalTime">0:00</span>
+        </div>
+      </div>
+      <div class="player-queue" id="queueList" style="display:none">
+        <div class="section-header"><h2>Up Next</h2><button class="btn-sm" onclick="document.getElementById('queueList').style.display='none'">✕</button></div>
+        <div id="queueItems"></div>
+      </div>
+    </div>
+
+    <!-- Playlist Detail -->
+    <div class="playlist-detail" id="playlistDetail">
+      <div class="header">
+        <button onclick="closePlaylist()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+        <div>
+          <h2 class="playlist-name">Playlist</h2>
+          <p class="playlist-desc" style="color:var(--text2);font-size:13px"></p>
+        </div>
+      </div>
+      <div class="content"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+<audio id="audioPlayer" style="display:none"></audio>
+<script src="app.js"></script>
+</body>
+</html>
