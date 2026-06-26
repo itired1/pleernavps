@@ -304,7 +304,7 @@ function updateRoomUI() {
 }
 
 function getRoomDefaultHTML() {
-    return '<div style="text-align:center;padding:20px;"><p style="color:var(--text-secondary);margin-bottom:24px;">Создайте комнату или присоединитесь</p><button onclick="initSocket();createRoom()" class="btn-primary" style="width:100%;margin-bottom:12px;padding:14px;"><i class="fas fa-plus"></i> Создать комнату</button><div style="display:flex;gap:8px;margin-top:20px;"><input type="text" id="joinRoomCode" placeholder="Код комнаты" style="flex:1;padding:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:#fff;"><button onclick="initSocket();joinRoomByCode()" class="glass-btn" style="padding:12px 16px;"><i class="fas fa-sign-in-alt"></i></button></div></div>';
+    return '<div class="room-default"><p class="room-desc">Создайте комнату или присоединитесь</p><button onclick="initSocket();createRoom()" class="btn-primary room-btn"><i class="fas fa-plus"></i> Создать комнату</button><div class="room-join-row"><input type="text" id="joinRoomCode" placeholder="Код комнаты" class="room-input"><button onclick="initSocket();joinRoomByCode()" class="glass-btn room-join-btn"><i class="fas fa-sign-in-alt"></i></button></div></div>';
 }
 
 function getRoomJoinedHTML() {
@@ -312,17 +312,17 @@ function getRoomJoinedHTML() {
     const usersList = window.roomUsers.map(u => {
         const name = escapeHtml(u.username || u.display_name || 'Пользователь');
         const isRoomHost = (String(u.socket_id || u.id) === String(window.roomHost));
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:white;font-size:12px;"></i></div><div style="flex:1;font-size:13px;">' + name + '</div>' + (isRoomHost ? '<i class="fas fa-crown" style="color:gold;font-size:12px;"></i>' : '') + '</div>';
+        return '<div class="room-user-item">' + (isRoomHost ? '<div class="room-user-avatar"><i class="fas fa-user"></i></div>' : '<div class="room-user-avatar"><i class="fas fa-user"></i></div>') + '<div class="room-user-name">' + name + '</div>' + (isRoomHost ? '<i class="fas fa-crown room-host-crown"></i>' : '') + '</div>';
     }).join('');
     
     const playlistHTML = window.roomPlaylist && window.roomPlaylist.length > 0 
         ? window.roomPlaylist.slice(0, 10).map((t, i) => {
             const artists = t.artists ? t.artists.join(', ') : (t.artist || '');
-            return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="playRoomPlaylistItem(' + i + ')"><div style="width:36px;height:36px;border-radius:4px;background:var(--bg-secondary);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><i class="fas fa-music" style="color:var(--text-muted);font-size:12px;"></i></div><div style="flex:1;min-width:0;font-size:12px;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.title || 'Неизвестно') + '</div><div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(artists) + '</div></div></div>';
+            return '<div class="room-playlist-item" onclick="playRoomPlaylistItem(' + i + ')"><div class="room-playlist-cover"><i class="fas fa-music"></i></div><div class="room-playlist-info"><div class="room-playlist-title">' + escapeHtml(t.title || 'Неизвестно') + '</div><div class="room-playlist-artist">' + escapeHtml(artists) + '</div></div></div>';
           }).join('')
-        : '<p style="color:var(--text-muted);padding:10px;font-size:12px;">Плейлист пуст</p>';
+        : '<p class="room-empty-msg">Плейлист пуст</p>';
     
-    return '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Код комнаты</div><div style="font-size:2rem;font-weight:bold;letter-spacing:0.2em;color:var(--accent);">' + window.currentRoom + '</div><button onclick="shareRoom()" class="btn-primary" style="margin-top:12px;padding:8px 16px;"><i class="fas fa-share"></i> Поделиться</button></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Участники (' + window.roomUsers.length + ')' + (window.isHost ? '<span style="color:var(--accent);">(Вы ведущий)</span>' : '<span style="color:var(--text-muted);">(Слушатель)</span>') + '</div><div style="max-height:150px;overflow-y:auto;">' + (usersList || '<p style="color:var(--text-muted);padding:10px;">Загрузка...</p>') + '</div></div><div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Плейлист</div><div style="max-height:200px;overflow-y:auto;">' + playlistHTML + '</div></div>' + (window.isHost ? '<div style="margin-bottom:16px;"><input type="text" id="roomSearchInput" placeholder="Поиск трека..." style="width:100%;padding:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px;" onkeyup="if(event.key==\'Enter\')roomSearch()"><button onclick="roomSearch()" class="btn-primary" style="width:100%;margin-top:8px;padding:10px;"><i class="fas fa-plus"></i> Добавить трек</button></div>' : '') + '<button onclick="leaveRoom()" class="glass-btn" style="width:100%;padding:12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);"><i class="fas fa-sign-out-alt"></i> Покинуть комнату</button>';
+    return '<div class="room-code-section"><div class="room-code-label">Код комнаты</div><div class="room-code">' + window.currentRoom + '</div><button onclick="shareRoom()" class="btn-primary room-share-btn"><i class="fas fa-share"></i> Поделиться</button></div><div class="room-section"><div class="room-section-label">Участники (' + window.roomUsers.length + ')' + (window.isHost ? '<span class="room-host-badge">(Вы ведущий)</span>' : '<span class="room-listener-badge">(Слушатель)</span>') + '</div><div class="room-scroll-list">' + (usersList || '<p class="room-empty-msg">Загрузка...</p>') + '</div></div><div class="room-section"><div class="room-section-label">Плейлист</div><div class="room-scroll-list room-playlist-scroll">' + playlistHTML + '</div></div>' + (window.isHost ? '<div class="room-section"><input type="text" id="roomSearchInput" placeholder="Поиск трека..." class="room-search-input" onkeyup="if(event.key==\'Enter\')roomSearch()"><button onclick="roomSearch()" class="btn-primary room-add-btn"><i class="fas fa-plus"></i> Добавить трек</button></div>' : '') + '<button onclick="leaveRoom()" class="glass-btn room-leave-btn"><i class="fas fa-sign-out-alt"></i> Покинуть комнату</button>';
 }
 
 function updateRoomPlaylistUI() {
@@ -330,7 +330,7 @@ function updateRoomPlaylistUI() {
     if (!container) return;
     
     if (!window.roomPlaylist || window.roomPlaylist.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Плейлист пуст</div>';
+        container.innerHTML = '<div class="room-empty-state">Плейлист пуст</div>';
         return;
     }
     
@@ -340,7 +340,7 @@ function updateRoomPlaylistUI() {
         const artistsText = track.artists ? (Array.isArray(track.artists) ? track.artists.join(', ') : track.artists) : (track.artist || '');
         const cover = track.cover_uri || track.cover || '';
         
-        html += '<div onclick="playRoomPlaylistItem(' + index + ')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:8px;' + (isActive ? 'background:var(--bg-tertiary);border-left:3px solid var(--accent);' : '') + '"><div style="width:40px;height:40px;border-radius:6px;overflow:hidden;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (cover ? '<img src="' + cover + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fas fa-music" style="color:var(--text-muted);"></i>') + '</div><div style="flex:1;min-width:0;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;' + (isActive ? 'color:var(--accent);' : '') + '">' + escapeHtml(track.title || 'Неизвестно') + '</div><div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(artistsText) + '</div></div></div>';
+        html += '<div onclick="playRoomPlaylistItem(' + index + ')" class="' + (isActive ? 'room-queue-item active' : 'room-queue-item') + '"><div class="room-queue-cover">' + (cover ? '<img src="' + cover + '" alt="">' : '<i class="fas fa-music"></i>') + '</div><div class="room-queue-info"><div class="' + (isActive ? 'room-queue-title active' : 'room-queue-title') + '">' + escapeHtml(track.title || 'Неизвестно') + '</div><div class="room-queue-artist">' + escapeHtml(artistsText) + '</div></div></div>';
     });
     
     container.innerHTML = html;
@@ -396,14 +396,14 @@ window.shareRoom = function() {
         
         const shareDiv = document.createElement('div');
         shareDiv.id = 'roomShareSection';
-        shareDiv.style.cssText = 'margin:12px 0;padding:12px;background:var(--bg-tertiary);border-radius:8px;';
+        shareDiv.className = 'room-share-section';
         shareDiv.innerHTML = `
-            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Пригласить по ссылке:</div>
-            <div style="display:flex;gap:8px;">
-                <input type="text" id="shareLinkInput" value="${url}" readonly style="flex:1;padding:8px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px;" onclick="this.select()">
-                <button onclick="navigator.clipboard.writeText('${url}').then(()=>showNotification('Ссылка скопирована!','success'))" class="glass-btn" style="padding:8px 12px;" title="Копировать"><i class="fas fa-copy"></i></button>
+            <div class="room-share-label">Пригласить по ссылке:</div>
+            <div class="room-share-row">
+                <input type="text" id="shareLinkInput" value="${url}" readonly class="room-share-input" onclick="this.select()">
+                <button onclick="navigator.clipboard.writeText('${url}').then(()=>showNotification('Ссылка скопирована!','success'))" class="glass-btn room-copy-btn" title="Копировать"><i class="fas fa-copy"></i></button>
             </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-info-circle"></i> По этой ссылке могут зайти как зарегистрированные пользователи, так и гости</div>
+            <div class="room-share-hint"><i class="fas fa-info-circle"></i> По этой ссылке могут зайти как зарегистрированные пользователи, так и гости</div>
         `;
         modalContent.insertBefore(shareDiv, modalContent.querySelector('button:last-child'));
     } else {
